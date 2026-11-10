@@ -1,0 +1,239 @@
+import { daysInRange } from "./dates.ts";
+import {
+  categorizeIngredient,
+  formatQuantity,
+  ingredientsMatch,
+  normalizeItem,
+  parseIngredient,
+  roundUpForPurchase,
+} from "./ingredients.ts";
+import type { IngredientUnit, ShoppingCategory } from "./ingredients.ts";
+import { estimateItemPrice, formatPrice, parseOfferPrice } from "./pricing.ts";
+import { baseServings, scaleIngredients } from "./portions.ts";
+import type {
+  Dish,
+  FridgeItem,
+  MealMap,
+  OfferReference,
+  ShoppingListState,
+} from "./types.ts";
+
+export type ShoppingListItem = {
+  id: string;
+  label: string;
+  quantityLabel: string;
+  estimatedPrice: number;
+  priceLabel: string;
+  priceIsOffer: boolean;
+  offer?: OfferReference;
+  sourceLabel: string;
+  dishNames: string[];
+  extra: boolean;
+  category: ShoppingCategory;
+  checked: boolean;
+};
+
+type AggregatedItem = Omit<
+  ShoppingListItem,
+  "estimatedPrice" | "priceLabel" | "priceIsOffer" | "checked"
+> & {
+  amount?: number;
+  unit?: IngredientUnit;
+};
+
+export type ShoppingListInput = {
+  /** Identifies the persisted checked/extra state; opaque to this module. */
+  listId: string;
+  /** Inclusive date range, e.g. today -> last planned day. */
+  from: string;
+  to: string;
+  meals: MealMap;
+  dishes: readonly Dish[];
+  fridge: readonly FridgeItem[];
+  pantry: readonly string[];
+  /** Checked ids and extra items for this list id. */
+  state?: ShoppingListState;
+  servings?: number;
+};
+
+export type ShoppingList = {
+  listId: string;
+  from: string;
+  to: string;
+  items: ShoppingListItem[];
+  excludedCount: number;
+  totalEstimatedPrice: number;
+  offerItemCount: number;
+  checkedCount: number;
+};
+
+export const EMPTY_SHOPPING_STATE: ShoppingListState = { checked: [], extras: [] };
+
+export const extraItemId = (label: string): string => `extra:${normalizeItem(label)}`;
+
+export function createShoppingList(input: ShoppingListInput): ShoppingList {
+  const { listId, from, to, meals, dishes, pantry, servings } = input;
+  const state = input.state ?? EMPTY_SHOPPING_STATE;
+  const fridgeNames = input.fridge.map((item) => item.name);
+  const days = daysInRange(from, to);
+  const dishById = new Map(dishes.map((dish) => [dish.id, dish]));
+  const ingredients = new Map<string, AggregatedItem>();
+  let excludedCount = 0;
+
+  for (const day of days) {
+    const meal = meals[day];
+    if (!meal || meal.skipped) continue;
+    const dish = dishById.get(meal.dishId);
+    if (!dish) continue;
+
+    const scaled = servings
+      ? scaleIngredients(dish.ingredients, servings, baseServings(dish.servings))
+      : dish.ingredients;
+    for (const ingredient of scaled) {
+      const sourceLabel = ingredient.trim();
+      if (!sourceLabel) continue;
+      const parsed = parseIngredient(sourceLabel);
+      const matchingOffer = meal.offer && ingredientsMatch(parsed.name, meal.offer.item)
+        ? meal.offer
+        : undefined;
+      if (
+        fridgeNames.some((name) => ingredientsMatch(parsed.name, name)) ||
+        pantry.some((staple) => ingredientsMatch(parsed.name, staple))
+      ) {
+        excludedCount += 1;
+        continue;
+      }
+      const id = `ingredient:${normalizeItem(parsed.name)}:${parsed.unit ?? "unknown"}`;
+      const existing = ingredients.get(id);
+      if (existing) {
+        if (existing.amount !== undefined && parsed.amount !== undefined) {
+          existing.amount += parsed.amount;
+          existing.quantityLabel = formatQuantity(existing.amount, existing.unit);
+        }
+        if (!existing.dishNames.includes(dish.name)) existing.dishNames.push(dish.name);
+        if (!existing.offer && matchingOffer) existing.offer = matchingOffer;
+      } else {
+        ingredients.set(id, {
+          id,
+          label: parsed.name,
+          quantityLabel: formatQuantity(parsed.amount, parsed.unit),
+          sourceLabel,
+          amount: parsed.amount,
+          unit: parsed.unit,
+          dishNames: [dish.name],
+          extra: false,
+          category: categorizeIngredient(parsed.name),
+          offer: matchingOffer,
+        });
+      }
+    }
+  }
+
+  const checked = new Set(state.checked);
+  const planned = [...ingredients.values()]
+    .sort((a, b) => a.label.localeCompare(b.label, "da-DK"))
+    .map((item) => priced(item, checked));
+  const availableOffers = days.flatMap((day) => {
+    const offer = meals[day]?.offer;
+    return offer ? [offer] : [];
+  });
+  const manual = state.extras
+    .map((extra) => extra.label.trim())
+    .filter(Boolean)
+    .map((sourceLabel) => {
+      const parsed = parseIngredient(sourceLabel);
+      return priced(
+        {
+          id: extraItemId(sourceLabel),
+          label: parsed.name,
+          quantityLabel: formatQuantity(parsed.amount, parsed.unit),
+          sourceLabel,
+          amount: parsed.amount,
+          unit: parsed.unit,
+          dishNames: [],
+          extra: true,
+          category: categorizeIngredient(parsed.name),
+          offer: availableOffers.find((offer) => ingredientsMatch(parsed.name, offer.item)),
+        },
+        checked,
+      );
+    });
+
+  const items = [...planned, ...manual];
+  return {
+    listId,
+    from,
+    to,
+    items,
+    excludedCount,
+    totalEstimatedPrice: items.reduce((total, item) => total + item.estimatedPrice, 0),
+    offerItemCount: items.filter((item) => item.priceIsOffer).length,
+    checkedCount: items.filter((item) => item.checked).length,
+  };
+}
+
+function priced(source: AggregatedItem, checked: ReadonlySet<string>): ShoppingListItem {
+  // The list shows (and prices) what you actually buy: whole cans, 50 g steps, and so on.
+  const bought =
+    source.amount !== undefined && source.unit !== undefined
+      ? roundUpForPurchase(source.amount, source.unit)
+      : source.amount;
+  const item: AggregatedItem =
+    bought !== undefined && bought !== source.amount
+      ? { ...source, amount: bought, quantityLabel: formatQuantity(bought, source.unit) }
+      : source;
+  let estimatedPrice = estimateItemPrice(item);
+  const offerPrice = item.offer?.price ? parseOfferPrice(item.offer.price) : undefined;
+  const priceIsOffer = item.offer?.price !== undefined;
+  if (offerPrice !== undefined) estimatedPrice = offerPrice;
+
+  return {
+    id: item.id,
+    label: item.label,
+    quantityLabel: item.quantityLabel,
+    estimatedPrice,
+    priceLabel: priceIsOffer
+      ? `${item.offer?.price} · ${item.offer?.store}`
+      : `ca. ${formatPrice(estimatedPrice)}`,
+    priceIsOffer,
+    offer: item.offer,
+    sourceLabel: item.sourceLabel,
+    dishNames: item.dishNames,
+    extra: item.extra,
+    category: item.category,
+    checked: checked.has(item.id),
+  };
+}
+
+// --- Pure state reducers for the persisted checked/extra state of a list --------------------------
+
+export function toggleChecked(state: ShoppingListState, itemId: string): ShoppingListState {
+  return {
+    ...state,
+    checked: state.checked.includes(itemId)
+      ? state.checked.filter((candidate) => candidate !== itemId)
+      : [...state.checked, itemId],
+  };
+}
+
+/** Adds a free-text extra; blank or case-insensitive duplicates are ignored. */
+export function addExtra(state: ShoppingListState, label: string): ShoppingListState {
+  const clean = label.trim();
+  if (!clean) return state;
+  const exists = state.extras.some(
+    (extra) => extra.label.toLocaleLowerCase("da-DK") === clean.toLocaleLowerCase("da-DK"),
+  );
+  return exists ? state : { ...state, extras: [...state.extras, { label: clean }] };
+}
+
+export function removeExtra(state: ShoppingListState, label: string): ShoppingListState {
+  const id = extraItemId(label);
+  return {
+    checked: state.checked.filter((candidate) => candidate !== id),
+    extras: state.extras.filter((extra) => extra.label !== label),
+  };
+}
+
+export function clearChecked(state: ShoppingListState): ShoppingListState {
+  return { ...state, checked: [] };
+}

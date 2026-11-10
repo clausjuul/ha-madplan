@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Madplan – ugen på telefon</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0C0E}
+a{color:#7CECFF}a:hover{color:#B5F5FF}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0B0C0E; color: #F4F2EE; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="padding: 18px 16px 10px; display: flex; align-items: center; gap: 10px">
+    <div style="flex: 1">
+      <div style="font-size: 13px; color: #A7AAB2">Uge 46 · 9.–15. nov.</div>
+      <strong style="font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 26px; font-weight: 700">Madplan</strong>
+    </div>
+    <button type="button" aria-label="Spørg Assist" style="width: 44px; height: 44px; border-radius: 999px; border: 0; background: #15171B; color: #C9CBD1; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+    </button>
+  </header>
+
+  <div style="flex: 1; min-height: 0; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 10px">
+    <article style="position: relative; height: 210px; border-radius: 24px; overflow: hidden; flex-shrink: 0">
+      <img src="/_blob/53ecfcde428ee5ebea55a342ab106d2f" alt="Lasagne i fad" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover">
+      <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,12,14,0) 30%, rgba(11,12,14,0.92) 100%)"></div>
+      <div style="position: absolute; left: 18px; right: 18px; bottom: 16px; display: flex; align-items: flex-end; gap: 12px">
+        <div style="flex: 1">
+          <div style="font-size: 13px; font-weight: 600; color: #7CECFF; text-transform: uppercase; letter-spacing: 0.04em">I aften</div>
+          <div style="font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 32px; font-weight: 700; line-height: 1.05">Lasagne</div>
+          <div style="font-size: 13px; color: #C9CBD1; margin-top: 4px">60 min · til 3</div>
+        </div>
+        <a href="Cook.dc.html" style="text-decoration: none; height: 44px; padding: 0 18px; border-radius: 999px; background: #F4F2EE; color: #0B0C0E; display: flex; align-items: center; font-size: 15px; font-weight: 600">Lav mad</a>
+      </div>
+    </article>
+
+    <h2 style="margin: 8px 2px 0; font-size: 15px; font-weight: 600; color: #A7AAB2">Resten af ugen</h2>
+    <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+      <sc-for list="{{days}}" as="day" hint-placeholder-count="6">
+        <li style="display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 18px; background: #15171B">
+          <sc-if value="{{day.hasImage}}" hint-placeholder-val="{{ true }}">
+            <img src="{{day.image}}" alt="" style="width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex-shrink: 0">
+          </sc-if>
+          <sc-if value="{{day.empty}}" hint-placeholder-val="{{ false }}">
+            <span aria-hidden="true" style="width: 54px; height: 54px; border-radius: 12px; border: 1.5px dashed rgba(255,255,255,0.22); color: #A7AAB2; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+          </sc-if>
+          <div style="flex: 1; min-width: 0">
+            <div style="font-size: 13px; color: #A7AAB2">{{day.label}}</div>
+            <div style="{{day.nameStyle}}">{{day.dish}}</div>
+          </div>
+          <sc-if value="{{day.isNew}}" hint-placeholder-val="{{ false }}">
+            <span style="font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: #C4B5FF; color: #17112E">Ny</span>
+          </sc-if>
+          <sc-if value="{{day.offer}}" hint-placeholder-val="{{ false }}">
+            <span style="font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: #FFC27A; color: #2A1700">Tilbud</span>
+          </sc-if>
+          <button type="button" aria-label="{{day.menuLabel}}" style="width: 44px; height: 44px; border-radius: 12px; border: 0; background: transparent; color: #A7AAB2; display: flex; align-items: center; justify-content: center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+          </button>
+        </li>
+      </sc-for>
+    </ul>
+  </div>
+
+  <nav aria-label="Hovedmenu" style="height: 76px; flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.07); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 6px 8px 10px">
+    <a href="#" aria-current="page" style="text-decoration: none; color: #7CECFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Uge
+    </a>
+    <a href="Shopping.dc.html" style="text-decoration: none; color: #A7AAB2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2.5 3h2.6l2.4 12.2a1 1 0 0 0 1 .8h9.7a1 1 0 0 0 1-.8L21 7H6"/></svg>Indkøb
+    </a>
+    <a href="#" style="text-decoration: none; color: #A7AAB2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>Retter
+    </a>
+    <a href="Plan.dc.html" style="text-decoration: none; color: #A7AAB2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Planlæg
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var list = [
+      { label: 'Tirsdag 10.', dish: 'Laks med kartofler', image: '/_blob/6b7b902ab4a65c28e731b762915157f0' },
+      { label: 'Onsdag 11.', dish: 'Kyllingewok', image: '/_blob/66553f9bd721f6b128e0e7ae06b741d1', isNew: true },
+      { label: 'Torsdag 12.', dish: 'Tomatsuppe', image: '/_blob/d02a1220176691e1d13e8f00103fdc5c', offer: true },
+      { label: 'Fredag 13.', dish: 'Hjemmelavet pizza', image: '/_blob/67baa3cfbee9d3b170426f19e1a06ca7' },
+      { label: 'Lørdag 14.', dish: 'Vælg en ret', empty: true },
+      { label: 'Søndag 15.', dish: 'Tacos', image: '/_blob/fc318d101066d50009f55eb980ad29bd' }
+    ];
+    return {
+      days: list.map(function (d) {
+        return Object.assign({}, d, {
+          hasImage: !!d.image,
+          empty: !!d.empty,
+          isNew: !!d.isNew,
+          offer: !!d.offer,
+          menuLabel: 'Handlinger for ' + d.label,
+          nameStyle: 'font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' + (d.empty ? ' color: #7CECFF;' : '')
+        });
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

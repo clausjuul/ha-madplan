@@ -1,0 +1,31 @@
+# Billedkreditering
+
+Billederne i denne mappe er hentet fra Wikimedia Commons og beskåret i brugerfladen med `object-fit: cover`. De oprindelige billeder, fotografer og licenser er:
+
+| Lokal fil                | Fotograf / ophav    | Licens        | Kilde                                                                                                                                                      |
+| ------------------------ | ------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pasta-bolognese.jpg`    | Andy Li             | CC0           | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Spaghetti_Bolognese_-_Figaros,_Brighton_2023-10-06.jpg)                                        |
+| `lasagne.jpg`            | jules / stonesoup   | CC BY 2.0     | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Lasagne_-_stonesoup.jpg)                                                                       |
+| `carbonara.jpg`          | Javier Somoza       | CC BY-SA 4.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Espaguetis_carbonara.jpg)                                                                      |
+| `kylling-i-karry.jpg`    | E4024               | CC BY-SA 4.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Chicken_curry_and_rice.jpg)                                                                    |
+| `tacos.jpg`              | Larry Miller        | CC BY-SA 2.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:001_Tacos_de_carnitas,_carne_asada_y_al_pastor.jpg)                                            |
+| `chili-con-carne.jpg`    | Carstor             | CC BY-SA 2.5  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Bowl_of_chili.jpg)                                                                             |
+| `frikadeller.jpg`        | Kenneth Jorgensen   | CC BY-SA 3.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Frikadeller.jpg)                                                                               |
+| `boller-i-karry.jpg`     | Nillerdk            | CC BY 3.0     | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Boller_i_karry_med_ris_og_agurkesalat.jpg)                                                     |
+| `millionboef.jpg`        | Horacio Cambeiro    | CC BY-SA 3.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Mashed_Potatoes_with_Beef_Gravy.jpg)                                                           |
+| `moerbradgryde.jpg`      | Benreis             | CC BY-SA 4.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Pilzrahmbraten_Kneitinger.jpg)                                                                 |
+| `kylling-ris-groent.jpg` | Wilfredor           | CC0           | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Fried_chicken_with_vegetables_and_rice.jpg)                                                    |
+| `pitabroed-kebab.jpg`    | Amin                | CC BY-SA 4.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Doner_kebab_shawarma_pita.jpg)                                                                 |
+| `burgere.jpg`            | Hongreddotbrewhouse | CC BY-SA 3.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:RedDot_Burger.jpg)                                                                             |
+| `pizza.jpg`              | igorovsyannykov     | CC0           | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Pizza-3007395.jpg)                                                                             |
+| `hotdogs.jpg`            | Czar / Renee Comet  | Public domain | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Hot_dog_with_mustard.png)                                                                      |
+| `fiskefrikadeller.jpg`   | Jon Sullivan        | Public domain | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Fish_cakes_food_dinner.jpg)                                                                    |
+| `laks.jpg`               | HaJunkiyada         | CC BY-SA 4.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_Salmon_with_garlic_and_herbs,_crushed_potatoes_and_peas.jpg) |
+| `stegt-flaesk.jpg`       | ChildofMidnight     | CC BY 2.0     | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Stegt_fl%C3%A6sk.jpg)                                                                          |
+| `svensk-poelseret.jpg`   | Nillerdk            | CC BY 3.0     | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Svensk_p%C3%B8lseret.jpg)                                                                      |
+| `kyllingewok.jpg`        | Father.Jack         | CC BY 2.0     | [Wikimedia Commons](<https://commons.wikimedia.org/wiki/File:Chicken_noodle_stir_fry_(1027271537).jpg>)                                                    |
+| `kyllingewraps.jpg`      | Takeaway            | CC BY-SA 3.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Smoked_chicken_and_avocado_wrap.jpg)                                                           |
+| `kartoffelsuppe.jpg`     | jeffreyw            | CC BY 2.0     | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Parmesan_potato_soup_topped_with_bacon.jpg)                                                    |
+| `tomatsuppe.jpg`         | Marsilar            | CC BY-SA 4.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:02026_Tomato_soup_with_Italian_pasta_on_a_bone_broth_base.jpg)                                 |
+| `rugbroed.jpg`           | Nillerdk            | CC BY-SA 3.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ida_Davidsen_udsnit_af_glasmontren.JPG)                                                        |
+| `takeaway.jpg`           | Andrew Dunn         | CC BY-SA 2.0  | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Fish_and_chips.jpg)                                                                            |

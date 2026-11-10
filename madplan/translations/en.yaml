@@ -1,0 +1,9 @@
+configuration:
+  openai_api_key:
+    name: OpenAI API key
+    description: >-
+      Optional. Enables AI (Assist chat, AI suggestions in Planlæg and new recipes in Opdag). OpenAI usage costs money and is billed directly by OpenAI.
+  prej_api_key:
+    name: Prej API key
+    description: >-
+      Optional. Reserved for offers from Netto and REMA 1000 (not shown yet in version 0.1.0).

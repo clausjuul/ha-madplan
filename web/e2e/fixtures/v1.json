@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "meals": {
+    "2026-11-09": { "dishId": "lasagne", "status": "planned", "note": "", "locked": false },
+    "2026-11-10": { "dishId": "gammel-gryde", "status": "planned", "note": "Hos farmor", "locked": false }
+  },
+  "fridge": ["Spinat"],
+  "fridgeDetails": { "Spinat": { "quantity": "1 pose", "useFirst": true } },
+  "globalExclusions": "skaldyr, koriander",
+  "household": [
+    { "id": "p1", "name": "Mor", "active": true },
+    { "id": "p2", "name": "Far", "active": true, "dislikes": ["svampe"] }
+  ],
+  "customDishes": [
+    {
+      "id": "gammel-gryde",
+      "name": "Farmors gryderet",
+      "ingredients": ["500 g oksekød", "2 løg", "3 gulerødder"],
+      "prepMinutes": 90,
+      "category": "Gryderet",
+      "favorite": true,
+      "leftoverFriendly": true,
+      "freezerFriendly": true,
+      "custom": true
+    }
+  ],
+  "savedInspirationIds": [],
+  "savedInspirationRecipes": [],
+  "hiddenDishIds": [],
+  "includedDishesByWeek": {},
+  "preferredStores": ["netto"],
+  "preferredServings": 3,
+  "pantryStaples": ["salt", "olie"],
+  "shoppingListsByWeek": {},
+  "planningSettingsByWeek": {},
+  "history": [
+    { "date": "2026-11-02", "dishId": "lasagne", "status": "eaten" },
+    { "date": "2026-11-03", "dishId": "gammel-gryde", "status": "eaten" }
+  ]
+}

@@ -1,0 +1,9 @@
+configuration:
+  openai_api_key:
+    name: OpenAI API-nøgle
+    description: >-
+      Valgfri. Slår AI til (Assist-samtale, AI-forslag i Planlæg og nye opskrifter i Opdag). Brug af OpenAI koster penge og afregnes direkte med OpenAI.
+  prej_api_key:
+    name: Prej API-nøgle
+    description: >-
+      Valgfri. Reserveret til tilbud fra Netto og REMA 1000 (vises endnu ikke i version 0.1.0).

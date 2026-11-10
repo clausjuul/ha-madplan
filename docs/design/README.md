@@ -1,0 +1,1 @@
+Design mockups (Design canvas artboards). Open the live canvas: https://claude.ai/artifact/6j8kAwr9QyUaT9jRCJHsiB. Image src values /_blob/... refer to canvas assets; the real images are web/public/images/dishes/<imageKey>.jpg.

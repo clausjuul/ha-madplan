@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Madplan – ugen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0C0E}
+a{color:#7CECFF}a:hover{color:#B5F5FF}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; background: #0B0C0E; color: #F4F2EE; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; position: relative; overflow: hidden">
+
+  <header style="height: 72px; box-sizing: border-box; padding: 0 32px; display: flex; align-items: center; gap: 24px; border-bottom: 1px solid rgba(255,255,255,0.07)">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="width: 34px; height: 34px; border-radius: 10px; background: #7CECFF; color: #061319; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3v7a3 3 0 0 0 3 3v8"/><path d="M10 3v7"/><path d="M7 3v5"/><path d="M17 21V3c-2 1-3.5 3.5-3.5 7s1.5 4 3.5 4"/></svg>
+      </span>
+      <strong style="font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.01em">Madplan</strong>
+    </div>
+    <nav aria-label="Hovedmenu" style="display: flex; gap: 4px; background: #15171B; border-radius: 999px; padding: 4px">
+      <a href="#" aria-current="page" style="text-decoration: none; color: #061319; background: #F4F2EE; padding: 10px 18px; border-radius: 999px; font-size: 15px; font-weight: 600">Uge</a>
+      <a href="Shopping.dc.html" style="text-decoration: none; color: #C9CBD1; padding: 10px 18px; border-radius: 999px; font-size: 15px; font-weight: 500">Indkøb</a>
+      <a href="#" style="text-decoration: none; color: #C9CBD1; padding: 10px 18px; border-radius: 999px; font-size: 15px; font-weight: 500">Retter</a>
+    </nav>
+    <div style="flex: 1"></div>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <button type="button" aria-label="Forrige uge" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #F4F2EE; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <div style="padding: 0 10px; text-align: center; line-height: 1.2">
+        <div style="font-size: 15px; font-weight: 600">Uge 46</div>
+        <div style="font-size: 13px; color: #A7AAB2">9.–15. november</div>
+      </div>
+      <button type="button" aria-label="Næste uge" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #F4F2EE; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+    <a href="Plan.dc.html" style="text-decoration: none; height: 44px; box-sizing: border-box; padding: 0 20px; border-radius: 999px; background: #7CECFF; color: #061319; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
+      Planlæg uge
+    </a>
+    <button type="button" aria-label="Spørg Assist" style="width: 44px; height: 44px; border-radius: 999px; border: 0; background: #15171B; color: #C9CBD1; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+    </button>
+    <button type="button" aria-label="Indstillinger" style="width: 44px; height: 44px; border-radius: 999px; border: 0; background: #15171B; color: #C9CBD1; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+    </button>
+  </header>
+
+  <main style="flex: 1; box-sizing: border-box; padding: 24px 32px 28px; display: flex; flex-direction: column; gap: 26px; min-height: 0">
+
+    <section aria-label="I aften" style="display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; height: 292px">
+      <article style="position: relative; border-radius: 28px; overflow: hidden; background: #15171B; display: grid; grid-template-columns: 54% minmax(0, 1fr)">
+        <img src="/_blob/53ecfcde428ee5ebea55a342ab106d2f" alt="Lasagne i fad" style="width: 100%; height: 292px; object-fit: cover; display: block">
+        <div style="padding: 28px 30px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <span style="width: 8px; height: 8px; border-radius: 999px; background: #7CECFF"></span>
+            <span style="font-size: 14px; font-weight: 600; color: #7CECFF; letter-spacing: 0.04em; text-transform: uppercase">I aften</span>
+            <span style="font-size: 14px; color: #A7AAB2">Mandag 9. november</span>
+          </div>
+          <h1 style="margin: 4px 0 0; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 52px; line-height: 1; font-weight: 700; letter-spacing: -0.02em">Lasagne</h1>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px">
+            <span style="font-size: 14px; color: #C9CBD1; background: #1E2127; padding: 6px 12px; border-radius: 999px; display: flex; align-items: center; gap: 6px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>60 min
+            </span>
+            <span style="font-size: 14px; color: #C9CBD1; background: #1E2127; padding: 6px 12px; border-radius: 999px">Til 3 personer</span>
+            <span style="font-size: 14px; color: #C9CBD1; background: #1E2127; padding: 6px 12px; border-radius: 999px">Rester til i morgen</span>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 15px; line-height: 1.5; color: #A7AAB2">Bruger spinaten og fløden, der skal spises først.</p>
+          <div style="flex: 1"></div>
+          <div style="display: flex; gap: 10px">
+            <a href="Cook.dc.html" style="text-decoration: none; height: 52px; box-sizing: border-box; padding: 0 24px; border-radius: 999px; background: #F4F2EE; color: #0B0C0E; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 13.9A4 4 0 0 1 7.5 6a5 5 0 0 1 9 0A4 4 0 0 1 18 13.9V20H6z"/><path d="M6 17h12"/></svg>
+              Lav mad
+            </a>
+            <button type="button" style="height: 52px; padding: 0 20px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #F4F2EE; font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 8px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg>
+              Byt ret
+            </button>
+            <button type="button" aria-label="Flere handlinger" style="width: 52px; height: 52px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: transparent; color: #F4F2EE; display: flex; align-items: center; justify-content: center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <div style="display: flex; flex-direction: column; gap: 16px; min-height: 0">
+        <a href="Shopping.dc.html" style="text-decoration: none; color: #F4F2EE; flex: 1; border-radius: 24px; background: #15171B; padding: 20px 22px; display: flex; flex-direction: column; gap: 6px">
+          <span style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #A7AAB2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2.5 3h2.6l2.4 12.2a1 1 0 0 0 1 .8h9.7a1 1 0 0 0 1-.8L21 7H6"/></svg>
+            Næste indkøb · til og med søndag
+          </span>
+          <strong style="font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 34px; font-weight: 700; line-height: 1.1">14 varer</strong>
+          <span style="font-size: 15px; color: #C9CBD1">ca. 412 kr. · <span style="color: #FFC27A">3 tilbud fra Netto</span></span>
+          <span style="flex: 1"></span>
+          <span style="font-size: 15px; font-weight: 600; color: #7CECFF">Åbn indkøbslisten →</span>
+        </a>
+        <section aria-label="Brug først" style="border-radius: 24px; background: #15171B; padding: 18px 22px; display: flex; flex-direction: column; gap: 10px">
+          <span style="font-size: 14px; color: #A7AAB2">Brug først fra køleskabet</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <span style="font-size: 14px; padding: 6px 12px; border-radius: 999px; background: rgba(255,194,122,0.14); color: #FFC27A">Spinat · i morgen</span>
+            <span style="font-size: 14px; padding: 6px 12px; border-radius: 999px; background: #1E2127; color: #C9CBD1">Fløde · 3 dage</span>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section aria-label="Ugen" style="display: flex; flex-direction: column; gap: 14px; flex: 1; min-height: 0">
+      <div style="display: flex; align-items: baseline; gap: 14px">
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 24px; font-weight: 700">Ugen</h2>
+        <span style="font-size: 14px; color: #A7AAB2">6 af 7 dage planlagt · træk et kort for at bytte dage</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; flex: 1; min-height: 0">
+        <sc-for list="{{days}}" as="day" hint-placeholder-count="7">
+          <sc-if value="{{day.hasDish}}" hint-placeholder-val="{{ true }}">
+            <article style="{{day.cardStyle}}">
+              <div style="position: relative; height: 128px">
+                <img src="{{day.image}}" alt="{{day.dish}}" style="width: 100%; height: 128px; object-fit: cover; display: block">
+                <sc-if value="{{day.isNew}}" hint-placeholder-val="{{ false }}">
+                  <span style="position: absolute; top: 10px; left: 10px; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: #C4B5FF; color: #17112E">Ny ret</span>
+                </sc-if>
+                <sc-if value="{{day.offer}}" hint-placeholder-val="{{ false }}">
+                  <span style="position: absolute; top: 10px; left: 10px; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: #FFC27A; color: #2A1700">Tilbud</span>
+                </sc-if>
+                <sc-if value="{{day.locked}}" hint-placeholder-val="{{ false }}">
+                  <span aria-label="Låst" style="position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 999px; background: rgba(11,12,14,0.72); color: #F4F2EE; display: flex; align-items: center; justify-content: center">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  </span>
+                </sc-if>
+              </div>
+              <div style="padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 4px">
+                <span style="{{day.labelStyle}}">{{day.label}}</span>
+                <strong style="font-size: 16px; font-weight: 600; line-height: 1.25">{{day.dish}}</strong>
+                <span style="font-size: 13px; color: #A7AAB2">{{day.meta}}</span>
+              </div>
+            </article>
+          </sc-if>
+          <sc-if value="{{day.empty}}" hint-placeholder-val="{{ false }}">
+            <article style="border-radius: 20px; border: 1.5px dashed rgba(255,255,255,0.18); display: flex; flex-direction: column; padding: 14px; gap: 6px">
+              <span style="font-size: 13px; font-weight: 600; color: #A7AAB2">{{day.label}}</span>
+              <span style="flex: 1"></span>
+              <strong style="font-size: 15px; font-weight: 600">Ingen ret endnu</strong>
+              <button type="button" style="height: 44px; border-radius: 14px; border: 0; background: #1E2127; color: #F4F2EE; font-size: 14px; font-weight: 600">Vælg ret</button>
+              <button type="button" style="height: 44px; border-radius: 14px; border: 0; background: rgba(124,236,255,0.12); color: #7CECFF; font-size: 14px; font-weight: 600">Foreslå</button>
+            </article>
+          </sc-if>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var base = 'border-radius: 20px; overflow: hidden; background: #15171B; display: flex; flex-direction: column; ';
+    var label = 'font-size: 13px; font-weight: 600; ';
+    var list = [
+      { label: 'Man 9. · i dag', dish: 'Lasagne', meta: '60 min', image: '/_blob/53ecfcde428ee5ebea55a342ab106d2f', today: true },
+      { label: 'Tir 10.', dish: 'Laks med kartofler', meta: '30 min', image: '/_blob/6b7b902ab4a65c28e731b762915157f0' },
+      { label: 'Ons 11.', dish: 'Kyllingewok', meta: '25 min · rester', image: '/_blob/66553f9bd721f6b128e0e7ae06b741d1', isNew: true },
+      { label: 'Tor 12.', dish: 'Tomatsuppe', meta: '35 min', image: '/_blob/d02a1220176691e1d13e8f00103fdc5c', offer: true },
+      { label: 'Fre 13.', dish: 'Hjemmelavet pizza', meta: '50 min', image: '/_blob/67baa3cfbee9d3b170426f19e1a06ca7', locked: true },
+      { label: 'Lør 14.', empty: true },
+      { label: 'Søn 15.', dish: 'Tacos', meta: '30 min', image: '/_blob/fc318d101066d50009f55eb980ad29bd' }
+    ];
+    var days = list.map(function (d) {
+      return Object.assign({}, d, {
+        hasDish: !d.empty,
+        empty: !!d.empty,
+        isNew: !!d.isNew,
+        offer: !!d.offer,
+        locked: !!d.locked,
+        cardStyle: base + (d.today ? 'box-shadow: 0 0 0 2px #7CECFF;' : ''),
+        labelStyle: label + (d.today ? 'color: #7CECFF;' : 'color: #A7AAB2;')
+      });
+    });
+    return { days: days };
+  }
+}
+</script>
+</body>
+</html>
