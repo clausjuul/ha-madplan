@@ -46,7 +46,8 @@ export function createOpenAiClient(apiKey: string, fetcher: typeof fetch = fetch
           body: JSON.stringify({
             model: request.model,
             instructions: request.instructions,
-            input: request.input,
+            // json_object mode requires the word "json" in the input messages; instructions do not count.
+            input: request.json ? `${request.input}\n\nSvar med ét JSON-objekt (json).` : request.input,
             store: false,
             ...(request.maxOutputTokens ? { max_output_tokens: request.maxOutputTokens } : {}),
             ...(request.json ? { text: { format: { type: "json_object" } } } : {}),
