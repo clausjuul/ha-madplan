@@ -39,9 +39,65 @@ jobs:
             web/test-results
             web/playwright-report
           if-no-files-found: ignore
-  publish:
+  # Every push to main that passes verify becomes a release: bump the add-on version,
+  # add a changelog entry from the commit subjects, commit, tag and publish images.
+  # Pushes made with GITHUB_TOKEN do not start new workflow runs, so this cannot loop.
+  release:
     needs: verify
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: release
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bump version and write changelog
+        id: bump
+        run: |
+          git pull --ff-only origin main
+          current="$(grep -E '^version:' madplan/config.yaml | cut -d'"' -f2)"
+          last_tag="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+          range="${last_tag:+${last_tag}..}HEAD"
+          subjects="$(git log --no-merges --format='%s' "$range" | grep -v '^chore(release)' || true)"
+          if [ -z "$subjects" ]; then
+            echo "Nothing new since ${last_tag}."
+            exit 0
+          fi
+          IFS=. read -r major minor patch <<< "$current"
+          if echo "$subjects" | grep -qE '^[a-z]+(\(.+\))?!:|BREAKING CHANGE'; then
+            major=$((major + 1)); minor=0; patch=0
+          elif echo "$subjects" | grep -qE '^feat(\(.+\))?:'; then
+            minor=$((minor + 1)); patch=0
+          else
+            patch=$((patch + 1))
+          fi
+          version="${major}.${minor}.${patch}"
+          sed -i -E "s/^version: \".*\"/version: \"${version}\"/" madplan/config.yaml
+          {
+            echo "# Ændringer"
+            echo
+            echo "## ${version}"
+            echo
+            echo "$subjects" | sed 's/^/- /'
+            tail -n +2 madplan/CHANGELOG.md
+          } > CHANGELOG.tmp && mv CHANGELOG.tmp madplan/CHANGELOG.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): v${version}"
+          git tag "v${version}"
+          git push origin HEAD:main "v${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: [verify, release]
+    # Runs after an automatic release, or for a tag pushed by hand.
+    if: >-
+      always() && needs.verify.result == 'success' &&
+      (needs.release.outputs.version != '' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,10 +111,14 @@ jobs:
             platform: linux/arm64
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.version != '' && format('v{0}', needs.release.outputs.version) || github.ref }}
       - name: Check the tag matches the add-on version
+        env:
+          EXPECTED_TAG: ${{ needs.release.outputs.version != '' && format('v{0}', needs.release.outputs.version) || github.ref_name }}
         run: |
           version="$(grep -E '^version:' madplan/config.yaml | cut -d'"' -f2)"
-          test "$GITHUB_REF_NAME" = "v${version}"
+          test "${EXPECTED_TAG}" = "v${version}"
           echo "VERSION=${version}" >> "$GITHUB_ENV"
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
