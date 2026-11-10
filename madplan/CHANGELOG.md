@@ -1,5 +1,12 @@
 # Ændringer
 
+## 0.2.0
+
+- ci: release automatically on every push to main
+- feat(web): restyle Assist chat after Astryx chat components
+- fix(server): mention json in input for json_object mode
+- fix(web): add person works outside secure contexts
+
 ## 0.1.0
 
 Første udgivelse.
