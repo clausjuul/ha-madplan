@@ -13,7 +13,7 @@ export function FamilySection({ profiles, onChange }: Props) {
     onChange([
       ...profiles,
       {
-        id: `profile-${crypto.randomUUID()}`,
+        id: `profile-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
         name: "Ny person",
         active: true,
         exclusions: [],
