@@ -30,6 +30,8 @@ const RULES = [
   '{"type":"swapMeals","a":"YYYY-MM-DD","b":"YYYY-MM-DD"}  {"type":"lockMeal","date":"YYYY-MM-DD","locked":true}',
   '{"type":"addShoppingExtra","item":"varenavn"}  {"type":"addFridgeItem","name":"vare","quantity":"valgfri","expiresOn":"YYYY-MM-DD valgfri"}',
   '{"type":"removeFridgeItem","name":"vare"}  {"type":"addGlobalExclusion","term":"ingrediens"}',
+  '{"type":"updateProfile","profileId":"id","field":"preferences|dislikes|exclusions","term":"ingrediens","remove":false}',
+  "Når brugeren fortæller, at én person kan lide, ikke kan lide eller ikke må få noget, så brug updateProfile for den person (dislikes er bløde, exclusions er hårde). addGlobalExclusion er kun for hele familien.",
   '{"type":"createDish","dish":{"name":"","ingredients":["200 g ..."],"prepMinutes":30,"category":"","servings":4,"instructions":["trin"]}}',
   '{"type":"startPlanDraft","request":{"dayCount":7,"from":"YYYY-MM-DD","request":"fritekst-ønske","newDishCount":0}}',
 ].join("\n");
@@ -71,6 +73,7 @@ export function assistPrompt(input: {
     .filter((profile) => profile.active)
     .slice(0, 30)
     .map((profile) => ({
+      id: profile.id,
       name: clip(profile.name, 60),
       restrictions: profile.exclusions.slice(0, 20),
       likes: profile.preferences.slice(0, 20),

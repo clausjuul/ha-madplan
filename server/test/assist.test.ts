@@ -116,6 +116,31 @@ describe("assist with OpenAI", () => {
     expect((await call("POST", `assist/proposals/${proposal?.id}/apply`)).status).toBe(404);
   });
 
+  it("remembers a person's likes, dislikes and exclusions with updateProfile", async () => {
+    const ai = fakeAi();
+    const { json } = setup({ openai: ai });
+    const emma = { id: "emma", name: "Emma", active: true, exclusions: [], preferences: ["pasta"], dislikes: [], favoriteDishIds: [] };
+    await json("PUT", "profiles", [emma]);
+    ai.next(
+      answer("Det husker jeg.", [
+        { type: "updateProfile", profileId: "emma", field: "dislikes", term: "svampe" },
+        { type: "updateProfile", profileId: "emma", field: "preferences", term: "pasta", remove: true },
+        { type: "updateProfile", profileId: "emma", field: "preferences", term: "pasta" },
+        { type: "updateProfile", profileId: "nobody", field: "dislikes", term: "løg" },
+      ]),
+    );
+    const response = await json<AssistResponse>("POST", "assist", ASK);
+    expect(ai.calls[0]?.input).toContain('"id":"emma"');
+    expect(response.proposal?.actions.map((action) => action.label)).toEqual([
+      "Husk: Emma kan ikke lide «svampe»",
+      "Fjern «pasta» fra Emma: kan lide",
+    ]);
+    const result = await json<AssistApplyResult>("POST", `assist/proposals/${response.proposal?.id}/apply`);
+    expect(result.applied).toBe(2);
+    const boot = await json<BootstrapResponse>("GET", "bootstrap");
+    expect(boot.profiles[0]).toMatchObject({ dislikes: ["svampe"], preferences: [] });
+  });
+
   it("refuses locked days at apply time but still applies the rest", async () => {
     const ai = fakeAi();
     const { json } = setup({ openai: ai });

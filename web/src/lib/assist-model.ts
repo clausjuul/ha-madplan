@@ -80,6 +80,7 @@ const KIND: Record<AssistActionType, PreviewKind> = {
   addFridgeItem: "fridge",
   removeFridgeItem: "fridge",
   addGlobalExclusion: "household",
+  updateProfile: "household",
   createDish: "dish",
   startPlanDraft: "plan",
 };

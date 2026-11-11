@@ -7,9 +7,11 @@ import { HttpError } from "../errors.ts";
 import { saveDish } from "../store-dishes.ts";
 import {
   getFridge,
+  getProfiles,
   getSettings,
   getShoppingState,
   setFridge,
+  setProfiles,
   setSettings,
   setShoppingState,
 } from "../store-household.ts";
@@ -26,6 +28,7 @@ const TOPICS: Record<AssistAction["type"], ChangeTopic[]> = {
   addFridgeItem: ["household", "shopping"],
   removeFridgeItem: ["household", "shopping"],
   addGlobalExclusion: ["settings"],
+  updateProfile: ["household", "shopping"],
   createDish: ["dishes", "shopping"],
   startPlanDraft: [],
 };
@@ -88,6 +91,18 @@ function write(deps: Deps, action: AssistAction): void {
     case "addGlobalExclusion": {
       const settings = getSettings(db);
       setSettings(db, { ...settings, globalExclusions: [...settings.globalExclusions, action.term.trim()] });
+      return;
+    }
+    case "updateProfile": {
+      const key = action.term.trim().toLocaleLowerCase("da-DK");
+      setProfiles(
+        db,
+        getProfiles(db).map((profile) => {
+          if (profile.id !== action.profileId) return profile;
+          const kept = profile[action.field].filter((entry) => entry.trim().toLocaleLowerCase("da-DK") !== key);
+          return { ...profile, [action.field]: action.remove ? kept : [...kept, action.term.trim()] };
+        }),
+      );
       return;
     }
     case "createDish": {

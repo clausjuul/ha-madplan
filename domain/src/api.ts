@@ -217,9 +217,20 @@ export type AssistAction =
   | { type: "addFridgeItem"; name: string; quantity?: string; expiresOn?: string; label: string }
   | { type: "removeFridgeItem"; name: string; label: string }
   | { type: "addGlobalExclusion"; term: string; label: string }
+  | {
+      type: "updateProfile";
+      profileId: string;
+      /** exclusions are hard (never planned); preferences and dislikes are soft. */
+      field: ProfileTermField;
+      term: string;
+      /** True removes the term instead of adding it. */
+      remove: boolean;
+      label: string;
+    }
   | { type: "createDish"; dish: DishInput; label: string }
   | { type: "startPlanDraft"; request: PlanRequest; label: string };
 export type AssistActionType = AssistAction["type"];
+export type ProfileTermField = "preferences" | "dislikes" | "exclusions";
 
 export type AssistProposal = {
   id: string;

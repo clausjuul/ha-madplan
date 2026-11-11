@@ -78,7 +78,7 @@ export function parseAction(raw: unknown, env: ActionEnv): AssistAction {
   if (!isRec(raw)) throw new Error("Handlingen er ikke et objekt.");
   const type = oneOf(raw.type, "Handlingstype", [
     "setMeal", "removeMeal", "swapMeals", "lockMeal", "addShoppingExtra", "addFridgeItem",
-    "removeFridgeItem", "addGlobalExclusion", "createDish", "startPlanDraft",
+    "removeFridgeItem", "addGlobalExclusion", "updateProfile", "createDish", "startPlanDraft",
   ] as const);
   switch (type) {
     case "setMeal": {
@@ -128,6 +128,19 @@ export function parseAction(raw: unknown, env: ActionEnv): AssistAction {
     case "addGlobalExclusion": {
       const term = str(raw.term, "Fravalg", { min: 2, max: 80 });
       return { type, term, label: `Fravælg «${term}» for hele familien` };
+    }
+    case "updateProfile": {
+      const profileId = str(raw.profileId, "Person", { min: 1, max: 200 });
+      const profile = env.profiles.find((entry) => entry.id === profileId);
+      if (!profile) throw new Error("Personen findes ikke.");
+      const field = oneOf(raw.field, "Felt", ["preferences", "dislikes", "exclusions"] as const);
+      const term = str(raw.term, "Ord", { min: 2, max: 80 });
+      const remove = raw.remove === true;
+      const what = { preferences: "kan lide", dislikes: "kan ikke lide", exclusions: "må/vil ikke have (fravalg)" }[field];
+      return {
+        type, profileId, field, term, remove,
+        label: remove ? `Fjern «${term}» fra ${profile.name}: ${what}` : `Husk: ${profile.name} ${what} «${term}»`,
+      };
     }
     case "createDish": {
       const dish = dishInput(raw.dish);
@@ -192,6 +205,14 @@ export function checkAction(env: ActionEnv, action: AssistAction): string | null
       const [term] = parseExclusionTerms([action.term]);
       if (!term) return "Fravalget er for kort.";
       return parseExclusionTerms(global).includes(term) ? "Er allerede fravalgt." : null;
+    }
+    case "updateProfile": {
+      const profile = env.profiles.find((entry) => entry.id === action.profileId);
+      if (!profile) return "Personen findes ikke.";
+      const has = profile[action.field].some((entry) => sameName(entry, action.term));
+      if (action.remove) return has ? null : "Står der ikke.";
+      if (has) return "Står der allerede.";
+      return profile[action.field].length >= 30 ? "Listen er fuld." : null;
     }
     case "createDish": {
       if (!dishAllowed(action.dish, global, env.profiles)) {
