@@ -1,5 +1,11 @@
 # Ændringer
 
+## 0.9.0
+
+- feat(planning): alternatives sheet for "Lav om" and meal ratings that steer suggestions
+- feat(assist): updateProfile action to remember a person's likes, dislikes and exclusions
+- feat(planning): weigh expiring fridge items, match on word edges, richer AI plan prompt with structured output
+
 ## 0.8.0
 
 - feat(cards): aspect ratio and font size options for the upcoming-dishes card
