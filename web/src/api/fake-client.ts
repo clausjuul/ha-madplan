@@ -133,6 +133,7 @@ export function createFakeClient(options: FakeClientOptions = {}): ApiClient {
         ...(input.reason ? { reason: input.reason } : {}),
         ...(input.offer ? { offer: input.offer } : {}),
         ...(input.skipped ? { skipped: true } : {}),
+        ...(input.rating ? { rating: input.rating } : {}),
       };
       if (existing?.locked && !onlyLockChanges(existing, next)) throw LOCKED();
       state.meals[date] = next;
@@ -143,7 +144,10 @@ export function createFakeClient(options: FakeClientOptions = {}): ApiClient {
     async patchMeal(date, patch) {
       await wait();
       const current = requireMeal(date);
-      const next: Meal = { ...current, ...patch };
+      const { rating, ...rest } = patch;
+      const next: Meal = { ...current, ...rest };
+      if (rating === null) delete next.rating;
+      else if (rating !== undefined) next.rating = rating;
       state.meals[date] = next;
       emit(["meals"]);
       return structuredClone(next);

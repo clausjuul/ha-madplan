@@ -3,6 +3,7 @@ import { addDaysToKey, isDateKey } from "./dates.ts";
 import { dishAllowed } from "./exclusions.ts";
 import { participatingProfiles, preferenceScore } from "./profiles.ts";
 import { fridgeMatchScore, matchingFridgeItems } from "./suggest.ts";
+import { NEVER_SCORE, ratingScores } from "./history.ts";
 import {
   normalizePlanningOptions,
   preservedDaysFromRequest,
@@ -136,6 +137,8 @@ export type PlanningContext = {
   skippedDates: string[];
   eatenDishIds: Set<string>;
   lastEaten: ReadonlyMap<string, string>;
+  /** dishId -> adjustment from the family's ratings (see ratingScores). */
+  ratingScores: ReadonlyMap<string, number>;
   requiredDishIds: string[];
   newDishCount: number;
   budgetDkk: number | null;
@@ -180,9 +183,11 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
   });
   const profiles = participatingProfiles(input.profiles ?? []);
   const globalExclusions = [...(input.globalExclusions ?? [])];
+  const ratings = ratingScores(meals);
   const recipes = input.dishes.filter(
     (dish) =>
       !dish.archivedAt &&
+      (ratings.get(dish.id) ?? 0) > NEVER_SCORE &&
       dishAllowed(dish, globalExclusions, profiles) &&
       (!options.maxPrepMinutes ||
         !Number.isFinite(dish.prepMinutes) ||
@@ -196,6 +201,7 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
     skippedDates,
     eatenDishIds: new Set(input.eatenDishIds ?? []),
     lastEaten: input.lastEaten ?? new Map(),
+    ratingScores: ratings,
     requiredDishIds: (input.requiredDishIds ?? []).filter((id) =>
       recipes.some((dish) => dish.id === id),
     ),
@@ -341,7 +347,8 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
             ? relativeRecipeCost(candidate, context.fridge) * 12
             : 0) +
           dayWishScore(candidate, context.dayRequests[date]) +
-          preferenceScore(candidate, context.profiles)
+          preferenceScore(candidate, context.profiles) +
+          (context.ratingScores.get(candidate.id) ?? 0)
         );
       };
       dish = context.recipes

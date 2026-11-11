@@ -25,6 +25,17 @@ describe("bootstrap and health", () => {
 });
 
 describe("meals", () => {
+  it("stores, clears and validates a rating, and drops it when the dish changes", async () => {
+    const { json, call } = setup();
+    await json("PUT", "meals/2026-11-08", { dishId: "lasagne" });
+    expect(await json<Meal>("PATCH", "meals/2026-11-08", { rating: "up" })).toMatchObject({ rating: "up" });
+    expect((await json<BootstrapResponse>("GET", "bootstrap")).meals["2026-11-08"]?.rating).toBe("up");
+    expect((await call("PATCH", "meals/2026-11-08", { rating: "super" })).status).toBe(400);
+    expect((await json<Meal>("PATCH", "meals/2026-11-08", { rating: null })).rating).toBeUndefined();
+    await json("PATCH", "meals/2026-11-08", { rating: "never" });
+    expect((await json<Meal>("PATCH", "meals/2026-11-08", { dishId: "tacos" })).rating).toBeUndefined();
+  });
+
   it("creates, patches and deletes a meal and bumps the revision each time", async () => {
     const { json, call } = setup();
     const meal = await json<Meal>("PUT", "meals/2026-11-10", { dishId: "lasagne", note: "Med salat" });

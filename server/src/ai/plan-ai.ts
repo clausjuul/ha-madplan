@@ -21,6 +21,7 @@ export function planningPrompt(context: PlanningContext, request: PlanRequest, f
       favorite: dish.favorite,
       leftoverFriendly: dish.leftoverFriendly,
       daysSinceEaten: last && firstDate ? Math.max(0, daysBetween(last, firstDate)) : null,
+      familyRating: context.ratingScores.get(dish.id) ?? 0,
     };
   });
   const profiles = context.profiles.slice(0, 30).map((profile) => ({
@@ -62,6 +63,7 @@ export function planningPrompt(context: PlanningContext, request: PlanRequest, f
     "Giv aldrig garanti for butikstilbud eller totalpriser uden verificerede data.",
     "Foretrukne retter og ting brugerne ikke kan lide er bløde ønsker; kostfravalg er hårde filtre.",
     "Foretræk hurtige retter (lav prepMinutes) på hverdage, retter der ikke er spist længe, og læg ikke samme kategori to dage i træk.",
+    "familyRating er familiens samlede bedømmelse (positiv = godt modtaget, negativ = dårligt modtaget): foretræk høje, undgå negative.",
     "Nævn i reason den vigtigste grund, f.eks. en vare der snart udløber.",
   ].join("\n");
   return { instructions, input: fenced("Planlægningsdata:", data, fence) };

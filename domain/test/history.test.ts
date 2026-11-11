@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createHistoryInsights, eatenHistory, lastEatenByDish } from "../src/index.ts";
+import { buildPlanningContext, createHistoryInsights, eatenHistory, lastEatenByDish, neverAgainDishIds, ratingScores } from "../src/index.ts";
 import type { MealMap } from "../src/index.ts";
 import { dish, meal } from "./fixtures.ts";
 
@@ -78,5 +78,34 @@ describe("new vs untried dishes", () => {
     expect(isNewDish({ id: "old" }, lastEaten)).toBe(false);
     expect(isUntried("old", lastEaten)).toBe(true);
     expect(isUntried("eaten", lastEaten)).toBe(false);
+  });
+});
+
+describe("ratingScores", () => {
+  it("adds up thumbs, caps them and lets a latest 'never' rule the dish out", () => {
+    const meals: MealMap = {
+      "2026-11-01": meal("a", { rating: "up" }),
+      "2026-11-02": meal("a", { rating: "up" }),
+      "2026-11-03": meal("a", { rating: "up" }),
+      "2026-11-04": meal("b", { rating: "down" }),
+      "2026-11-05": meal("c", { rating: "never" }),
+      "2026-11-06": meal("d", { rating: "never" }),
+      "2026-11-07": meal("d", { rating: "up" }),
+    };
+    const scores = ratingScores(meals);
+    expect(scores.get("a")).toBe(25);
+    expect(scores.get("b")).toBe(-15);
+    expect(scores.get("c")).toBe(-500);
+    expect(scores.get("d")).toBe(10);
+    expect([...neverAgainDishIds(meals)]).toEqual(["c"]);
+  });
+
+  it("keeps 'never' dishes out of the planning context", () => {
+    const context = buildPlanningContext({
+      dishes: [dish({ id: "c", name: "C" }), dish({ id: "e", name: "E" })],
+      dates: ["2026-11-20"],
+      meals: { "2026-11-05": meal("c", { rating: "never" }) },
+    });
+    expect(context.recipes.map((entry) => entry.id)).toEqual(["e"]);
   });
 });

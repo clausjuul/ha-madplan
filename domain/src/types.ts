@@ -43,7 +43,12 @@ export type Meal = {
   offer?: OfferReference;
   /** Day is deliberately left out ("ikke spist"); never counts as eaten. */
   skipped?: boolean;
+  /** The family's verdict after eating it; steers future suggestions (see ratingScores). */
+  rating?: MealRating;
 };
+
+/** "never": do not suggest the dish again. */
+export type MealRating = "up" | "down" | "never";
 
 /** Meals keyed by ISO date. */
 export type MealMap = Record<string, Meal>;

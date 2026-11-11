@@ -63,7 +63,7 @@ export function ReviewRow({ day, dish, badge, busy, onLock, onRegenerate, onPick
         </button>
         <button
           type="button"
-          aria-label="Lav om, lav et nyt forslag til denne dag"
+          aria-label="Lav om, se alternativer til denne dag"
           title={day.locked ? "Lås dagen op for at lave den om" : undefined}
           disabled={busy || day.locked}
           onClick={onRegenerate}

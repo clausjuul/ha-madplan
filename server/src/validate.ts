@@ -58,6 +58,12 @@ export function mealInput(value: unknown, partial: boolean): Partial<MealInput> 
     reason: optStr(o.reason, "Begrundelse", 300),
     offer: o.offer === undefined ? undefined : offer(o.offer),
     skipped: optBool(o.skipped, "Sprunget over"),
+    rating:
+      o.rating === undefined
+        ? undefined
+        : o.rating === null
+          ? null
+          : oneOf(o.rating, "Bedømmelse", ["up", "down", "never"] as const),
   });
 }
 

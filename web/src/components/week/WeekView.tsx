@@ -9,6 +9,7 @@ import { buildDay, buildWeek } from "@/lib/week-model";
 import { WeekSkeleton } from "@/components/ui/Skeletons";
 import { ErrorState, ImportOffer } from "@/components/ui/StatusViews";
 import { PhoneList } from "./PhoneList";
+import { RateRecent } from "./RateRecent";
 import { ShoppingSummary, UseFirst } from "./SidePanels";
 import { TonightHero } from "./TonightHero";
 import { WeekSheets, type SheetState } from "./WeekSheets";
@@ -46,6 +47,14 @@ export function WeekView({ weekStart }: { weekStart: string }) {
   };
   const servings = targetServings(profileServings(data.profiles), data.settings.preferredServings);
   const isCurrentWeek = weekStart === mondayOf(today);
+  const rate = isCurrentWeek ? (
+    <RateRecent
+      meals={data.meals}
+      dishes={data.dishes}
+      today={today}
+      onRate={(date, rating) => actions.patchMeal(date, { rating })}
+    />
+  ) : null;
   const sheets = <WeekSheets sheet={sheet} setSheet={setSheet} data={data} today={today} actions={actions} />;
 
   if (!wide) {
@@ -53,6 +62,7 @@ export function WeekView({ weekStart }: { weekStart: string }) {
     return (
       <div className="flex flex-col gap-2.5 px-4 pb-4">
         {data.isEmpty ? <ImportOffer /> : null}
+        {rate}
         <TonightHero day={tonight} servings={servings} handlers={handlers} wide={false} />
         <PhoneList days={rest} handlers={handlers} heading={isCurrentWeek ? "Resten af ugen" : "Ugen"} />
         {sheets}
@@ -63,6 +73,7 @@ export function WeekView({ weekStart }: { weekStart: string }) {
   return (
     <div className="flex min-h-full flex-col gap-[26px] px-6 pb-7 pt-6 lg:px-8">
       {data.isEmpty ? <ImportOffer /> : null}
+      {rate}
       <div className="grid gap-4 lg:h-[292px] lg:grid-cols-[minmax(0,1fr)_320px]">
         <TonightHero day={tonight} servings={servings} handlers={handlers} wide />
         <div className="grid grid-cols-2 gap-4 lg:flex lg:flex-col">

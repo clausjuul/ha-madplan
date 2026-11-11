@@ -127,6 +127,7 @@ export function createFakeDrafts(ctx: Context): DraftMethods {
     const { context } = prep;
     const all = [...new Set([...context.dates, ...context.lockedDays.keys()])].sort();
     const suggestions = createLocalSuggestions({
+      ratingScores: context.ratingScores,
       days: all,
       meals: prep.meals,
       fridge: context.fridge,

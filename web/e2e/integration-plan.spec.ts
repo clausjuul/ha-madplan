@@ -45,7 +45,8 @@ test("@integration a local plan draft is made, edited and saved into the week", 
   await rows.nth(0).getByRole("button", { name: "Lås dagen" }).click();
   await expect(rows.nth(0).getByRole("button", { name: "Lås dagen op" })).toHaveAttribute("aria-pressed", "true");
   const regenerated = page.waitForResponse((response) => response.url().includes("/regenerate") && response.ok());
-  await rows.nth(1).getByRole("button", { name: "Lav et nyt forslag til denne dag" }).click();
+  await rows.nth(1).getByRole("button", { name: /Lav om/ }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Nyt forslag" }).click();
   await regenerated;
   await expect(rows).toHaveCount(3);
 

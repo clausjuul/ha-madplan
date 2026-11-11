@@ -15,6 +15,8 @@ function toMeal(row: Row): Meal {
   const offer = parseJson<OfferReference | null>(row, "offer", null);
   if (offer) meal.offer = offer;
   if (flag(row, "skipped")) meal.skipped = true;
+  const rating = optText(row, "rating");
+  if (rating === "up" || rating === "down" || rating === "never") meal.rating = rating;
   return meal;
 }
 
@@ -32,11 +34,11 @@ export function getMeal(db: DatabaseSync, date: string): Meal | undefined {
 export function putMeal(db: DatabaseSync, date: string, meal: Meal): void {
   run(
     db,
-    `INSERT INTO meals (date, dish_id, locked, note, source, reason, offer, skipped)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO meals (date, dish_id, locked, note, source, reason, offer, skipped, rating)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(date) DO UPDATE SET dish_id = excluded.dish_id, locked = excluded.locked,
        note = excluded.note, source = excluded.source, reason = excluded.reason,
-       offer = excluded.offer, skipped = excluded.skipped`,
+       offer = excluded.offer, skipped = excluded.skipped, rating = excluded.rating`,
     date,
     meal.dishId,
     meal.locked ? 1 : 0,
@@ -45,6 +47,7 @@ export function putMeal(db: DatabaseSync, date: string, meal: Meal): void {
     meal.reason ?? null,
     meal.offer ? toJson(meal.offer) : null,
     meal.skipped ? 1 : 0,
+    meal.rating ?? null,
   );
 }
 

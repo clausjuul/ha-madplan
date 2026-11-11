@@ -1,4 +1,4 @@
-import type { Dish, MealMap } from "./types.ts";
+import type { Dish, MealMap, MealRating } from "./types.ts";
 
 export type EatenEntry = { date: string; dishId: string };
 
@@ -11,6 +11,31 @@ export function eatenHistory(meals: MealMap, today: string): EatenEntry[] {
     .filter(([date, meal]) => date < today && !meal.skipped)
     .map(([date, meal]) => ({ date, dishId: meal.dishId }))
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/**
+ * dishId -> score adjustment from the family's ratings. Thumbs up and down add up (capped), and a
+ * "never" as the dish's most recent rating pushes it out of reach (see neverAgainDishIds).
+ */
+export function ratingScores(meals: MealMap): Map<string, number> {
+  const scores = new Map<string, number>();
+  const latest = new Map<string, { date: string; rating: MealRating }>();
+  for (const [date, meal] of Object.entries(meals)) {
+    if (!meal.rating) continue;
+    const step = meal.rating === "up" ? 10 : meal.rating === "down" ? -15 : 0;
+    scores.set(meal.dishId, Math.max(-40, Math.min(25, (scores.get(meal.dishId) ?? 0) + step)));
+    const seen = latest.get(meal.dishId);
+    if (!seen || date > seen.date) latest.set(meal.dishId, { date, rating: meal.rating });
+  }
+  for (const [dishId, { rating }] of latest) if (rating === "never") scores.set(dishId, NEVER_SCORE);
+  return scores;
+}
+
+export const NEVER_SCORE = -500;
+
+/** Dishes whose most recent rating is "never": the planners leave them out. */
+export function neverAgainDishIds(meals: MealMap): Set<string> {
+  return new Set([...ratingScores(meals)].filter(([, score]) => score <= NEVER_SCORE).map(([id]) => id));
 }
 
 export function lastEatenByDish(eaten: readonly EatenEntry[]): Map<string, string> {

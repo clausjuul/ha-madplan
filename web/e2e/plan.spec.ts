@@ -68,6 +68,32 @@ test("lokalt forslag: lås, lav om, vælg selv og gem", async ({ page }) => {
   await expect(page.getByText("Planen er gemt i ugeplanen.")).toBeVisible();
 });
 
+test("lav om viser alternativer med begrundelse", async ({ page }) => {
+  await openPlan(page, 1280, 800);
+  await next(page).click();
+  await page.getByRole("radio", { name: /Hurtigt forslag/ }).click();
+  await page.getByRole("button", { name: "Lav forslag" }).click();
+  const row = page.getByRole("article").nth(3);
+  const before = await row.locator("strong").innerText();
+  await row.getByRole("button", { name: /Lav om/ }).click();
+  const options = page.getByRole("dialog").getByRole("list", { name: "Alternativer" }).getByRole("button");
+  await expect(options).toHaveCount(3);
+  const choice = (await options.first().locator("span.font-semibold").innerText()).trim();
+  expect(choice).not.toBe(before);
+  await options.first().click();
+  await expect(row.locator("strong")).toHaveText(choice);
+});
+
+test("bedøm gårsdagens ret fra ugen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("./#/uge");
+  const card = page.getByRole("region", { name: "Bedøm måltid" });
+  await expect(card).toContainText("i går?");
+  await card.getByRole("button", { name: "Godt", exact: true }).click();
+  // Yesterday is rated; the card either moves on to an older meal or disappears.
+  await expect(page.getByText(/i går\?/u)).toHaveCount(0);
+});
+
 test("fejl i AI-planlægning kan gentages lokalt", async ({ page }) => {
   await openPlan(page, 1280, 800);
   await next(page).click();

@@ -45,5 +45,10 @@ export function removeMealFrom(meals: MealMap, date: string): MealMap {
 
 export function patchMealIn(meals: MealMap, date: string, patch: Partial<MealInput>): MealMap {
   const current = meals[date];
-  return current ? { ...meals, [date]: { ...current, ...patch } } : meals;
+  if (!current) return meals;
+  const { rating, ...rest } = patch;
+  const next = { ...current, ...rest };
+  if (rating === null) delete next.rating;
+  else if (rating !== undefined) next.rating = rating;
+  return { ...meals, [date]: next };
 }

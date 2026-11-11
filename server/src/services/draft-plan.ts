@@ -93,6 +93,7 @@ export function localItems(state: Snapshot, request: PlanRequest, prep: PlanPrep
     dayRequests: context.dayRequests,
     globalExclusions: context.globalExclusions,
     profiles: context.profiles,
+    ratingScores: context.ratingScores,
   });
   return suggestions.flatMap((day) =>
     day.dishId !== undefined && context.dates.includes(day.date)

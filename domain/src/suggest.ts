@@ -20,21 +20,15 @@ export type SuggestionInput = {
   dayRequests?: Readonly<Record<string, string>>;
   globalExclusions?: readonly string[];
   profiles?: readonly Profile[];
+  /** dishId -> score adjustment from the family's ratings (see ratingScores). */
+  ratingScores?: ReadonlyMap<string, number>;
 };
 
 const FRIDAY = 5;
 
-export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
-  const {
-    days,
-    meals,
-    fridge,
-    lastEaten,
-    seed,
-    requiredDishIds = [],
-    dayRequests = {},
-    globalExclusions = [],
-  } = input;
+function createRanker(input: SuggestionInput) {
+  const { fridge, lastEaten, seed, dayRequests = {}, globalExclusions = [] } = input;
+  const ratings = input.ratingScores ?? new Map<string, number>();
   const profiles = participatingProfiles(input.profiles ?? []);
   const dishes = (input.dishes ?? DISHES).filter((dish) => !dish.archivedAt);
   const dishById = new Map(dishes.map((dish) => [dish.id, dish]));
@@ -56,51 +50,16 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
     usedCategories.set(category, (usedCategories.get(category) ?? 0) + 1);
   };
 
-  for (const day of days) {
-    const existing = meals[day];
-    if (!existing?.locked) continue;
-    usedDishIds.add(existing.dishId);
-    const category = dishById.get(existing.dishId)?.category;
-    if (category) count(category);
-  }
-
-  const requiredQueue = requiredDishIds.filter(
-    (id, index) => dishById.has(id) && !usedDishIds.has(id) && requiredDishIds.indexOf(id) === index,
-  );
-
-  return days.flatMap((day): DraftDay[] => {
-    if (meals[day]?.locked) return [];
+  const rank = (day: string): RankedDish[] => {
     const dayRequest = normalize(dayRequests[day] ?? "");
     const dayTerms = requestTermsOf(dayRequest);
     const wantsQuick = /\b(?:hurtig|hurtigt|nem|travl)\b/u.test(dayRequest);
     const wantsLeftovers = /\b(?:rest|rester|restemad)\b/u.test(dayRequest);
-
-    // Required recipes must obey exclusions too, including those selected in the UI.
-    const requiredId = requiredQueue.find((id) => {
-      const dish = dishById.get(id);
-      return dish !== undefined && !conflicts(dish);
-    });
-    const required = requiredId ? dishById.get(requiredId) : undefined;
-    if (requiredId && required) {
-      requiredQueue.splice(requiredQueue.indexOf(requiredId), 1);
-      usedDishIds.add(required.id);
-      count(required.category);
-      return [
-        {
-          date: day,
-          dishId: required.id,
-          reason: "Valgt på forhånd til denne uge.",
-          locked: false,
-          source: "local",
-        },
-      ];
-    }
-
     const weekday = parseDateKey(day).getDay();
-    const ranked = dishes
+    return dishes
       // Exclusions are mandatory, not merely a ranking penalty.
       .filter((dish) => !conflicts(dish))
-      .map((dish) => {
+      .map((dish): RankedDish => {
         const content = normalize([dish.name, dish.category, ...dish.ingredients].join(" "));
         const matches = matchingFridgeItems(dish.ingredients, fridge, day);
         const last = lastEaten.get(dish.id);
@@ -128,21 +87,96 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
           (usedDishIds.has(dish.id) ? 1_000 : 0) -
           (usedCategories.get(dish.category) ?? 0) * 14 +
           requestScore +
-          preferenceScore(dish, profiles);
+          preferenceScore(dish, profiles) +
+          (ratings.get(dish.id) ?? 0);
+        const requestMatched = requestMatchCount > 0 || (wantsSomethingNew && !last) || fridayTreat;
+        const dayRequestMatched =
+          dayMatchCount > 0 ||
+          (wantsQuick && dish.prepMinutes <= 30) ||
+          (wantsLeftovers && dish.leftoverFriendly);
         return {
           dish,
-          matches,
-          last,
           score,
-          requestMatched: requestMatchCount > 0 || (wantsSomethingNew && !last) || fridayTreat,
-          dayRequestMatched:
-            dayMatchCount > 0 ||
-            (wantsQuick && dish.prepMinutes <= 30) ||
-            (wantsLeftovers && dish.leftoverFriendly),
+          used: usedDishIds.has(dish.id),
+          reason: buildReason(matches, last, day, requestMatched, dayRequestMatched),
         };
       })
       .sort((a, b) => b.score - a.score);
+  };
 
+  return { rank, usedDishIds, dishById, count, conflicts };
+}
+
+export type RankedDish = { dish: Dish; score: number; reason: string; used: boolean };
+
+/**
+ * The best local alternatives for one day of a draft, with reasons. `otherDays` are the other days of
+ * the draft: their dishes are never offered again and their categories count against variety.
+ */
+export function rankAlternatives(
+  input: Omit<SuggestionInput, "days" | "requiredDishIds"> & {
+    day: string;
+    otherDays: readonly { date: string; dishId: string }[];
+    /** Dishes to leave out, e.g. the one already on the day. */
+    excludeDishIds?: readonly string[];
+    limit?: number;
+  },
+): RankedDish[] {
+  const ranker = createRanker({ ...input, days: [input.day] });
+  for (const other of input.otherDays) {
+    if (other.date === input.day) continue;
+    ranker.usedDishIds.add(other.dishId);
+    const category = ranker.dishById.get(other.dishId)?.category;
+    if (category) ranker.count(category);
+  }
+  const excluded = new Set(input.excludeDishIds ?? []);
+  return ranker
+    .rank(input.day)
+    .filter((entry) => !entry.used && !excluded.has(entry.dish.id))
+    .slice(0, input.limit ?? 3);
+}
+
+export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
+  const { days, meals, requiredDishIds = [] } = input;
+  const { rank, usedDishIds, dishById, count, conflicts } = createRanker(input);
+
+  for (const day of days) {
+    const existing = meals[day];
+    if (!existing?.locked) continue;
+    usedDishIds.add(existing.dishId);
+    const category = dishById.get(existing.dishId)?.category;
+    if (category) count(category);
+  }
+
+  const requiredQueue = requiredDishIds.filter(
+    (id, index) => dishById.has(id) && !usedDishIds.has(id) && requiredDishIds.indexOf(id) === index,
+  );
+
+  return days.flatMap((day): DraftDay[] => {
+    if (meals[day]?.locked) return [];
+
+    // Required recipes must obey exclusions too, including those selected in the UI.
+    const requiredId = requiredQueue.find((id) => {
+      const dish = dishById.get(id);
+      return dish !== undefined && !conflicts(dish);
+    });
+    const required = requiredId ? dishById.get(requiredId) : undefined;
+    if (requiredId && required) {
+      requiredQueue.splice(requiredQueue.indexOf(requiredId), 1);
+      usedDishIds.add(required.id);
+      count(required.category);
+      return [
+        {
+          date: day,
+          dishId: required.id,
+          reason: "Valgt på forhånd til denne uge.",
+          locked: false,
+          source: "local",
+        },
+      ];
+    }
+
+    const ranked = rank(day);
     const winner = ranked[0];
     if (!winner) return [];
     usedDishIds.add(winner.dish.id);
@@ -151,7 +185,7 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
       {
         date: day,
         dishId: winner.dish.id,
-        reason: buildReason(winner.matches, winner.last, day, winner.requestMatched, winner.dayRequestMatched),
+        reason: winner.reason,
         locked: false,
         source: "local",
       },

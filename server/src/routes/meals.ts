@@ -40,6 +40,7 @@ export function mealRoutes(api: Hono, deps: Deps): void {
     if (input.reason) meal.reason = input.reason;
     if (input.offer) meal.offer = input.offer;
     if (input.skipped) meal.skipped = true;
+    if (input.rating) meal.rating = input.rating;
     const existing = getMeal(repo.db, date);
     if (existing?.locked && !onlyLockChanges(existing, meal)) throw conflict(LOCKED);
     return c.json(repo.mutate(["meals", "shopping"], () => (putMeal(repo.db, date, meal), meal)));
@@ -51,8 +52,13 @@ export function mealRoutes(api: Hono, deps: Deps): void {
     if (patch.dishId !== undefined) assertDish(patch.dishId);
     const existing = getMeal(repo.db, date);
     if (!existing) throw notFound("Der er ikke planlagt noget den dag.");
-    const merged: Meal = { ...existing, ...patch };
+    const { rating, ...rest } = patch;
+    const merged: Meal = { ...existing, ...rest };
     if (patch.skipped === false) delete merged.skipped;
+    if (rating === null) delete merged.rating;
+    else if (rating !== undefined) merged.rating = rating;
+    // A different dish starts without the old dish's rating.
+    else if (rest.dishId !== undefined && rest.dishId !== existing.dishId) delete merged.rating;
     return c.json(repo.mutate(["meals", "shopping"], () => (putMeal(repo.db, date, merged), merged)));
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISHES, containsTerm, createLocalSuggestions, daysInRange, matchingFridgeItems, eatenHistory, lastEatenByDish } from "../src/index.ts";
+import { DISHES, containsTerm, createLocalSuggestions, daysInRange, matchingFridgeItems, rankAlternatives, eatenHistory, lastEatenByDish } from "../src/index.ts";
 import type { MealMap, SuggestionInput } from "../src/index.ts";
 import { dish, meal, profile } from "./fixtures.ts";
 
@@ -129,5 +129,28 @@ describe("createLocalSuggestions", () => {
 
   it("returns nothing when every dish is excluded", () => {
     expect(createLocalSuggestions({ ...base, dishes: [dish({ id: "a", name: "Rejer", ingredients: ["rejer"] })], globalExclusions: ["rejer"] })).toEqual([]);
+  });
+});
+
+describe("rankAlternatives", () => {
+  const dishes = [
+    dish({ id: "a", name: "A", category: "Pasta" }),
+    dish({ id: "b", name: "B", category: "Pasta" }),
+    dish({ id: "c", name: "C", category: "Suppe", ingredients: ["spinat"] }),
+    dish({ id: "d", name: "D", category: "Fisk" }),
+    dish({ id: "x", name: "X", ingredients: ["rejer"] }),
+  ];
+  it("offers distinct, allowed dishes with reasons and skips the rest of the draft", () => {
+    const result = rankAlternatives({
+      ...base,
+      dishes,
+      day: "2026-11-09",
+      otherDays: [{ date: "2026-11-10", dishId: "a" }],
+      excludeDishIds: ["d"],
+      fridge: [{ name: "spinat", expiresOn: "2026-11-09" }],
+      globalExclusions: ["rejer"],
+    });
+    expect(result.map((entry) => entry.dish.id)).toEqual(["c", "b"]);
+    expect(result[0]?.reason).toBe("Bruger spinat, der udløber i dag.");
   });
 });

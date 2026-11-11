@@ -5,6 +5,7 @@ import type { DraftActions } from "@/api/draft-mutations";
 import { useIsWide } from "@/hooks/use-media";
 import { dishOfDay, engineLabel, draftDayBadge, summarizeDraft } from "@/lib/draft-summary";
 import { DishPickerSheet } from "@/components/week/sheets/DishPickerSheet";
+import { AlternativesSheet } from "./AlternativesSheet";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { ReviewRow } from "./ReviewRow";
 import { ChecksCard, SummaryCard } from "./ReviewSummary";
@@ -22,12 +23,14 @@ type Props = {
 export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: Props) {
   const wide = useIsWide();
   const [pickDate, setPickDate] = useState<string | null>(null);
+  const [altDate, setAltDate] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const summary = useMemo(() => summarizeDraft(draft, data, today), [draft, data, today]);
   const lastEaten = useMemo(() => lastEatenByDish(eatenHistory(data.meals, today)), [data.meals, today]);
   const dishes = useMemo(() => [...data.dishes, ...draft.days.flatMap((day) => (day.newDish ? [day.newDish] : []))], [data.dishes, draft.days]);
   const unlocked = draft.days.filter((day) => !day.locked).map((day) => day.date);
-  const pickLabel = pickDate ? `${weekdayName(pickDate, "long")} ${parseDateKey(pickDate).getDate()}.` : "";
+  const labelOf = (date: string | null): string => (date ? `${weekdayName(date, "long")} ${parseDateKey(date).getDate()}.` : "");
+  const pickLabel = labelOf(pickDate);
 
   const primary = (
     <button
@@ -70,7 +73,7 @@ export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: 
           badge={draftDayBadge(day, lastEaten)}
           busy={actions.busy}
           onLock={() => void actions.patchDay(draft.id, day.date, { locked: !day.locked })}
-          onRegenerate={() => void actions.regenerate(draft.id, [day.date])}
+          onRegenerate={() => setAltDate(day.date)}
           onPick={() => setPickDate(day.date)}
         />
       ))}
@@ -79,6 +82,29 @@ export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: 
 
   const sheets = (
     <>
+      <AlternativesSheet
+        date={altDate}
+        dayLabel={labelOf(altDate)}
+        draft={draft}
+        data={data}
+        today={today}
+        onClose={() => setAltDate(null)}
+        onPick={(dishId) => {
+          const date = altDate;
+          setAltDate(null);
+          if (date) void actions.patchDay(draft.id, date, { dishId });
+        }}
+        onRegenerate={() => {
+          const date = altDate;
+          setAltDate(null);
+          if (date) void actions.regenerate(draft.id, [date]);
+        }}
+        onSearch={() => {
+          const date = altDate;
+          setAltDate(null);
+          setPickDate(date);
+        }}
+      />
       <DishPickerSheet
         open={pickDate !== null}
         dayLabel={pickLabel}

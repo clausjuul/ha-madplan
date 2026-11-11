@@ -15,6 +15,7 @@ import type {
   InspirationRecipe,
   Meal,
   MealMap,
+  MealRating,
   MealSource,
   OfferReference,
   Profile,
@@ -70,6 +71,8 @@ export type MealInput = {
   reason?: string;
   offer?: OfferReference;
   skipped?: boolean;
+  /** null clears the rating (PATCH). */
+  rating?: MealRating | null;
 };
 export type SwapMealsInput = { a: string; b: string };
 export type SuggestDayInput = { seed: number };
