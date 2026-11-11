@@ -4,11 +4,11 @@ import { useSpeech } from "@/hooks/use-speech";
 
 type Props = { disabled: boolean; onSend: (text: string) => void };
 
-const button = "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors";
+const button = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors";
 
 /**
  * Message input in the style of Astryx' ChatComposer: one rounded card that holds an
- * auto-growing textarea on top and an action row (dictation, send) underneath.
+ * dictation button, an auto-growing textarea and a send button on one row.
  */
 export function Composer({ disabled, onSend }: Props) {
   const [text, setText] = useState("");
@@ -39,8 +39,19 @@ export function Composer({ disabled, onSend }: Props) {
       onClick={(event) => {
         if (event.target === event.currentTarget) input.current?.focus();
       }}
-      className="flex cursor-text flex-col gap-2 rounded-[24px] border border-line bg-surface p-3 shadow-[0_4px_16px_rgb(0_0_0/0.18)] transition-[border-color,box-shadow] focus-within:border-accent"
+      className="flex shrink-0 cursor-text items-end gap-1 rounded-[24px] border border-line bg-surface p-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.18)] transition-[border-color,box-shadow] focus-within:border-accent"
     >
+      {speech.supported ? (
+        <button
+          type="button"
+          onClick={speech.toggle}
+          aria-label={speech.listening ? "Stop lytning" : "Tal til Assist"}
+          aria-pressed={speech.listening}
+          className={`${button} ${speech.listening ? "bg-accent-soft text-accent" : "text-ink-2 hover:bg-raised hover:text-ink"}`}
+        >
+          <Mic size={18} aria-hidden="true" />
+        </button>
+      ) : null}
       <label htmlFor="assist-input" className="sr-only">
         Skriv til Assist
       </label>
@@ -57,29 +68,16 @@ export function Composer({ disabled, onSend }: Props) {
             submit();
           }
         }}
-        className="block min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-[15px] leading-snug text-ink outline-none placeholder:text-muted focus-visible:outline-none"
+        className="block h-11 min-h-11 min-w-0 flex-1 shrink-0 resize-none self-stretch overflow-y-auto bg-transparent px-2 py-2.5 text-[15px] leading-snug text-ink outline-none placeholder:text-muted focus-visible:outline-none"
       />
-      <div className="flex items-center gap-2">
-        {speech.supported ? (
-          <button
-            type="button"
-            onClick={speech.toggle}
-            aria-label={speech.listening ? "Stop lytning" : "Tal til Assist"}
-            aria-pressed={speech.listening}
-            className={`${button} ${speech.listening ? "bg-accent-soft text-accent" : "text-ink-2 hover:bg-raised hover:text-ink"}`}
-          >
-            <Mic size={18} aria-hidden="true" />
-          </button>
-        ) : null}
-        <button
+      <button
           type="submit"
           disabled={!canSend}
           aria-label="Send"
-          className={`${button} ml-auto ${canSend ? "bg-accent text-on-accent" : "bg-raised text-muted"}`}
+          className={`${button} ${canSend ? "bg-accent text-on-accent" : "bg-raised text-muted"}`}
         >
           <ArrowUp size={18} strokeWidth={2.5} aria-hidden="true" />
         </button>
-      </div>
     </form>
   );
 }
