@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.8.0
+
+- feat(cards): aspect ratio and font size options for the upcoming-dishes card
+
 ## 0.7.0
 
 - feat(cards): picture tiles with text overlay for the upcoming-dishes card
