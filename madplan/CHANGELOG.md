@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.7.0
+
+- feat(cards): picture tiles with text overlay for the upcoming-dishes card
+
 ## 0.6.0
 
 - feat(cards): visual editors for the Madplan dashboard cards
