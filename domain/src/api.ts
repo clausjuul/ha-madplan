@@ -145,6 +145,36 @@ export type DraftDayPatch = { locked?: boolean; dishId?: string };
 // PUT  api/inspirations/saved   body InspirationRecipe[] -> InspirationRecipe[]
 export type DiscoverInput = { request: string; cuisine: InspirationCuisine | "Alle" };
 
+// Weekly plans from Danish food sites ------------------------------------------------
+// GET api/weekly-plans[?refresh=1]  -> WeeklyPlansResponse
+//   Current ISO week's published meal plans (and next week's, when already out). Cached on the server.
+export type WeeklyPlanDish = {
+  /** 0 = Monday … 6 = Sunday. */
+  day: number;
+  recipe: InspirationRecipe;
+};
+export type WeeklyPlan = {
+  id: string;
+  sourceName: string;
+  /** The post's own title, e.g. "Vegetarisk madplan uge 46, 2026". */
+  title: string;
+  url: string;
+  /** ISO week number the plan covers. */
+  week: number;
+  /** Monday of that week (YYYY-MM-DD). */
+  weekStart: string;
+  dishes: WeeklyPlanDish[];
+};
+export type WeeklyPlansResponse = {
+  week: number;
+  weekStart: string;
+  /** ISO timestamp of the last successful fetch, or null if nothing has been fetched yet. */
+  fetchedAt: string | null;
+  plans: WeeklyPlan[];
+  /** Sources that could not be read this time (Danish message). */
+  failures: { sourceName: string; message: string }[];
+};
+
 // Assist (chat) -----------------------------------------------------------------
 // POST   api/assist                       body AssistRequest -> AssistResponse
 //          503 with a Danish message when neither OpenAI nor the Home Assistant agent is available.

@@ -95,6 +95,7 @@ export function createHttpClient(): ApiClient {
     discover: (input) => request("POST", "api/discover", input),
     importInspiration: (recipe) => request("POST", "api/discover/import", { recipe }),
     saveInspirations: (recipes) => request("PUT", "api/inspirations/saved", recipes),
+    weeklyPlans: (refresh) => request("GET", refresh ? "api/weekly-plans?refresh=1" : "api/weekly-plans"),
 
     assist: (input) => request("POST", "api/assist", input),
     applyAssistProposal: (id) => request("POST", `api/assist/proposals/${enc(id)}/apply`),

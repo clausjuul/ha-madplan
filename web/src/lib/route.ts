@@ -3,10 +3,12 @@ import { dateKey, isDateKey, parseDateKey, startOfWeek } from "@madplan/domain";
 export type Route =
   | { name: "uge"; week?: string }
   | { name: "indkob" }
-  | { name: "retter"; dishId?: string; tab?: "opdag" }
+  | { name: "retter"; dishId?: string; tab?: LibraryTab }
   | { name: "planlaeg" }
   | { name: "indstillinger" }
   | { name: "lav-mad"; dishId: string };
+
+export type LibraryTab = "opdag" | "ugens";
 
 export type NavName = "uge" | "indkob" | "retter" | "planlaeg";
 
@@ -21,7 +23,7 @@ export function parsePath(path: string): Route {
     case "indstillinger":
       return { name: first };
     case "retter":
-      if (second === "opdag") return { name: "retter", tab: "opdag" };
+      if (second === "opdag" || second === "ugens") return { name: "retter", tab: second };
       return second ? { name: "retter", dishId: decodeURIComponent(second) } : { name: "retter" };
     case "lav-mad":
       return { name: "lav-mad", dishId: decodeURIComponent(second) };
@@ -41,7 +43,7 @@ export function routePath(route: Route): string {
       return `/lav-mad/${encodeURIComponent(route.dishId)}`;
     case "retter":
       if (route.dishId) return `/retter/${encodeURIComponent(route.dishId)}`;
-      return route.tab === "opdag" ? "/retter/opdag" : "/retter";
+      return route.tab ? `/retter/${route.tab}` : "/retter";
     default:
       return `/${route.name}`;
   }

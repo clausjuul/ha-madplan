@@ -20,6 +20,12 @@ export function keysForTopics(topics: readonly ChangeTopic[]): (readonly string[
   return [...keys];
 }
 
+/** Weekly plans change at most a few times a day; the server caches them too. */
+export function useWeeklyPlans() {
+  const api = useApi();
+  return useQuery({ queryKey: ["weekly-plans"], queryFn: () => api.weeklyPlans(), staleTime: 30 * 60 * 1000 });
+}
+
 export function useBootstrap() {
   const api = useApi();
   return useQuery({ queryKey: queryKeys.bootstrap, queryFn: () => api.bootstrap() });

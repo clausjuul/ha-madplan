@@ -5,6 +5,7 @@ import type {
   BootstrapResponse,
   ChangeEvent,
   DiscoverInput,
+  WeeklyPlansResponse,
   Dish,
   DishInput,
   DraftDayPatch,
@@ -89,6 +90,8 @@ export interface ApiClient {
   discover(input: DiscoverInput): Promise<{ recipes: InspirationRecipe[] }>;
   importInspiration(recipe: InspirationRecipe): Promise<Dish>;
   saveInspirations(recipes: InspirationRecipe[]): Promise<InspirationRecipe[]>;
+  /** This week's meal plans from Danish food sites; `refresh` asks the server to fetch again. */
+  weeklyPlans(refresh?: boolean): Promise<WeeklyPlansResponse>;
 
   assist(request: AssistRequest): Promise<AssistResponse>;
   applyAssistProposal(id: string): Promise<AssistApplyResult>;

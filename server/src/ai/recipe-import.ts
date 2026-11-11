@@ -118,8 +118,8 @@ export function assertPublicHttpsUrl(raw: string): URL {
   return url;
 }
 
-async function readLimited(response: Response): Promise<string | null> {
-  if (Number(response.headers.get("content-length") ?? 0) > MAX_HTML) return null;
+export async function readLimited(response: Response, max = MAX_HTML): Promise<string | null> {
+  if (Number(response.headers.get("content-length") ?? 0) > max) return null;
   const reader = response.body?.getReader();
   if (!reader) return null;
   const decoder = new TextDecoder();
@@ -128,7 +128,7 @@ async function readLimited(response: Response): Promise<string | null> {
     const { done, value } = await reader.read();
     if (done) return html;
     html += decoder.decode(value, { stream: true });
-    if (html.length > MAX_HTML) {
+    if (html.length > max) {
       await reader.cancel().catch(() => undefined);
       return null;
     }

@@ -7,13 +7,15 @@ type Props = {
   recipe: InspirationRecipe;
   saved: boolean;
   isNew?: boolean;
+  /** Replaces the cuisine label, e.g. the weekday in a weekly plan. */
+  badge?: string;
   busy?: boolean;
   onToggleSave: () => void;
   onAdd: () => void;
 };
 
 /** Big photo card for one inspiration. */
-export function InspirationCard({ recipe, saved, isNew, busy, onToggleSave, onAdd }: Props) {
+export function InspirationCard({ recipe, saved, isNew, badge, busy, onToggleSave, onAdd }: Props) {
   const imageUrl = inspirationImageSrc(recipe);
   return (
     <article className="flex flex-col overflow-hidden rounded-[28px] bg-surface">
@@ -26,7 +28,7 @@ export function InspirationCard({ recipe, saved, isNew, busy, onToggleSave, onAd
           className="aspect-[16/10] w-full"
         />
         <div className="absolute left-3 top-3 flex gap-2">
-          <span className="rounded-full bg-ground/75 px-3 py-1.5 text-[13px] font-medium text-ink backdrop-blur">{recipe.cuisine}</span>
+          <span className="rounded-full bg-ground/75 px-3 py-1.5 text-[13px] font-medium text-ink backdrop-blur">{badge ?? recipe.cuisine}</span>
           {isNew ? <span className="rounded-full bg-new px-3 py-1.5 text-[13px] font-bold text-on-new">Ny</span> : null}
         </div>
       </div>

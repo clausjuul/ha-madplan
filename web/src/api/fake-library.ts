@@ -1,8 +1,13 @@
 import {
+  INSPIRATION_RECIPES,
+  dateKey,
+  isoWeekNumber,
+  startOfWeek,
   migrateV1,
   type ChangeTopic,
   type Dish,
   type InspirationRecipe,
+  type WeeklyPlan,
 } from "@madplan/domain";
 import { ApiRequestError, type ApiClient } from "./client";
 import type { FakeState } from "./fake-data";
@@ -17,6 +22,7 @@ type LibraryMethods = Pick<
   | "discover"
   | "importInspiration"
   | "saveInspirations"
+  | "weeklyPlans"
   | "importV1"
   | "exportData"
 >;
@@ -165,6 +171,29 @@ export function createFakeLibrary({ state, wait, emit, onImported }: Context): L
       state.savedInspirations = structuredClone(recipes);
       emit(["inspirations"]);
       return structuredClone(recipes);
+    },
+
+    async weeklyPlans() {
+      await wait();
+      const monday = startOfWeek(new Date());
+      const week = isoWeekNumber(monday);
+      const photos = INSPIRATION_RECIPES.filter((recipe) => recipe.imageKey);
+      const plan = (index: number, sourceName: string, offset: number): WeeklyPlan => ({
+        id: `demo-plan-${index}`,
+        sourceName,
+        title: `Demo: madplan uge ${week}`,
+        url: "https://example.com/madplan",
+        week,
+        weekStart: dateKey(monday),
+        dishes: photos.slice(offset, offset + 7).map((recipe, day) => ({ day, recipe: { ...recipe, sourceName } })),
+      });
+      return {
+        week,
+        weekStart: dateKey(monday),
+        fetchedAt: new Date().toISOString(),
+        plans: [plan(1, "Demo-blog", 0), plan(2, "Demo-madside", 7)],
+        failures: [{ sourceName: "Demo-køkken", message: `Ingen madplan for uge ${week} endnu.` }],
+      };
     },
 
     async importV1(body) {
