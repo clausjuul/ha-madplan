@@ -11,6 +11,7 @@ import { DishFormSheet } from "./DishFormSheet";
 import { ImportUrlSheet } from "./ImportUrlSheet";
 import { OurDishes } from "./OurDishes";
 import { RecipeDetail } from "./RecipeDetail";
+import { SavedRecipes } from "./SavedRecipes";
 import { WeeklyPlans } from "./WeeklyPlans";
 
 type Props = { dishId?: string; tab?: LibraryTab };
@@ -57,11 +58,16 @@ export function LibraryView({ dishId, tab }: Props) {
           <Link role="tab" aria-selected={tab === "ugens"} to={routePath({ name: "retter", tab: "ugens" })} className={tabClass(tab === "ugens")}>
             Ugeplaner
           </Link>
+          <Link role="tab" aria-selected={tab === "gemt"} to={routePath({ name: "retter", tab: "gemt" })} className={tabClass(tab === "gemt")}>
+            Gemt{data.savedInspirations.length > 0 ? ` (${data.savedInspirations.length})` : ""}
+          </Link>
         </nav>
         {tab === "opdag" ? (
           <Discover data={data} />
         ) : tab === "ugens" ? (
           <WeeklyPlans data={data} />
+        ) : tab === "gemt" ? (
+          <SavedRecipes data={data} />
         ) : (
           <OurDishes data={data} today={today} onCreate={() => setEditing({})} onImportUrl={() => setImporting(true)} />
         )}

@@ -8,10 +8,9 @@ import {
   type InspirationRecipe,
 } from "@madplan/domain";
 import { useApi } from "@/api/provider";
-import { errorMessage, useDishActions } from "@/api/library-mutations";
-import { notify } from "@/lib/notify";
-import { useRoute } from "@/hooks/use-route";
+import { errorMessage } from "@/api/library-mutations";
 import { InspirationCard } from "./InspirationCard";
+import { useInspirationActions } from "./use-inspiration-actions";
 
 type Cuisine = InspirationCuisine | "Alle";
 
@@ -27,18 +26,14 @@ const matches = (recipe: InspirationRecipe, text: string): boolean => {
 };
 
 export function Discover({ data }: { data: BootstrapResponse }) {
-  const { navigate } = useRoute();
   const api = useApi();
-  const actions = useDishActions();
   const [cuisine, setCuisine] = useState<Cuisine>("Alle");
   const [request, setRequest] = useState("");
   const [live, setLive] = useState<InspirationRecipe[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | undefined>();
-  const [adding, setAdding] = useState<string | undefined>();
   const openai = data.capabilities.openai;
-  const saved = data.savedInspirations;
-  const savedIds = useMemo(() => new Set(saved.map((recipe) => recipe.id)), [saved]);
+  const { savedIds, adding, toggleSave, add } = useInspirationActions(data.savedInspirations);
 
   const catalog = useMemo(
     () =>
@@ -59,23 +54,6 @@ export function Discover({ data }: { data: BootstrapResponse }) {
     } finally {
       setSearching(false);
     }
-  };
-
-  const toggleSave = (recipe: InspirationRecipe): void => {
-    const next = savedIds.has(recipe.id) ? saved.filter((item) => item.id !== recipe.id) : [...saved, recipe];
-    actions.saveInspirations(next).catch((error: unknown) => notify(errorMessage(error)));
-  };
-
-  const add = (recipe: InspirationRecipe): void => {
-    setAdding(recipe.id);
-    actions
-      .importInspiration(recipe)
-      .then((dish) => {
-        notify(`${dish.name} er tilføjet til dine retter.`);
-        navigate({ name: "retter", dishId: dish.id });
-      })
-      .catch((error: unknown) => notify(errorMessage(error)))
-      .finally(() => setAdding(undefined));
   };
 
   const grid = (recipes: readonly InspirationRecipe[], isNew = false) => (
@@ -149,12 +127,6 @@ export function Discover({ data }: { data: BootstrapResponse }) {
         <section>
           {heading("Nye forslag")}
           {grid(live, true)}
-        </section>
-      ) : null}
-      {saved.length > 0 ? (
-        <section>
-          {heading(`Gemt til senere (${saved.length})`)}
-          {grid(saved)}
         </section>
       ) : null}
       <section>

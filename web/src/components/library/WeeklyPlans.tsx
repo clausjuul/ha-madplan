@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Info, RefreshCw } from "lucide-react";
-import type { BootstrapResponse, InspirationRecipe, WeeklyPlan } from "@madplan/domain";
+import type { BootstrapResponse, WeeklyPlan } from "@madplan/domain";
 import { useApi } from "@/api/provider";
-import { errorMessage, useDishActions } from "@/api/library-mutations";
+import { errorMessage } from "@/api/library-mutations";
 import { useWeeklyPlans } from "@/api/queries";
 import { ErrorState } from "@/components/ui/StatusViews";
-import { useRoute } from "@/hooks/use-route";
 import { notify } from "@/lib/notify";
 import { InspirationCard } from "./InspirationCard";
+import { useInspirationActions } from "./use-inspiration-actions";
 
 const DAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 
@@ -25,14 +25,10 @@ export function WeeklyPlans({ data }: { data: BootstrapResponse }) {
   const api = useApi();
   const queryClient = useQueryClient();
   const query = useWeeklyPlans();
-  const actions = useDishActions();
-  const { navigate } = useRoute();
   const [week, setWeek] = useState<number | undefined>();
   const [source, setSource] = useState<string>("Alle");
   const [refreshing, setRefreshing] = useState(false);
-  const [adding, setAdding] = useState<string | undefined>();
-  const saved = data.savedInspirations;
-  const savedIds = useMemo(() => new Set(saved.map((recipe) => recipe.id)), [saved]);
+  const { savedIds, adding, toggleSave, add } = useInspirationActions(data.savedInspirations);
   const ownSources = useMemo(() => new Set(data.dishes.map((dish) => dish.sourceUrl).filter(Boolean)), [data.dishes]);
 
   const result = query.data;
@@ -51,23 +47,6 @@ export function WeeklyPlans({ data }: { data: BootstrapResponse }) {
     } finally {
       setRefreshing(false);
     }
-  };
-
-  const toggleSave = (recipe: InspirationRecipe): void => {
-    const next = savedIds.has(recipe.id) ? saved.filter((item) => item.id !== recipe.id) : [...saved, recipe];
-    actions.saveInspirations(next).catch((error: unknown) => notify(errorMessage(error)));
-  };
-
-  const add = (recipe: InspirationRecipe): void => {
-    setAdding(recipe.id);
-    actions
-      .importInspiration(recipe)
-      .then((dish) => {
-        notify(`${dish.name} er tilføjet til dine retter.`);
-        navigate({ name: "retter", dishId: dish.id });
-      })
-      .catch((error: unknown) => notify(errorMessage(error)))
-      .finally(() => setAdding(undefined));
   };
 
   if (query.isError && !result) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;

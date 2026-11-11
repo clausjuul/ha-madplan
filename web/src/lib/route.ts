@@ -8,7 +8,7 @@ export type Route =
   | { name: "indstillinger" }
   | { name: "lav-mad"; dishId: string };
 
-export type LibraryTab = "opdag" | "ugens";
+export type LibraryTab = "opdag" | "ugens" | "gemt";
 
 export type NavName = "uge" | "indkob" | "retter" | "planlaeg";
 
@@ -23,7 +23,7 @@ export function parsePath(path: string): Route {
     case "indstillinger":
       return { name: first };
     case "retter":
-      if (second === "opdag" || second === "ugens") return { name: "retter", tab: second };
+      if (second === "opdag" || second === "ugens" || second === "gemt") return { name: "retter", tab: second };
       return second ? { name: "retter", dishId: decodeURIComponent(second) } : { name: "retter" };
     case "lav-mad":
       return { name: "lav-mad", dishId: decodeURIComponent(second) };

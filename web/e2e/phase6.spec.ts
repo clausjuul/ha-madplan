@@ -56,6 +56,16 @@ test("opdag nyt", async ({ page }) => {
   await page.screenshot({ path: `${SHOTS}\\opdag-1280x800.png` });
 });
 
+test("gem til senere vises under Gemt", async ({ page }) => {
+  await open(page, "#/retter/opdag", TABLET);
+  await page.getByRole("heading", { name: "Fra samlingen" }).waitFor();
+  await page.getByRole("button", { name: "Gem til senere" }).first().click();
+  await page.getByRole("tab", { name: "Gemt (1)" }).click();
+  await expect(page.getByRole("button", { name: "Gemt" })).toHaveCount(1);
+  await page.getByRole("button", { name: "Gemt" }).click();
+  await expect(page.getByText("Du har ikke gemt nogen retter endnu.")).toBeVisible();
+});
+
 test("indstillinger", async ({ page }) => {
   await open(page, "#/indstillinger", TABLET);
   await page.getByRole("heading", { name: "Familien" }).waitFor();

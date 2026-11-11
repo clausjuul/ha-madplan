@@ -40,6 +40,8 @@ for (const size of SIZES) {
       ["retter", "#/retter", (p) => p.getByRole("heading", { name: "Lasagne" }).first().waitFor()],
       ["opskrift", "#/retter/lasagne", (p) => p.getByRole("heading", { name: "Ingredienser" }).waitFor()],
       ["opdag", "#/retter/opdag", (p) => p.getByRole("heading", { name: "Fra samlingen" }).waitFor()],
+      ["ugeplaner", "#/retter/ugens", (p) => p.getByRole("heading", { name: /Demo-blog/ }).waitFor()],
+      ["gemt", "#/retter/gemt", (p) => p.getByText("Du har ikke gemt nogen retter endnu.").waitFor()],
       ["indstillinger", "#/indstillinger", (p) => p.getByRole("heading", { name: "Familien" }).waitFor()],
       ["kogetilstand", "#/lav-mad/lasagne", (p) => p.getByRole("button").first().waitFor()],
     ];
