@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.5.0
+
+- feat: dashboard cards for upcoming dishes and the embedded app
+
 ## 0.4.0
 
 - feat(web): "Gemt" tab for recipes saved for later
