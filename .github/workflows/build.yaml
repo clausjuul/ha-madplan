@@ -24,7 +24,8 @@ jobs:
       - run: npm test
       - run: npm run build -w web
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        # No --with-deps: the runner image already has Chromium's libraries, and apt mirrors are flaky.
+        run: npx playwright install chromium
       - name: Playwright e2e (fake API, incl. accessibility)
         run: npx playwright test
         working-directory: web
