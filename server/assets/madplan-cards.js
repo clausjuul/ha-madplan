@@ -6,8 +6,118 @@
  *
  * Plain JS without dependencies, so it is served as-is.
  */
-const VERSION = "1";
+const VERSION = "2";
 const DEFAULT_ENTITY = "sensor.madplan_kommende";
+
+/*
+ * Visual editors built on Home Assistant's own <ha-form>, so they look and behave like the built-in cards.
+ * Each schema field maps 1:1 to a config key; unchanged defaults are left out of the saved YAML.
+ */
+const ENTITY_SELECTOR = { entity: { domain: "sensor" } };
+const UPCOMING_SCHEMA = [
+  { name: "title", selector: { text: {} } },
+  { name: "entity", selector: ENTITY_SELECTOR },
+  { name: "days", selector: { number: { min: 1, max: 14, mode: "slider" } } },
+  {
+    type: "grid",
+    name: "",
+    schema: [
+      { name: "show_images", selector: { boolean: {} } },
+      { name: "show_today", selector: { boolean: {} } },
+      { name: "hide_empty", selector: { boolean: {} } },
+      { name: "compact", selector: { boolean: {} } },
+    ],
+  },
+];
+const VIEW_OPTIONS = [
+  { value: "uge", label: "Uge" },
+  { value: "indkob", label: "Indkøb" },
+  { value: "retter", label: "Retter" },
+  { value: "planlaeg", label: "Planlæg" },
+  { value: "indstillinger", label: "Indstillinger" },
+];
+const APP_SCHEMA = [
+  { name: "view", selector: { select: { mode: "dropdown", options: VIEW_OPTIONS } } },
+  { name: "height", selector: { text: {} } },
+  { name: "entity", selector: ENTITY_SELECTOR },
+];
+const LABELS = {
+  title: "Overskrift (tom skjuler den)",
+  entity: "Entitet",
+  days: "Antal dage",
+  show_images: "Vis billeder",
+  show_today: "Medtag i dag",
+  hide_empty: "Skjul dage uden ret",
+  compact: "Kompakt",
+  view: "Visning",
+  height: "Højde (f.eks. 640px eller auto)",
+};
+const HELPERS = {
+  entity: "Normalt sensor.madplan_kommende",
+};
+
+class MadplanEditor extends HTMLElement {
+  constructor(schema, defaults) {
+    super();
+    this._schema = schema;
+    this._defaults = defaults;
+  }
+
+  setConfig(config) {
+    this._config = config;
+    this.render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (this._form) this._form.hass = hass;
+    else this.render();
+  }
+
+  render() {
+    if (!this._config || !this._hass) return;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.computeLabel = (field) => LABELS[field.name] ?? field.name;
+      this._form.computeHelper = (field) => HELPERS[field.name];
+      this._form.addEventListener("value-changed", (event) => this.changed(event.detail.value));
+      this.appendChild(this._form);
+    }
+    this._form.hass = this._hass;
+    this._form.schema = this._schema;
+    this._form.data = { ...this._defaults, ...this._config };
+  }
+
+  changed(value) {
+    const config = { type: this._config.type };
+    for (const [key, val] of Object.entries(value)) {
+      if (key === "type" || val === undefined) continue;
+      // Values equal to the default are left out; an empty title stays (it hides the header).
+      if (val === this._defaults[key]) continue;
+      config[key] = val;
+    }
+    this._config = config;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
+  }
+}
+
+const UPCOMING_DEFAULTS = { title: "Madplan", entity: DEFAULT_ENTITY, days: 7, show_images: true, show_today: true, hide_empty: false, compact: false };
+const APP_DEFAULTS = { entity: DEFAULT_ENTITY, view: "uge", height: "640px" };
+
+class MadplanUpcomingCardEditor extends MadplanEditor {
+  constructor() {
+    super(UPCOMING_SCHEMA, UPCOMING_DEFAULTS);
+  }
+}
+
+class MadplanAppCardEditor extends MadplanEditor {
+  constructor() {
+    super(APP_SCHEMA, APP_DEFAULTS);
+  }
+}
+
+if (!customElements.get("madplan-upcoming-card-editor")) customElements.define("madplan-upcoming-card-editor", MadplanUpcomingCardEditor);
+if (!customElements.get("madplan-app-card-editor")) customElements.define("madplan-app-card-editor", MadplanAppCardEditor);
 
 const esc = (value) =>
   String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
@@ -39,7 +149,7 @@ function dayLabel(day, index) {
 
 class MadplanUpcomingCard extends HTMLElement {
   setConfig(config) {
-    this._config = { entity: DEFAULT_ENTITY, days: 7, show_images: true, show_today: true, hide_empty: false, compact: false, ...config };
+    this._config = { ...UPCOMING_DEFAULTS, ...config };
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     this._last = undefined;
     if (this._hass) this.render();
@@ -62,13 +172,17 @@ class MadplanUpcomingCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: DEFAULT_ENTITY, days: 7 };
+    return { days: 7 };
+  }
+
+  static getConfigElement() {
+    return document.createElement("madplan-upcoming-card-editor");
   }
 
   render() {
     const config = this._config;
     const state = this._hass?.states[config.entity];
-    const title = config.title ?? "Madplan";
+    const title = config.title;
     const header = title ? `<div class="header"><ha-icon icon="mdi:silverware-fork-knife"></ha-icon>${esc(title)}</div>` : "";
     let body;
     if (!state) {
@@ -134,7 +248,7 @@ async function ensureSession(hass) {
 class MadplanAppCard extends HTMLElement {
   setConfig(config) {
     if (config.view && !(config.view in VIEWS)) throw new Error(`Ukendt view: ${config.view} (brug ${Object.keys(VIEWS).join(", ")})`);
-    this._config = { entity: DEFAULT_ENTITY, view: "uge", height: "640px", ...config };
+    this._config = { ...APP_DEFAULTS, ...config };
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     this._src = undefined;
     if (this._hass) this.update();
@@ -154,7 +268,11 @@ class MadplanAppCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { view: "uge", height: "640px" };
+    return { view: "uge" };
+  }
+
+  static getConfigElement() {
+    return document.createElement("madplan-app-card-editor");
   }
 
   message(text) {
