@@ -87,6 +87,8 @@ compact: false     # mindre rækker
 layout: list       # list, eller tiles: billeder med teksten oven på
 columns: 2         # kolonner med layout: tiles (1-4)
 tile_height: 140   # billedhøjde i px med layout: tiles
+aspect_ratio: 16:9 # billedformat (f.eks. 16:9, 4:3, 1); erstatter tile_height
+font_size: 16      # skriftstørrelse for retternes navn i px (10-40)
 ```
 
 ### Hele appen i et kort

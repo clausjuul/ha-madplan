@@ -6,7 +6,7 @@
  *
  * Plain JS without dependencies, so it is served as-is.
  */
-const VERSION = "3";
+const VERSION = "4";
 const DEFAULT_ENTITY = "sensor.madplan_kommende";
 
 /*
@@ -25,6 +25,8 @@ const UPCOMING_SCHEMA = [
     schema: [
       { name: "columns", selector: { number: { min: 1, max: 4, mode: "box" } } },
       { name: "tile_height", selector: { number: { min: 60, max: 400, step: 10, mode: "box", unit_of_measurement: "px" } } },
+      { name: "aspect_ratio", selector: { text: {} } },
+      { name: "font_size", selector: { number: { min: 10, max: 40, mode: "box", unit_of_measurement: "px" } } },
     ],
   },
   {
@@ -61,10 +63,14 @@ const LABELS = {
   layout: "Layout",
   columns: "Kolonner (billeder)",
   tile_height: "Billedhøjde",
+  aspect_ratio: "Billedformat (f.eks. 16:9)",
+  font_size: "Skriftstørrelse",
   view: "Visning",
   height: "Højde (f.eks. 640px eller auto)",
 };
 const HELPERS = {
+  aspect_ratio: "Billeder med tekst: erstatter billedhøjden, når det er udfyldt",
+  font_size: "Retternes navn; ugedagen bliver lidt mindre",
   entity: "Normalt sensor.madplan_kommende",
 };
 
@@ -141,7 +147,7 @@ const STYLE = `
   .list { padding: 4px 8px 12px; display: flex; flex-direction: column; }
   .row { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 10px; }
   .row.today { background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.1); }
-  .thumb { width: 48px; height: 48px; flex: none; border-radius: 8px; object-fit: cover; background: var(--secondary-background-color); display: grid; place-items: center; color: var(--secondary-text-color); }
+  .thumb { width: 48px; height: var(--madplan-thumb-height, 48px); aspect-ratio: var(--madplan-aspect, auto); flex: none; border-radius: 8px; object-fit: cover; background: var(--secondary-background-color); display: grid; place-items: center; color: var(--secondary-text-color); }
   .text { min-width: 0; flex: 1; }
   .day { font-size: 0.8em; color: var(--secondary-text-color); }
   .day::first-letter { text-transform: uppercase; }
@@ -149,10 +155,10 @@ const STYLE = `
   .dish.none { font-weight: 400; color: var(--secondary-text-color); font-style: italic; }
   .meta { font-size: 0.8em; color: var(--secondary-text-color); white-space: nowrap; }
   .empty, .warning { padding: 16px; color: var(--secondary-text-color); }
-  .compact .thumb { width: 32px; height: 32px; }
+  .compact .thumb { width: 32px; height: var(--madplan-thumb-height, 32px); }
   .compact .row { padding: 3px 8px; }
   .tiles { padding: 8px 12px 12px; display: grid; gap: 8px; grid-template-columns: repeat(var(--madplan-columns, 2), minmax(0, 1fr)); }
-  .tile { position: relative; height: var(--madplan-tile-height, 140px); border-radius: var(--ha-card-border-radius, 12px); overflow: hidden; background: var(--secondary-background-color); color: #fff; }
+  .tile { position: relative; height: var(--madplan-tile-height, 140px); aspect-ratio: var(--madplan-aspect, auto); border-radius: var(--ha-card-border-radius, 12px); overflow: hidden; background: var(--secondary-background-color); color: #fff; }
   .tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .tile .placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--secondary-text-color); --mdc-icon-size: 40px; opacity: 0.5; }
   .tile .overlay { position: absolute; inset: auto 0 0 0; padding: 24px 10px 8px; background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0.35) 65%, transparent); }
@@ -164,6 +170,15 @@ const STYLE = `
   .tile .badge { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; font-size: 0.75em; background: rgba(0,0,0,0.55); color: #fff; }
   .tile.today { outline: 3px solid var(--primary-color); outline-offset: -3px; }
 `;
+
+/** "16:9", "16/9", "1.5" or "1" -> a CSS aspect-ratio value; anything else -> "". */
+function parseRatio(value) {
+  const match = String(value ?? "").trim().match(/^(\d+(?:[.,]\d+)?)\s*(?:[:/x]\s*(\d+(?:[.,]\d+)?))?$/);
+  if (!match) return "";
+  const width = Number(match[1].replace(",", "."));
+  const height = match[2] ? Number(match[2].replace(",", ".")) : 1;
+  return width > 0 && height > 0 ? `${width} / ${height}` : "";
+}
 
 function dayLabel(day, index) {
   if (index === 0) return "I dag";
@@ -224,11 +239,14 @@ class MadplanUpcomingCard extends HTMLElement {
       days = days.slice(0, Number(config.days) || 7);
       const columns = Math.min(4, Math.max(1, Number(config.columns) || 2));
       const height = Math.max(60, Number(config.tile_height) || 140);
+      const ratio = parseRatio(config.aspect_ratio);
+      const size = Number(config.font_size) > 0 ? `font-size:${Math.min(40, Math.max(10, Number(config.font_size)))}px;` : "";
+      const tileStyle = ratio ? `--madplan-aspect:${ratio};--madplan-tile-height:auto` : `--madplan-tile-height:${height}px`;
       body = !days.length
         ? `<div class="empty">Ingen retter planlagt.</div>`
         : config.layout === "tiles"
-          ? `<div class="tiles" style="--madplan-columns:${columns};--madplan-tile-height:${height}px">${days.map(({ day, index }) => this.tile(day, index)).join("")}</div>`
-          : `<div class="list${config.compact ? " compact" : ""}">${days.map(({ day, index }) => this.row(day, index)).join("")}</div>`;
+          ? `<div class="tiles" style="${size}--madplan-columns:${columns};${tileStyle}">${days.map(({ day, index }) => this.tile(day, index)).join("")}</div>`
+          : `<div class="list${config.compact ? " compact" : ""}" style="${size}${ratio ? `--madplan-aspect:${ratio};--madplan-thumb-height:auto` : ""}">${days.map(({ day, index }) => this.row(day, index)).join("")}</div>`;
     }
     this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card>${header}${body}</ha-card>`;
   }
