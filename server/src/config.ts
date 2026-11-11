@@ -13,6 +13,10 @@ export type Config = {
   supervisorToken: string;
   /** Absolute URL prefix under which Home Assistant can reach the bundled images (optional). */
   publicImageBase: string;
+  /** Home Assistant's config folder as mapped into the app (cards and images are installed under www/madplan). */
+  haConfigDir: string;
+  /** The app's own ingress path ("/api/hassio_ingress/<token>/"), filled in at startup; the web card embeds it. */
+  ingressUrl: string;
   version: string;
   /** IANA zone that defines "today" (TZ env, overridden at startup by Home Assistant's own zone). */
   timeZone: string;
@@ -56,6 +60,8 @@ export function loadConfig(env: Env = process.env, optionsPath = "/data/options.
       env.MADPLAN_WEB_DIR?.trim() || fileURLToPath(new URL("../../web/dist", import.meta.url)),
     supervisorToken: clean(env.SUPERVISOR_TOKEN),
     publicImageBase: clean(env.MADPLAN_PUBLIC_IMAGE_BASE).replace(/\/+$/u, ""),
+    haConfigDir: clean(env.MADPLAN_HA_CONFIG) || "/homeassistant",
+    ingressUrl: "",
     version: VERSION,
     timeZone: env.TZ && isValidTimeZone(env.TZ.trim()) ? env.TZ.trim() : Intl.DateTimeFormat().resolvedOptions().timeZone,
     planModel: env.MADPLAN_PLAN_MODEL?.trim() || "gpt-4.1-mini",

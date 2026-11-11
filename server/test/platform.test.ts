@@ -1,11 +1,12 @@
-import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createDailyBackup } from "../src/backup.ts";
 import { loadConfig } from "../src/config.ts";
 import { openDatabase } from "../src/db.ts";
-import { buildEntities, createPublisher } from "../src/ha/publisher.ts";
+import { installCardFiles } from "../src/ha/cards.ts";
+import { buildEntities, createPublisher, UPCOMING_DAYS } from "../src/ha/publisher.ts";
 import { fakeAi, NOW, setup } from "./helpers.ts";
 
 type Call = { url: string; init: RequestInit };
@@ -46,11 +47,12 @@ describe("Home Assistant publisher", () => {
     expect(http.calls.map((c) => c.url)).toEqual([
       "http://supervisor/core/api/states/sensor.madplan_i_aften",
       "http://supervisor/core/api/states/sensor.madplan_indkob",
+      "http://supervisor/core/api/states/sensor.madplan_kommende",
     ]);
     expect((http.calls[0]?.init.headers as Record<string, string>).authorization).toBe("Bearer tok");
     expect(JSON.parse(String(http.calls[0]?.init.body))).toMatchObject({ state: "Lasagne" });
     await publisher.publish();
-    expect(http.calls).toHaveLength(2);
+    expect(http.calls).toHaveLength(3);
   });
 
   it("says 'Ingen ret' without a meal, does nothing without a token, and survives failures", async () => {
@@ -69,7 +71,7 @@ describe("Home Assistant publisher", () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await createPublisher(setup({ fetch: rejected.impl, env: { SUPERVISOR_TOKEN: "t" } }).deps).publish(true);
     quiet.mockRestore();
-    expect(rejected.calls).toHaveLength(2);
+    expect(rejected.calls).toHaveLength(3);
   });
 
   it("republishes after a debounce when relevant data changes", async () => {
@@ -80,16 +82,43 @@ describe("Home Assistant publisher", () => {
       const publisher = createPublisher(deps, 100);
       publisher.start();
       await vi.advanceTimersByTimeAsync(0);
-      expect(http.calls).toHaveLength(2);
+      expect(http.calls).toHaveLength(3);
       await json("PUT", "meals/2026-11-09", { dishId: "pizza" });
       await json("PUT", "meals/2026-11-09", { dishId: "tacos" });
       await vi.advanceTimersByTimeAsync(150);
-      expect(http.calls.length).toBeGreaterThanOrEqual(4);
+      expect(http.calls.length).toBeGreaterThanOrEqual(5);
       expect(http.calls.filter((c) => c.url.endsWith("i_aften")).at(-1)?.init.body).toContain("Tacos");
       publisher.stop();
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("dashboard cards", () => {
+  it("publishes the coming days with pictures, skipped days and the ingress path", async () => {
+    const { json, deps } = setup({ config: { publicImageBase: "/local/madplan", ingressUrl: "/api/hassio_ingress/abc/" } });
+    await json("PUT", "meals/2026-11-09", { dishId: "lasagne" });
+    await json("PUT", "meals/2026-11-11", { dishId: "tacos", note: "Gæster" });
+    const upcoming = buildEntities(deps).find((entity) => entity.entityId === "sensor.madplan_kommende");
+    expect(upcoming?.state).toBe("2");
+    const days = upcoming?.attributes.days as Record<string, unknown>[];
+    expect(days).toHaveLength(UPCOMING_DAYS);
+    expect(days[0]).toMatchObject({ date: "2026-11-09", weekday: "mandag", dish: "Lasagne", picture: "/local/madplan/images/dishes/lasagne.jpg" });
+    expect(days[1]).toEqual({ date: "2026-11-10", weekday: "tirsdag" });
+    expect(days[2]).toMatchObject({ dish_id: "tacos", note: "Gæster" });
+    expect(upcoming?.attributes.ingress_url).toBe("/api/hassio_ingress/abc/");
+  });
+
+  it("installs the card and dish photos into the mapped config folder", () => {
+    const ha = mkdtempSync(join(tmpdir(), "madplan-ha-"));
+    const web = mkdtempSync(join(tmpdir(), "madplan-webdist-"));
+    mkdirSync(join(web, "images", "dishes"), { recursive: true });
+    writeFileSync(join(web, "images", "dishes", "lasagne.jpg"), "jpg");
+    expect(installCardFiles({ haConfigDir: join(ha, "mangler"), webDir: web })).toBe(false);
+    expect(installCardFiles({ haConfigDir: ha, webDir: web })).toBe(true);
+    expect(readFileSync(join(ha, "www", "madplan", "madplan-cards.js"), "utf8")).toContain("madplan-upcoming-card");
+    expect(existsSync(join(ha, "www", "madplan", "images", "dishes", "lasagne.jpg"))).toBe(true);
   });
 });
 

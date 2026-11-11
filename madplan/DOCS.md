@@ -53,12 +53,48 @@ Importen virker kun i en **tom database**, så gør det, før du begynder at bru
 
 ## Sensorer i Home Assistant
 
-Madplan opretter to sensorer, som holdes opdateret automatisk (også ved midnat, når dagen skifter):
+Madplan opretter tre sensorer, som holdes opdateret automatisk (også ved midnat, når dagen skifter):
 
 | Sensor | Værdi | Attributter |
 | --- | --- | --- |
 | `sensor.madplan_i_aften` | Navnet på aftenens ret, eller "Ingen ret" | `date`, `dish_id`, `prep_minutes`, `entity_picture` |
 | `sensor.madplan_indkob` | Antal varer, der mangler at blive købt | `estimated_price_dkk`, `from`, `to` |
+| `sensor.madplan_kommende` | Antal planlagte retter de næste 14 dage | `days` (liste med `date`, `weekday`, `dish`, `dish_id`, `prep_minutes`, `picture`, `note`, `skipped`), `ingress_url` |
+
+## Madplan-kort til dashboards
+
+Appen installerer selv to dashboard-kort: filen lægges i `www/madplan/madplan-cards.js` i Home Assistants konfigurationsmappe (sammen med rettenes billeder) og tilføjes som ressource under **Indstillinger → Dashboards → Ressourcer**. Genindlæs browseren efter første start. Bruger du dashboards i YAML-tilstand, så tilføj ressourcen selv:
+
+```yaml
+lovelace:
+  resources:
+    - url: /local/madplan/madplan-cards.js
+      type: module
+```
+
+Kortene findes i kortvælgeren under "Madplan".
+
+### Kommende dages retter
+
+```yaml
+type: custom:madplan-upcoming-card
+days: 7            # antal dage (højst 14)
+title: Aftensmad   # tom tekst ("") skjuler overskriften
+show_images: true
+show_today: true   # false starter fra i morgen
+hide_empty: false  # true skjuler dage uden ret
+compact: false     # mindre rækker
+```
+
+### Hele appen i et kort
+
+```yaml
+type: custom:madplan-app-card
+view: uge          # uge, indkob, retter, planlaeg eller indstillinger
+height: 640px
+```
+
+Kortet viser Madplan-appen gennem Home Assistants ingress, ligesom i sidemenuen. Home Assistant tillader det kun for administratorer; andre brugere ser en besked i stedet.
 
 ### Kort på dashboardet
 

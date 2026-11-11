@@ -1,6 +1,7 @@
 /** Publishes Madplan state as Home Assistant sensor entities through the Supervisor's Core API proxy. */
 import { msUntilMidnightInZone } from "../timezone.ts";
-import type { ChangeTopic } from "@madplan/domain";
+import { addDaysToKey, weekdayName } from "@madplan/domain";
+import type { ChangeTopic, Dish } from "@madplan/domain";
 import type { Deps } from "../deps.ts";
 import { currentShoppingList, snapshot } from "../state.ts";
 
@@ -9,14 +10,20 @@ const RELEVANT: readonly ChangeTopic[] = ["meals", "dishes", "shopping", "settin
 
 export type EntityState = { entityId: string; state: string; attributes: Record<string, unknown> };
 
+/** Days shown by sensor.madplan_kommende (and the upcoming-dishes card). */
+export const UPCOMING_DAYS = 14;
+
+function pictureOf(deps: Deps, dish: Dish | undefined): string | undefined {
+  return dish?.imageKey && deps.config.publicImageBase
+    ? `${deps.config.publicImageBase}/images/dishes/${dish.imageKey}.jpg`
+    : dish?.imageUrl;
+}
+
 export function buildEntities(deps: Deps): EntityState[] {
   const state = snapshot(deps);
   const meal = state.meals[state.today];
   const dish = meal && !meal.skipped ? state.dishes.find((candidate) => candidate.id === meal.dishId) : undefined;
-  const picture =
-    dish?.imageKey && deps.config.publicImageBase
-      ? `${deps.config.publicImageBase}/images/dishes/${dish.imageKey}.jpg`
-      : dish?.imageUrl;
+  const picture = pictureOf(deps, dish);
   const tonight: EntityState = {
     entityId: "sensor.madplan_i_aften",
     state: dish?.name ?? "Ingen ret",
@@ -41,7 +48,32 @@ export function buildEntities(deps: Deps): EntityState[] {
       to: list.to,
     },
   };
-  return [tonight, shopping];
+  const days = Array.from({ length: UPCOMING_DAYS }, (_, offset) => {
+    const date = addDaysToKey(state.today, offset);
+    const planned = state.meals[date];
+    const found = planned && !planned.skipped ? state.dishes.find((candidate) => candidate.id === planned.dishId) : undefined;
+    const image = pictureOf(deps, found);
+    return {
+      date,
+      weekday: weekdayName(date),
+      ...(planned?.skipped ? { skipped: true } : {}),
+      ...(found ? { dish_id: found.id, dish: found.name, prep_minutes: found.prepMinutes } : {}),
+      ...(found && image ? { picture: image } : {}),
+      ...(planned?.note ? { note: planned.note } : {}),
+    };
+  });
+  const upcoming: EntityState = {
+    entityId: "sensor.madplan_kommende",
+    state: String(days.filter((day) => day.dish_id).length),
+    attributes: {
+      friendly_name: "Madplan kommende dage",
+      unit_of_measurement: "retter",
+      icon: "mdi:calendar-month-outline",
+      days,
+      ...(deps.config.ingressUrl ? { ingress_url: deps.config.ingressUrl } : {}),
+    },
+  };
+  return [tonight, shopping, upcoming];
 }
 
 export type Publisher = {

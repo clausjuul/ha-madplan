@@ -6,6 +6,7 @@ import { loadConfig } from "./config.ts";
 import { openDatabase } from "./db.ts";
 import { Jobs } from "./deps.ts";
 import type { Deps } from "./deps.ts";
+import { setupCards } from "./ha/cards.ts";
 import { createPublisher } from "./ha/publisher.ts";
 import { Repo } from "./repo.ts";
 import { failInterruptedDrafts } from "./services/drafts.ts";
@@ -19,6 +20,8 @@ if (config.supervisorToken) {
   else console.warn(`Kunne ikke læse tidszone fra Home Assistant; bruger ${config.timeZone}`);
 }
 console.log(`Tidszone: ${config.timeZone}`);
+// Before the publisher starts, so entity pictures point at /local/madplan and the ingress path is known.
+await setupCards(config);
 const db = openDatabase(config.dbPath);
 const repo = new Repo(db);
 if (failInterruptedDrafts(repo) > 0) console.warn("Et afbrudt planudkast blev markeret som fejlet.");
