@@ -1,5 +1,14 @@
 # Ændringer
 
+## 0.3.0
+
+- ci: install Playwright's Chromium without apt dependencies
+- fix(ci): keep package versions in step with the add-on version
+- feat: weekly meal plans from Danish food sites
+- refactor(web): use React Router for routing
+- fix(web): Assist input on one row between mic and send
+- fix(web): Assist input collapsed to a sliver
+
 ## 0.2.0
 
 - ci: release automatically on every push to main

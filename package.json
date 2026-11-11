@@ -1,10 +1,14 @@
 {
   "name": "madplan",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "license": "MIT",
   "type": "module",
-  "workspaces": ["domain", "server", "web"],
+  "workspaces": [
+    "domain",
+    "server",
+    "web"
+  ],
   "scripts": {
     "dev:server": "npm run dev -w server",
     "test": "npm run test --workspaces --if-present",
