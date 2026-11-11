@@ -84,6 +84,9 @@ show_images: true
 show_today: true   # false starter fra i morgen
 hide_empty: false  # true skjuler dage uden ret
 compact: false     # mindre rækker
+layout: list       # list, eller tiles: billeder med teksten oven på
+columns: 2         # kolonner med layout: tiles (1-4)
+tile_height: 140   # billedhøjde i px med layout: tiles
 ```
 
 ### Hele appen i et kort

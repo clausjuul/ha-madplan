@@ -6,7 +6,7 @@
  *
  * Plain JS without dependencies, so it is served as-is.
  */
-const VERSION = "2";
+const VERSION = "3";
 const DEFAULT_ENTITY = "sensor.madplan_kommende";
 
 /*
@@ -18,6 +18,15 @@ const UPCOMING_SCHEMA = [
   { name: "title", selector: { text: {} } },
   { name: "entity", selector: ENTITY_SELECTOR },
   { name: "days", selector: { number: { min: 1, max: 14, mode: "slider" } } },
+  { name: "layout", selector: { select: { mode: "box", options: [{ value: "list", label: "Liste" }, { value: "tiles", label: "Billeder med tekst" }] } } },
+  {
+    type: "grid",
+    name: "",
+    schema: [
+      { name: "columns", selector: { number: { min: 1, max: 4, mode: "box" } } },
+      { name: "tile_height", selector: { number: { min: 60, max: 400, step: 10, mode: "box", unit_of_measurement: "px" } } },
+    ],
+  },
   {
     type: "grid",
     name: "",
@@ -48,7 +57,10 @@ const LABELS = {
   show_images: "Vis billeder",
   show_today: "Medtag i dag",
   hide_empty: "Skjul dage uden ret",
-  compact: "Kompakt",
+  compact: "Kompakt (liste)",
+  layout: "Layout",
+  columns: "Kolonner (billeder)",
+  tile_height: "Billedhøjde",
   view: "Visning",
   height: "Højde (f.eks. 640px eller auto)",
 };
@@ -101,7 +113,7 @@ class MadplanEditor extends HTMLElement {
   }
 }
 
-const UPCOMING_DEFAULTS = { title: "Madplan", entity: DEFAULT_ENTITY, days: 7, show_images: true, show_today: true, hide_empty: false, compact: false };
+const UPCOMING_DEFAULTS = { title: "Madplan", entity: DEFAULT_ENTITY, days: 7, show_images: true, show_today: true, hide_empty: false, compact: false, layout: "list", columns: 2, tile_height: 140 };
 const APP_DEFAULTS = { entity: DEFAULT_ENTITY, view: "uge", height: "640px" };
 
 class MadplanUpcomingCardEditor extends MadplanEditor {
@@ -131,13 +143,26 @@ const STYLE = `
   .row.today { background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.1); }
   .thumb { width: 48px; height: 48px; flex: none; border-radius: 8px; object-fit: cover; background: var(--secondary-background-color); display: grid; place-items: center; color: var(--secondary-text-color); }
   .text { min-width: 0; flex: 1; }
-  .day { font-size: 0.8em; color: var(--secondary-text-color); text-transform: capitalize; }
+  .day { font-size: 0.8em; color: var(--secondary-text-color); }
+  .day::first-letter { text-transform: uppercase; }
   .dish { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dish.none { font-weight: 400; color: var(--secondary-text-color); font-style: italic; }
   .meta { font-size: 0.8em; color: var(--secondary-text-color); white-space: nowrap; }
   .empty, .warning { padding: 16px; color: var(--secondary-text-color); }
   .compact .thumb { width: 32px; height: 32px; }
   .compact .row { padding: 3px 8px; }
+  .tiles { padding: 8px 12px 12px; display: grid; gap: 8px; grid-template-columns: repeat(var(--madplan-columns, 2), minmax(0, 1fr)); }
+  .tile { position: relative; height: var(--madplan-tile-height, 140px); border-radius: var(--ha-card-border-radius, 12px); overflow: hidden; background: var(--secondary-background-color); color: #fff; }
+  .tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .tile .placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--secondary-text-color); --mdc-icon-size: 40px; opacity: 0.5; }
+  .tile .overlay { position: absolute; inset: auto 0 0 0; padding: 24px 10px 8px; background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0.35) 65%, transparent); }
+  .tile.noimg .overlay { background: none; color: var(--primary-text-color); }
+  .tile .day { color: inherit; opacity: 0.85; }
+  .tile .dish { color: inherit; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+  .tile.noimg .dish { text-shadow: none; }
+  .tile .dish.none { color: inherit; opacity: 0.8; }
+  .tile .badge { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; font-size: 0.75em; background: rgba(0,0,0,0.55); color: #fff; }
+  .tile.today { outline: 3px solid var(--primary-color); outline-offset: -3px; }
 `;
 
 function dayLabel(day, index) {
@@ -164,7 +189,12 @@ class MadplanUpcomingCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 1 + Math.ceil((this._config?.days ?? 7) * 0.8);
+    const config = this._config ?? UPCOMING_DEFAULTS;
+    if (config.layout === "tiles") {
+      const rows = Math.ceil((Number(config.days) || 7) / (Number(config.columns) || 2));
+      return 1 + Math.ceil((rows * ((Number(config.tile_height) || 140) + 8)) / 50);
+    }
+    return 1 + Math.ceil((Number(config.days) || 7) * 0.8);
   }
 
   getGridOptions() {
@@ -192,11 +222,27 @@ class MadplanUpcomingCard extends HTMLElement {
       if (!config.show_today) days = days.filter(({ index }) => index > 0);
       if (config.hide_empty) days = days.filter(({ day }) => day.dish);
       days = days.slice(0, Number(config.days) || 7);
-      body = days.length
-        ? `<div class="list${config.compact ? " compact" : ""}">${days.map(({ day, index }) => this.row(day, index)).join("")}</div>`
-        : `<div class="empty">Ingen retter planlagt.</div>`;
+      const columns = Math.min(4, Math.max(1, Number(config.columns) || 2));
+      const height = Math.max(60, Number(config.tile_height) || 140);
+      body = !days.length
+        ? `<div class="empty">Ingen retter planlagt.</div>`
+        : config.layout === "tiles"
+          ? `<div class="tiles" style="--madplan-columns:${columns};--madplan-tile-height:${height}px">${days.map(({ day, index }) => this.tile(day, index)).join("")}</div>`
+          : `<div class="list${config.compact ? " compact" : ""}">${days.map(({ day, index }) => this.row(day, index)).join("")}</div>`;
     }
     this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card>${header}${body}</ha-card>`;
+  }
+
+  tile(day, index) {
+    const image = day.picture
+      ? `<img src="${esc(day.picture)}" alt="" loading="lazy">`
+      : `<div class="placeholder"><ha-icon icon="${day.skipped ? "mdi:close" : "mdi:silverware-variant"}"></ha-icon></div>`;
+    const dish = day.dish
+      ? `<div class="dish">${esc(day.dish)}</div>`
+      : `<div class="dish none">${day.skipped ? "Ingen aftensmad" : "Ikke planlagt"}</div>`;
+    const badge = day.prep_minutes ? `<div class="badge">${esc(day.prep_minutes)} min</div>` : "";
+    const classes = `tile${index === 0 ? " today" : ""}${day.picture ? "" : " noimg"}`;
+    return `<div class="${classes}">${image}${badge}<div class="overlay"><div class="day">${esc(dayLabel(day, index))}</div>${dish}</div></div>`;
   }
 
   row(day, index) {
