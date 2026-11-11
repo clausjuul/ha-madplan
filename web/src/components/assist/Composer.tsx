@@ -20,7 +20,8 @@ export function Composer({ disabled, onSend }: Props) {
     const el = input.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    // The sheet may still be hidden or animating in, which measures 0; keep the CSS height then.
+    if (el.scrollHeight > 0) el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [text]);
 
   const submit = (): void => {
@@ -56,7 +57,7 @@ export function Composer({ disabled, onSend }: Props) {
             submit();
           }
         }}
-        className="w-full resize-none bg-transparent px-1 py-1 text-[15px] leading-snug text-ink outline-none placeholder:text-muted"
+        className="block min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-[15px] leading-snug text-ink outline-none placeholder:text-muted focus-visible:outline-none"
       />
       <div className="flex items-center gap-2">
         {speech.supported ? (
