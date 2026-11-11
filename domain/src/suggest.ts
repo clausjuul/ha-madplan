@@ -1,6 +1,6 @@
 /** Local (non-AI) suggestions. Deterministic: the same inputs and seed always give the same plan. */
 import { DISHES } from "./catalog/dishes.ts";
-import { daysBetween, parseDateKey } from "./dates.ts";
+import { daysBetween, isDateKey, parseDateKey } from "./dates.ts";
 import { dishContent, parseExclusionTerms } from "./exclusions.ts";
 import { participatingProfiles, preferenceScore } from "./profiles.ts";
 import type { DraftDay, Dish, FridgeItem, MealMap, Profile } from "./types.ts";
@@ -102,11 +102,11 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
       .filter((dish) => !conflicts(dish))
       .map((dish) => {
         const content = normalize([dish.name, dish.category, ...dish.ingredients].join(" "));
-        const matches = matchingFridgeItems(dish.ingredients, fridge);
+        const matches = matchingFridgeItems(dish.ingredients, fridge, day);
         const last = lastEaten.get(dish.id);
         const recencyScore = last ? Math.min(36, Math.max(0, daysBetween(last, day)) * 0.7) : 32;
-        const requestMatchCount = requestTerms.filter((term) => content.includes(term)).length;
-        const dayMatchCount = dayTerms.filter((term) => content.includes(term)).length;
+        const requestMatchCount = requestTerms.filter((term) => containsTerm(content, term)).length;
+        const dayMatchCount = dayTerms.filter((term) => containsTerm(content, term)).length;
         const fridayTreat =
           weekday === FRIDAY &&
           request.includes("fredag") &&
@@ -120,7 +120,7 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
           (fridayTreat && dish.favorite ? 18 : 0) +
           (fridayTreat && dish.prepMinutes >= 35 ? 5 : 0);
         const score =
-          matches.length * 18 +
+          matches.reduce((total, match) => total + fridgeMatchScore(match), 0) +
           recencyScore +
           (dish.favorite ? 7 : 0) +
           (dish.leftoverFriendly ? 3 : 0) +
@@ -159,21 +159,64 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
   });
 }
 
-function matchingFridgeItems(ingredients: readonly string[], fridge: readonly FridgeItem[]): string[] {
+export type FridgeMatch = {
+  name: string;
+  /** Days from the planned day until the item expires (negative: already expired), when known. */
+  daysLeft?: number;
+  useFirst: boolean;
+};
+
+/** Fridge items used by a dish. Soon-to-expire and "brug først" items sort first. */
+export function matchingFridgeItems(
+  ingredients: readonly string[],
+  fridge: readonly FridgeItem[],
+  day?: string,
+): FridgeMatch[] {
   return fridge
-    .map((item) => item.name)
-    .filter((name) => {
-      const item = normalize(name);
-      if (!item) return false;
+    .filter((item) => {
+      const name = normalize(item.name);
+      if (!name) return false;
       return ingredients.some((ingredient) => {
         const normalized = normalize(ingredient);
-        return normalized !== "" && (item.includes(normalized) || normalized.includes(item));
+        return normalized !== "" && (containsTerm(normalized, name) || containsTerm(name, normalized));
       });
-    });
+    })
+    .map((item): FridgeMatch => ({
+      name: item.name,
+      ...(item.expiresOn && day && isDateKey(item.expiresOn)
+        ? { daysLeft: daysBetween(day, item.expiresOn) }
+        : {}),
+      useFirst: item.useFirst === true,
+    }))
+    .sort((a, b) => fridgeMatchScore(b) - fridgeMatchScore(a));
+}
+
+/** Using an item that expires soon (or is marked "brug først") is worth much more than any fridge match. */
+export function fridgeMatchScore(match: FridgeMatch): number {
+  const { daysLeft } = match;
+  const urgency =
+    daysLeft === undefined || daysLeft < 0 ? 0 : daysLeft <= 2 ? 30 : daysLeft <= 5 ? 12 : 0;
+  return 18 + urgency + (match.useFirst ? 15 : 0);
+}
+
+/**
+ * Whether `term` occurs in `text` at the start or end of a word. Danish compounds still match
+ * ("ost" in "flødeost", "ris" in "basmatiris") but word middles do not ("ost" in "rostbøf").
+ */
+export function containsTerm(text: string, term: string): boolean {
+  if (!term) return false;
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}|${escaped}(?![\\p{L}\\p{N}])`, "u").test(text);
+}
+
+function expiryText(daysLeft: number): string {
+  if (daysLeft <= 0) return "udløber i dag";
+  if (daysLeft === 1) return "udløber i morgen";
+  return `udløber om ${daysLeft} dage`;
 }
 
 function buildReason(
-  matches: readonly string[],
+  matches: readonly FridgeMatch[],
   lastEaten: string | undefined,
   date: string,
   requestMatched: boolean,
@@ -181,7 +224,9 @@ function buildReason(
 ): string {
   if (dayRequestMatched) return "Matcher ønsket til denne dag.";
   if (requestMatched) return "Matcher ønsket, du skrev til madplanen.";
-  if (matches.length > 0) return `Bruger ${matches.slice(0, 2).join(" og ")} fra køleskabet.`;
+  const urgent = matches.find((match) => match.daysLeft !== undefined && match.daysLeft >= 0 && match.daysLeft <= 5);
+  if (urgent?.daysLeft !== undefined) return `Bruger ${urgent.name}, der ${expiryText(urgent.daysLeft)}.`;
+  if (matches.length > 0) return `Bruger ${matches.slice(0, 2).map((match) => match.name).join(" og ")} fra køleskabet.`;
   if (lastEaten) return `Ikke spist i ${Math.max(1, daysBetween(lastEaten, date))} dage.`;
   return "Giver variation i ugens retter.";
 }

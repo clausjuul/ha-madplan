@@ -64,6 +64,7 @@ export function prepare(
     dates: [...new Set([...dates, ...pinned.map((day) => day.date)])].sort(),
     meals,
     eatenDishIds: eatenOf(state).map((entry) => entry.dishId),
+    lastEaten: lastEatenByDish(eatenOf(state)),
     requiredDishIds: request.requiredDishIds,
     newDishCount: request.newDishCount,
     request: request.request,

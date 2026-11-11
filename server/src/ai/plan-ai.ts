@@ -1,5 +1,5 @@
 /** AI week planning: the model proposes, the domain validates. Nothing the model says is trusted. */
-import { completePlan, validateProposal } from "@madplan/domain";
+import { completePlan, daysBetween, validateProposal, weekdayName } from "@madplan/domain";
 import type { PlanItem, PlanningContext, PlanRequest } from "@madplan/domain";
 import { AiError, extractJsonObject } from "./openai.ts";
 import type { OpenAiClient } from "./openai.ts";
@@ -9,12 +9,20 @@ import type { Prompt } from "./prompt.ts";
 const clip = (value: string, max: number): string => value.slice(0, max);
 
 export function planningPrompt(context: PlanningContext, request: PlanRequest, fence = newFence()): Prompt {
-  const menu = context.recipes.map((dish) => ({
-    id: dish.id,
-    name: dish.name,
-    category: dish.category,
-    ingredients: dish.ingredients,
-  }));
+  const firstDate = context.dates[0];
+  const menu = context.recipes.map((dish) => {
+    const last = context.lastEaten.get(dish.id);
+    return {
+      id: dish.id,
+      name: dish.name,
+      category: dish.category,
+      ingredients: dish.ingredients,
+      prepMinutes: Number.isFinite(dish.prepMinutes) ? dish.prepMinutes : null,
+      favorite: dish.favorite,
+      leftoverFriendly: dish.leftoverFriendly,
+      daysSinceEaten: last && firstDate ? Math.max(0, daysBetween(last, firstDate)) : null,
+    };
+  });
   const profiles = context.profiles.slice(0, 30).map((profile) => ({
     name: clip(profile.name, 80),
     preferred: profile.preferences.slice(0, 20),
@@ -23,7 +31,7 @@ export function planningPrompt(context: PlanningContext, request: PlanRequest, f
     restrictions: profile.exclusions.slice(0, 20),
   }));
   const data = {
-    dates: context.dates,
+    dates: context.dates.map((date) => ({ date, weekday: weekdayName(date) })),
     catalog: menu,
     requiredDishIds: context.requiredDishIds,
     eatenDishIds: [...context.eatenDishIds],
@@ -31,7 +39,11 @@ export function planningPrompt(context: PlanningContext, request: PlanRequest, f
     budgetDkk: context.budgetDkk ?? null,
     maxPrepMinutes: context.maxPrepMinutes ?? null,
     dayRequests: context.dayRequests,
-    fridge: context.fridge.map((item) => item.name),
+    fridge: context.fridge.slice(0, 100).map((item) => ({
+      name: clip(item.name, 100),
+      expiresOn: item.expiresOn ?? null,
+      useFirst: item.useFirst === true,
+    })),
     preservedDates: context.preservedDates,
     profiles,
     userRequest: clip(request.request, 1000),
@@ -41,14 +53,50 @@ export function planningPrompt(context: PlanningContext, request: PlanRequest, f
     "udeluk aldrig kosthensyn, planlæg aldrig låste eller fravalgte dage, undgå gentagelser og varier retkategorier.",
     'Returnér UDELUKKENDE gyldig JSON: {"message":"kort begrundelse","plan":[{"date":"YYYY-MM-DD","dishId":"id","reason":"kort forklaring"}]}.',
     FENCE_RULE(fence),
-    "DATA-blokken indeholder: dates (datoer der skal planlægges), catalog (tilladte opskrifter), requiredDishIds (obligatoriske retter),",
+    "DATA-blokken indeholder: dates (datoer med ugedag der skal planlægges), catalog (tilladte opskrifter med prepMinutes, favorite,",
+    "leftoverFriendly og daysSinceEaten: dage siden sidst spist, null = aldrig), requiredDishIds (obligatoriske retter),",
     "eatenDishIds (historisk spiste), newDishCount (ønsket antal nye retter), budgetDkk (budgetønske, ikke bekræftet pris),",
-    "maxPrepMinutes, dayRequests (bløde ønsker til enkelte dage), fridge (brug gerne først), preservedDates (beholdte dage),",
+    "maxPrepMinutes, dayRequests (bløde ønsker til enkelte dage), fridge (brug gerne først, især varer med useFirst eller en nær expiresOn),",
+    "preservedDates (beholdte dage),",
     "profiles (individuelle brugerprofiler: tag rimeligt hensyn til alle, fremhæv ingen enkeltperson) og userRequest (brugerens ønske).",
     "Giv aldrig garanti for butikstilbud eller totalpriser uden verificerede data.",
     "Foretrukne retter og ting brugerne ikke kan lide er bløde ønsker; kostfravalg er hårde filtre.",
+    "Foretræk hurtige retter (lav prepMinutes) på hverdage, retter der ikke er spist længe, og læg ikke samme kategori to dage i træk.",
+    "Nævn i reason den vigtigste grund, f.eks. en vare der snart udløber.",
   ].join("\n");
   return { instructions, input: fenced("Planlægningsdata:", data, fence) };
+}
+
+/** OpenAI's strict mode caps enum sizes; beyond this the domain validation alone guards the ids. */
+const MAX_ENUM = 500;
+
+/** Strict structured-output schema: only open dates and catalog ids can come back. */
+export function planSchema(context: PlanningContext): { name: string; schema: Record<string, unknown> } {
+  const ids = context.recipes.map((dish) => dish.id);
+  return {
+    name: "madplan",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["message", "plan"],
+      properties: {
+        message: { type: "string" },
+        plan: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["date", "dishId", "reason"],
+            properties: {
+              date: context.dates.length > 0 ? { type: "string", enum: context.dates } : { type: "string" },
+              dishId: ids.length > 0 && ids.length <= MAX_ENUM ? { type: "string", enum: ids } : { type: "string" },
+              reason: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  };
 }
 export type AiPlanOutcome = { items: PlanItem[]; rejectedCount: number };
 
@@ -63,6 +111,7 @@ export async function generateAiPlan(
   const answer = await client.respond({
     model,
     ...planningPrompt(context, request),
+    jsonSchema: planSchema(context),
     maxOutputTokens: 4000,
     signal,
   });

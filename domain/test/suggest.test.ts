@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISHES, createLocalSuggestions, daysInRange, eatenHistory, lastEatenByDish } from "../src/index.ts";
+import { DISHES, containsTerm, createLocalSuggestions, daysInRange, matchingFridgeItems, eatenHistory, lastEatenByDish } from "../src/index.ts";
 import type { MealMap, SuggestionInput } from "../src/index.ts";
 import { dish, meal, profile } from "./fixtures.ts";
 
@@ -72,6 +72,28 @@ describe("createLocalSuggestions", () => {
   it("prefers dishes that use the fridge and explains it", () => {
     const result = createLocalSuggestions({ ...base, days: ["2026-11-09"], fridge: [{ name: "lasagneplader" }] });
     expect(result[0]).toMatchObject({ dishId: "lasagne", reason: "Bruger lasagneplader fra køleskabet." });
+  });
+
+  it("prefers a dish that uses a fridge item expiring soon and says so", () => {
+    const dishes = [
+      dish({ id: "a", name: "Spinatsuppe", ingredients: ["spinat"] }),
+      dish({ id: "b", name: "Kyllingepasta", ingredients: ["kylling", "pasta"] }),
+    ];
+    const result = createLocalSuggestions({
+      ...base,
+      days: ["2026-11-09"],
+      dishes,
+      fridge: [{ name: "kylling" }, { name: "pasta" }, { name: "spinat", expiresOn: "2026-11-10" }],
+    });
+    expect(result[0]).toMatchObject({ dishId: "a", reason: "Bruger spinat, der udløber i morgen." });
+  });
+
+  it("matches fridge items on word edges, not inside words", () => {
+    expect(containsTerm("flødeost", "ost")).toBe(true);
+    expect(containsTerm("500 g basmatiris", "ris")).toBe(true);
+    expect(containsTerm("rostbøf", "ost")).toBe(false);
+    expect(containsTerm("chorizo", "ris")).toBe(false);
+    expect(matchingFridgeItems(["rostbøf"], [{ name: "ost" }])).toEqual([]);
   });
 
   it("favours dishes not eaten recently and explains it", () => {

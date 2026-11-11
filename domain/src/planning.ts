@@ -2,8 +2,8 @@
 import { addDaysToKey, isDateKey } from "./dates.ts";
 import { dishAllowed } from "./exclusions.ts";
 import { participatingProfiles, preferenceScore } from "./profiles.ts";
+import { fridgeMatchScore, matchingFridgeItems } from "./suggest.ts";
 import {
-  fridgeNames,
   normalizePlanningOptions,
   preservedDaysFromRequest,
   relativeRecipeCost,
@@ -112,6 +112,8 @@ export type PlanningContextInput = {
   meals: MealMap;
   /** Dish ids that count as already tried (see eatenHistory). */
   eatenDishIds?: Iterable<string>;
+  /** dishId -> date last eaten (see lastEatenByDish). */
+  lastEaten?: ReadonlyMap<string, string>;
   requiredDishIds?: readonly string[];
   newDishCount?: number;
   request?: string;
@@ -133,6 +135,7 @@ export type PlanningContext = {
   preservedDates: string[];
   skippedDates: string[];
   eatenDishIds: Set<string>;
+  lastEaten: ReadonlyMap<string, string>;
   requiredDishIds: string[];
   newDishCount: number;
   budgetDkk: number | null;
@@ -192,6 +195,7 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
     preservedDates,
     skippedDates,
     eatenDishIds: new Set(input.eatenDishIds ?? []),
+    lastEaten: input.lastEaten ?? new Map(),
     requiredDishIds: (input.requiredDishIds ?? []).filter((id) =>
       recipes.some((dish) => dish.id === id),
     ),
@@ -317,7 +321,6 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
     categories.set(category, (categories.get(category) ?? 0) + 1);
   }
   const wanted = context.requiredDishIds.filter((id) => !used.has(id));
-  const names = fridgeNames(context.fridge);
 
   for (const date of validated.missingDates) {
     let dish = context.recipes.find((candidate) => wanted.includes(candidate.id) && !used.has(candidate.id));
@@ -326,16 +329,13 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
         plan.filter((item) => !context.eatenDishIds.has(item.dishId)).length < context.newDishCount;
       const score = (candidate: Dish): number => {
         const novel = !context.eatenDishIds.has(candidate.id) ? 1 : 0;
-        const pantry = candidate.ingredients.filter((ingredient) =>
-          names.some(
-            (name) =>
-              name.length >= 3 &&
-              ingredient.toLocaleLowerCase("da-DK").includes(name),
-          ),
-        ).length;
+        const pantry = matchingFridgeItems(candidate.ingredients, context.fridge, date).reduce(
+          (total, match) => total + fridgeMatchScore(match) / 2,
+          0,
+        );
         return (
           (needsNovel && novel ? 100 : 0) +
-          pantry * 8 -
+          pantry -
           (categories.get(candidate.category) ?? 0) * 12 -
           (context.economical || context.budgetDkk
             ? relativeRecipeCost(candidate, context.fridge) * 12

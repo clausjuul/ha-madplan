@@ -11,6 +11,8 @@ export type AiRequest = {
   maxOutputTokens?: number;
   /** Ask for a single JSON object (Responses API json_object mode). The prompt must mention JSON. */
   json?: boolean;
+  /** Structured output: the answer must match this JSON schema (strict). Takes precedence over `json`. */
+  jsonSchema?: { name: string; schema: Record<string, unknown> };
   signal?: AbortSignal;
 };
 
@@ -47,10 +49,14 @@ export function createOpenAiClient(apiKey: string, fetcher: typeof fetch = fetch
             model: request.model,
             instructions: request.instructions,
             // json_object mode requires the word "json" in the input messages; instructions do not count.
-            input: request.json ? `${request.input}\n\nSvar med ét JSON-objekt (json).` : request.input,
+            input: request.json || request.jsonSchema ? `${request.input}\n\nSvar med ét JSON-objekt (json).` : request.input,
             store: false,
             ...(request.maxOutputTokens ? { max_output_tokens: request.maxOutputTokens } : {}),
-            ...(request.json ? { text: { format: { type: "json_object" } } } : {}),
+            ...(request.jsonSchema
+              ? { text: { format: { type: "json_schema", name: request.jsonSchema.name, schema: request.jsonSchema.schema, strict: true } } }
+              : request.json
+                ? { text: { format: { type: "json_object" } } }
+                : {}),
             ...(request.webSearch
               ? { tools: [{ type: "web_search" }], tool_choice: "required" }
               : {}),
