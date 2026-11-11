@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.4.0
+
+- feat(web): "Gemt" tab for recipes saved for later
+
 ## 0.3.0
 
 - ci: install Playwright's Chromium without apt dependencies
