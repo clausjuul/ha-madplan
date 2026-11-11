@@ -1,6 +1,6 @@
 {
   "name": "@madplan/web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -17,7 +17,7 @@
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
-    "@madplan/domain": "^0.1.0",
+    "@madplan/domain": "*",
     "@tanstack/react-query": "^5.107.1",
     "lucide-react": "^1.70.0",
     "motion": "^14.11.1",

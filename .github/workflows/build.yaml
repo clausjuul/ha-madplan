@@ -77,6 +77,9 @@ jobs:
           fi
           version="${major}.${minor}.${patch}"
           sed -i -E "s/^version: \".*\"/version: \"${version}\"/" madplan/config.yaml
+          # Keep every package.json (and the lockfile) on the add-on version; version.test.ts checks this.
+          VERSION="${version}" node -e 'const fs=require("fs");for(const f of ["package.json","domain/package.json","server/package.json","web/package.json"]){const j=JSON.parse(fs.readFileSync(f,"utf8"));j.version=process.env.VERSION;fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n");}'
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           {
             echo "# Ændringer"
             echo

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ApiError, BootstrapResponse, Meal, MealMap } from "@madplan/domain";
+import { loadConfig } from "../src/config.ts";
 import { setup } from "./helpers.ts";
 
 describe("bootstrap and health", () => {
@@ -10,7 +11,7 @@ describe("bootstrap and health", () => {
     expect(data.revision).toBe(0);
     expect(data.dishes.length).toBeGreaterThan(20);
     expect(data.capabilities).toEqual({ openai: false, homeAssistantAgent: false, offers: false });
-    expect(await json("GET", "health")).toEqual({ ok: true, version: "0.1.0" });
+    expect(await json("GET", "health")).toEqual({ ok: true, version: loadConfig({}, "./none.json").version });
   });
 
   it("returns Danish JSON errors for unknown endpoints", async () => {
