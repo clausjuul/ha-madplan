@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.6.0
+
+- feat(cards): visual editors for the Madplan dashboard cards
+
 ## 0.5.0
 
 - feat: dashboard cards for upcoming dishes and the embedded app
