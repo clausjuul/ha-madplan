@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { RefreshCw, WifiOff } from "lucide-react";
 import { ApiRequestError } from "@/api/client";
 
@@ -39,8 +40,8 @@ export function OfflineBanner() {
 
 export function ImportOffer() {
   return (
-    <a
-      href="#/indstillinger"
+    <Link
+      to="/indstillinger"
       className="mx-4 mb-4 flex items-center gap-4 rounded-3xl border border-line bg-surface p-5 text-ink md:mx-0"
     >
       <span className="min-w-0 flex-1">
@@ -52,6 +53,6 @@ export function ImportOffer() {
       <span className="shrink-0 rounded-full bg-accent px-5 py-3 text-[15px] font-semibold text-on-accent">
         Importér
       </span>
-    </a>
+    </Link>
   );
 }

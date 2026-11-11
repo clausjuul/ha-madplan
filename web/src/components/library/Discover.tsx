@@ -10,7 +10,7 @@ import {
 import { useApi } from "@/api/provider";
 import { errorMessage, useDishActions } from "@/api/library-mutations";
 import { notify } from "@/lib/notify";
-import { routeHref } from "@/lib/route";
+import { useRoute } from "@/hooks/use-route";
 import { InspirationCard } from "./InspirationCard";
 
 type Cuisine = InspirationCuisine | "Alle";
@@ -27,6 +27,7 @@ const matches = (recipe: InspirationRecipe, text: string): boolean => {
 };
 
 export function Discover({ data }: { data: BootstrapResponse }) {
+  const { navigate } = useRoute();
   const api = useApi();
   const actions = useDishActions();
   const [cuisine, setCuisine] = useState<Cuisine>("Alle");
@@ -71,7 +72,7 @@ export function Discover({ data }: { data: BootstrapResponse }) {
       .importInspiration(recipe)
       .then((dish) => {
         notify(`${dish.name} er tilføjet til dine retter.`);
-        window.location.hash = routeHref({ name: "retter", dishId: dish.id });
+        navigate({ name: "retter", dishId: dish.id });
       })
       .catch((error: unknown) => notify(errorMessage(error)))
       .finally(() => setAdding(undefined));

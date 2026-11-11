@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import type { ReactNode } from "react";
 import { CalendarDays, ChevronLeft } from "lucide-react";
 import type { ShoppingList } from "@madplan/domain";
@@ -17,13 +18,13 @@ export function ShoppingHeader({ list, today, wide, onOpenRange, addField }: Pro
     <header className={`flex shrink-0 flex-col gap-3 ${wide ? "px-8 pb-5 pt-6" : "px-4 pb-3 pt-[18px]"}`}>
       <div className="flex items-center gap-2.5">
         {wide ? null : (
-          <a
-            href="#/uge"
+          <Link
+            to="/uge"
             aria-label="Tilbage til ugen"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink"
           >
             <ChevronLeft size={20} aria-hidden="true" />
-          </a>
+          </Link>
         )}
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-[26px] font-bold leading-[1.1]">Indkøb</h1>

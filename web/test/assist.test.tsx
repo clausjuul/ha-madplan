@@ -1,3 +1,4 @@
+import { MemoryRouter } from "react-router";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AssistProposal } from "@madplan/domain";
@@ -76,7 +77,7 @@ describe("proposal preview", () => {
   it("renders labels, and Udfør / Afvis call back", () => {
     const onApply = vi.fn();
     const onDismiss = vi.fn();
-    render(<ProposalCard entry={entry()} onApply={onApply} onDismiss={onDismiss} />);
+    render(<ProposalCard entry={entry()} onApply={onApply} onDismiss={onDismiss} />, { wrapper: MemoryRouter });
     expect(screen.getByText("Tilføj «Mælk» til indkøbslisten")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Udfør" }));
     fireEvent.click(screen.getByRole("button", { name: "Afvis" }));
@@ -86,10 +87,10 @@ describe("proposal preview", () => {
 
   it("shows results and the draft link after apply", () => {
     const results = [{ label: "", ok: true }, { label: "", ok: false, message: "Måltidet er låst." }, { label: "", ok: true }];
-    render(<ProposalCard entry={entry({ proposalState: "applied", results })} onApply={vi.fn()} onDismiss={vi.fn()} />);
+    render(<ProposalCard entry={entry({ proposalState: "applied", results })} onApply={vi.fn()} onDismiss={vi.fn()} />, { wrapper: MemoryRouter });
     expect(screen.queryByRole("button", { name: "Udfør" })).toBeNull();
     expect(screen.getByText("Måltidet er låst.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Åbn kladden" }).getAttribute("href")).toBe("#/planlaeg");
+    expect(screen.getByRole("link", { name: "Åbn kladden" }).getAttribute("href")).toBe("/planlaeg");
   });
 });
 

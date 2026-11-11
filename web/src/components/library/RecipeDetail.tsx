@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useState } from "react";
 import { Archive, ArrowLeft, CalendarPlus, Clock, ExternalLink, Pencil, RotateCcw, Snowflake, Soup, Users } from "lucide-react";
 import { createHistoryInsights, type BootstrapResponse, type Dish } from "@madplan/domain";
@@ -6,7 +7,8 @@ import { DishImage } from "@/components/ui/DishImage";
 import { Sheet } from "@/components/ui/Sheet";
 import { lastEatenLabel, plural } from "@/lib/library";
 import { notify } from "@/lib/notify";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
+import { useRoute } from "@/hooks/use-route";
 import { PlanDaySheet } from "./PlanDaySheet";
 
 type Props = { dish: Dish; data: BootstrapResponse; today: string; onEdit: (dish: Dish) => void };
@@ -16,6 +18,7 @@ const action =
   "flex h-12 items-center justify-center gap-2 rounded-full border border-line px-5 text-[15px] font-semibold text-ink no-underline hover:bg-raised";
 
 export function RecipeDetail({ dish, data, today, onEdit }: Props) {
+  const { navigate } = useRoute();
   const actions = useDishActions();
   const [planning, setPlanning] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -29,7 +32,7 @@ export function RecipeDetail({ dish, data, today, onEdit }: Props) {
     actions
       .archive(dish.id)
       .then(() => {
-        window.location.hash = routeHref({ name: "retter" });
+        navigate({ name: "retter" });
         notify(`${dish.name} er arkiveret. Historikken er bevaret.`, 9000, { label: "Fortryd", run: restore });
       })
       .catch((error: unknown) => notify(errorMessage(error)));
@@ -37,10 +40,10 @@ export function RecipeDetail({ dish, data, today, onEdit }: Props) {
 
   return (
     <article className="flex flex-col gap-6">
-      <a href={routeHref({ name: "retter" })} className="flex h-11 w-fit items-center gap-2 text-[15px] text-ink-2 no-underline hover:text-ink">
+      <Link to={routePath({ name: "retter" })} className="flex h-11 w-fit items-center gap-2 text-[15px] text-ink-2 no-underline hover:text-ink">
         <ArrowLeft size={18} aria-hidden="true" />
         Alle retter
-      </a>
+      </Link>
 
       {/* Split card on tablets (photo capped at 520px so small bundled photos stay sharp), full-width photo on phones. */}
       <header className="overflow-hidden rounded-[28px] bg-surface md:grid md:grid-cols-[minmax(0,520px)_minmax(0,1fr)] md:grid-rows-[1fr_auto]">
@@ -86,9 +89,9 @@ export function RecipeDetail({ dish, data, today, onEdit }: Props) {
         </div>
       ) : (
         <div className="flex flex-wrap gap-2.5">
-          <a href={routeHref({ name: "lav-mad", dishId: dish.id })} className="flex h-12 items-center rounded-full bg-accent px-7 text-[15px] font-semibold text-on-accent no-underline">
+          <Link to={routePath({ name: "lav-mad", dishId: dish.id })} className="flex h-12 items-center rounded-full bg-accent px-7 text-[15px] font-semibold text-on-accent no-underline">
             Lav mad
-          </a>
+          </Link>
           <button type="button" onClick={() => setPlanning(true)} className={action}>
             <CalendarPlus size={18} aria-hidden="true" />
             Planlæg

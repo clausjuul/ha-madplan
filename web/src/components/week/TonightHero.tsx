@@ -1,7 +1,8 @@
+import { Link } from "react-router";
 import { ArrowLeftRight, ChefHat, Clock, MoreHorizontal } from "lucide-react";
 import { formatFullDate } from "@madplan/domain";
 import { DishImage } from "@/components/ui/DishImage";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 import type { DayModel } from "@/lib/week-model";
 import type { DayHandlers } from "./week-types";
 
@@ -89,12 +90,12 @@ export function TonightHero({ day, servings, handlers, wide }: Props) {
               {dish.prepMinutes} min · til {servings}
             </div>
           </div>
-          <a
-            href={routeHref({ name: "lav-mad", dishId: dish.id })}
+          <Link
+            to={routePath({ name: "lav-mad", dishId: dish.id })}
             className="pointer-events-auto flex h-11 items-center rounded-full bg-ink px-[18px] text-[15px] font-semibold text-ground no-underline"
           >
             Lav mad
-          </a>
+          </Link>
         </div>
       </section>
     );
@@ -134,13 +135,13 @@ export function TonightHero({ day, servings, handlers, wide }: Props) {
         <ReasonLine day={day} />
         <div className="flex-1" />
         <div className="flex gap-2.5">
-          <a
-            href={routeHref({ name: "lav-mad", dishId: dish.id })}
+          <Link
+            to={routePath({ name: "lav-mad", dishId: dish.id })}
             className="flex h-[52px] items-center gap-2.5 whitespace-nowrap rounded-full bg-ink px-5 text-base font-semibold text-ground no-underline"
           >
             <ChefHat size={20} aria-hidden="true" />
             Lav mad
-          </a>
+          </Link>
           <button
             type="button"
             onClick={() => handlers.openPicker(day.date)}

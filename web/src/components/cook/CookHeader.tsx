@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { ListChecks, Sun, SunDim, X } from "lucide-react";
 import type { WakeStatus } from "@/hooks/use-wake-lock";
 import type { TimerSummary } from "@/hooks/use-step-timers";
@@ -53,13 +54,13 @@ export function CookHeader({ title, wake, timers, wide, onIngredients, onGoToSte
           <ListChecks size={20} aria-hidden="true" />
         </button>
       )}
-      <a
-        href="#/uge"
+      <Link
+        to="/uge"
         aria-label="Afslut kogetilstand"
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink md:h-12 md:w-12"
       >
         <X size={22} aria-hidden="true" />
-      </a>
+      </Link>
     </header>
   );
 }

@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import {
   Calendar,
   Check,
@@ -9,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 import { closeAssist } from "@/lib/assist-store";
 import { previewLines, startedPlanDraft, type ChatEntry, type PreviewKind } from "@/lib/assist-model";
 
@@ -72,13 +73,13 @@ export function ProposalCard({ entry, onApply, onDismiss }: Props) {
       {state === "dismissed" ? <p className="m-0 text-[13px] text-muted">Afvist. Der er ikke ændret noget.</p> : null}
       {state === "expired" ? <p className="m-0 text-[13px] text-muted">Forslaget er udløbet. Bed Assist om det igen.</p> : null}
       {entry.results && startedPlanDraft(proposal, entry.results) ? (
-        <a
-          href={routeHref({ name: "planlaeg" })}
+        <Link
+          to={routePath({ name: "planlaeg" })}
           onClick={closeAssist}
           className="flex h-11 items-center justify-center rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent no-underline"
         >
           Åbn kladden
-        </a>
+        </Link>
       ) : null}
     </section>
   );

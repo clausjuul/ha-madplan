@@ -1,5 +1,6 @@
+import { Link } from "react-router";
 import { Check, X } from "lucide-react";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 
 export type PlanStep = 1 | 2 | 3;
 const STEPS: { step: PlanStep; label: string }[] = [
@@ -21,13 +22,13 @@ type Props = {
 export function PlanHeader({ title, step, reached, onStep, saved }: Props) {
   return (
     <header className="flex h-16 shrink-0 items-center gap-2.5 border-b border-hairline px-4 md:h-[72px] md:gap-5 md:px-8">
-      <a
-        href={routeHref({ name: "uge" })}
+      <Link
+        to={routePath({ name: "uge" })}
         aria-label="Luk og gå tilbage til ugen"
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink"
       >
         <X size={20} aria-hidden="true" />
-      </a>
+      </Link>
       <strong className="font-display shrink-0 whitespace-nowrap text-lg font-bold md:text-[22px]">{title}</strong>
       <ol aria-label="Trin" className="m-0 flex list-none items-center gap-2 p-0 text-sm md:ml-3">
         {STEPS.map(({ step: number, label }, index) => {

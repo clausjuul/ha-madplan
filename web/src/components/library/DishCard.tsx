@@ -1,15 +1,16 @@
+import { Link } from "react-router";
 import { Clock, Heart } from "lucide-react";
 import type { Dish } from "@madplan/domain";
 import { DishImage } from "@/components/ui/DishImage";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 
 type Props = { dish: Dish; lastLabel: string; tried: boolean };
 
 /** Photo-led dish card; links to the recipe. */
 export function DishCard({ dish, lastLabel, tried }: Props) {
   return (
-    <a
-      href={routeHref({ name: "retter", dishId: dish.id })}
+    <Link
+      to={routePath({ name: "retter", dishId: dish.id })}
       className="group flex flex-col overflow-hidden rounded-3xl bg-surface text-ink no-underline transition-colors hover:bg-raised"
     >
       <div className="relative">
@@ -40,6 +41,6 @@ export function DishCard({ dish, lastLabel, tried }: Props) {
           <span className={tried ? "" : "text-new"}>{lastLabel}</span>
         </p>
       </div>
-    </a>
+    </Link>
   );
 }

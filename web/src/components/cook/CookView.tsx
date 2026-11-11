@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { profileServings, targetServings } from "@madplan/domain";
@@ -5,6 +6,7 @@ import { useBootstrap } from "@/api/queries";
 import { useIsWide } from "@/hooks/use-media";
 import { useStepTimers } from "@/hooks/use-step-timers";
 import { useWakeLock } from "@/hooks/use-wake-lock";
+import { useRoute } from "@/hooks/use-route";
 import { clampServings, scaledLines } from "@/lib/cook-model";
 import { detectTimer } from "@/lib/step-timers";
 import { DishImage } from "@/components/ui/DishImage";
@@ -19,6 +21,7 @@ const SWIPE_PX = 60;
 
 /** `#/lav-mad/<dishId>` – full-screen cooking mode, one step at a time. */
 export function CookView({ dishId }: { dishId: string }) {
+  const { navigate } = useRoute();
   const bootstrap = useBootstrap();
   const wide = useIsWide();
   const wake = useWakeLock();
@@ -43,7 +46,7 @@ export function CookView({ dishId }: { dishId: string }) {
     [steps.length],
   );
   const finish = (): void => {
-    window.location.hash = "#/uge";
+    navigate({ name: "uge" });
   };
   const forward = (): void => (step >= last ? finish() : go(1));
 
@@ -70,9 +73,9 @@ export function CookView({ dishId }: { dishId: string }) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
         <h1 className="font-display text-2xl font-bold">Retten blev ikke fundet</h1>
-        <a href="#/uge" className="flex h-12 items-center rounded-full border border-line px-6 font-semibold text-ink no-underline">
+        <Link to="/uge" className="flex h-12 items-center rounded-full border border-line px-6 font-semibold text-ink no-underline">
           Tilbage til ugen
-        </a>
+        </Link>
       </div>
     );
   }

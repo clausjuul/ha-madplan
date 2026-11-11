@@ -12,7 +12,7 @@ import {
   type DishErrors,
 } from "@/lib/dish-form";
 import { notify } from "@/lib/notify";
-import { routeHref } from "@/lib/route";
+import { useRoute } from "@/hooks/use-route";
 import { ImageField } from "./ImageField";
 
 type Props = {
@@ -35,6 +35,7 @@ function Flag({ label, checked, onChange }: { label: string; checked: boolean; o
 }
 
 export function DishFormSheet({ open, dish, categories, onClose }: Props) {
+  const { navigate } = useRoute();
   const actions = useDishActions();
   const [draft, setDraft] = useState<DishDraft>(emptyDraft);
   const [errors, setErrors] = useState<DishErrors>({});
@@ -63,7 +64,7 @@ export function DishFormSheet({ open, dish, categories, onClose }: Props) {
       const saved = dish ? await actions.update(dish.id, input) : await actions.create(input);
       notify(dish ? "Ændringerne er gemt." : `${saved.name} er tilføjet til dine retter.`);
       onClose();
-      if (!dish) window.location.hash = routeHref({ name: "retter", dishId: saved.id });
+      if (!dish) navigate({ name: "retter", dishId: saved.id });
     } catch (error) {
       setServerError(errorMessage(error));
     } finally {

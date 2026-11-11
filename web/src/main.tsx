@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { HashRouter } from "react-router";
 import { App } from "./App";
 import { ApiProvider, createDefaultClient } from "./api/provider";
 import "./index.css";
@@ -17,7 +18,9 @@ createRoot(container).render(
   <StrictMode>
     <ApiProvider client={client}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <HashRouter>
+          <App />
+        </HashRouter>
       </QueryClientProvider>
     </ApiProvider>
   </StrictMode>,

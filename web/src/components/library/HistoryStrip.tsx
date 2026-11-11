@@ -1,7 +1,8 @@
+import { Link } from "react-router";
 import type { DishHistoryStat } from "@madplan/domain";
 import { DishImage } from "@/components/ui/DishImage";
 import { lastEatenLabel, plural } from "@/lib/library";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 
 type Props = { mostEaten: DishHistoryStat[]; longestSince: DishHistoryStat[]; today: string };
 
@@ -13,8 +14,8 @@ function Row({ title, stats, detail }: { title: string; stats: DishHistoryStat[]
       <ul className="no-scrollbar m-0 flex list-none gap-2 overflow-x-auto p-0">
         {stats.map((stat) => (
           <li key={stat.dish.id} className="shrink-0">
-            <a
-              href={routeHref({ name: "retter", dishId: stat.dish.id })}
+            <Link
+              to={routePath({ name: "retter", dishId: stat.dish.id })}
               className="flex h-14 items-center gap-2.5 rounded-full bg-surface pl-1.5 pr-4 text-ink no-underline hover:bg-raised"
             >
               <DishImage dish={stat.dish} width={44} height={44} decorative className="h-11 w-11 rounded-full" />
@@ -22,7 +23,7 @@ function Row({ title, stats, detail }: { title: string; stats: DishHistoryStat[]
                 <span className="max-w-[150px] truncate text-[14px] font-semibold">{stat.dish.name}</span>
                 <span className="text-xs text-muted">{detail(stat)}</span>
               </span>
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { Clock, Link2 } from "lucide-react";
 import type { Dish } from "@madplan/domain";
@@ -6,7 +7,7 @@ import { Field, inputClass } from "@/components/ui/Field";
 import { Sheet } from "@/components/ui/Sheet";
 import { plural } from "@/lib/library";
 import { notify } from "@/lib/notify";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 
 type Props = { open: boolean; onClose: () => void; onEdit: (dish: Dish) => void };
 
@@ -79,13 +80,13 @@ export function ImportUrlSheet({ open, onClose, onEdit }: Props) {
             <button type="button" onClick={() => onEdit(saved)} className="h-12 flex-1 rounded-full border border-line px-5 text-[15px] font-semibold text-ink">
               Redigér først
             </button>
-            <a
-              href={routeHref({ name: "retter", dishId: saved.id })}
+            <Link
+              to={routePath({ name: "retter", dishId: saved.id })}
               onClick={onClose}
               className="flex h-12 flex-1 items-center justify-center rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent no-underline"
             >
               Åbn ret
-            </a>
+            </Link>
           </div>
         </div>
       ) : (

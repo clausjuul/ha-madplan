@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useShoppingActions } from "@/api/shopping-mutations";
@@ -146,12 +147,12 @@ function EmptyState() {
         Der er ikke planlagt aftensmad i perioden. Planlæg nogle retter, så fylder listen selv op, eller tilføj varer
         selv.
       </p>
-      <a
-        href="#/uge"
+      <Link
+        to="/uge"
         className="flex h-12 items-center rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent no-underline"
       >
         Gå til ugen
-      </a>
+      </Link>
     </div>
   );
 }

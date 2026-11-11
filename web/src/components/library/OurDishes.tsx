@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useMemo, useState } from "react";
 import { Link2, Plus, RotateCcw, Search } from "lucide-react";
 import { createHistoryInsights, type BootstrapResponse } from "@madplan/domain";
@@ -12,7 +13,7 @@ import {
   type SortKey,
 } from "@/lib/library";
 import { notify } from "@/lib/notify";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 import { DishCard } from "./DishCard";
 import { HistoryStrip } from "./HistoryStrip";
 
@@ -137,9 +138,9 @@ export function OurDishes({ data, today, onCreate, onImportUrl }: Props) {
               {archived.map((dish) => (
                 <li key={dish.id} className="flex items-center gap-3 rounded-2xl px-2 py-1.5">
                   <DishImage dish={dish} width={44} height={44} decorative className="h-11 w-11 rounded-xl" />
-                  <a href={routeHref({ name: "retter", dishId: dish.id })} className="min-w-0 flex-1 truncate text-[15px] text-ink no-underline">
+                  <Link to={routePath({ name: "retter", dishId: dish.id })} className="min-w-0 flex-1 truncate text-[15px] text-ink no-underline">
                     {dish.name}
-                  </a>
+                  </Link>
                   <button type="button" onClick={() => restore(dish.id)} className="flex h-11 items-center gap-1.5 rounded-full border border-line px-4 text-sm font-semibold text-accent">
                     <RotateCcw size={15} aria-hidden="true" />
                     Gendan

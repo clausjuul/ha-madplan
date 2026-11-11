@@ -1,7 +1,8 @@
+import { Link } from "react-router";
 import { Clock } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { DishImage } from "@/components/ui/DishImage";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 import type { DayModel } from "@/lib/week-model";
 
 type Props = { day: DayModel | null; onClose: () => void };
@@ -43,12 +44,12 @@ export function RecipeSheet({ day, onClose }: Props) {
               </ol>
             </section>
           ) : null}
-          <a
-            href={routeHref({ name: "lav-mad", dishId: dish.id })}
+          <Link
+            to={routePath({ name: "lav-mad", dishId: dish.id })}
             className="flex h-12 items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-ground no-underline"
           >
             Lav mad
-          </a>
+          </Link>
         </div>
       ) : null}
     </Sheet>

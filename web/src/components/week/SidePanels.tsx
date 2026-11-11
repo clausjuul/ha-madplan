@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { ShoppingCart } from "lucide-react";
 import { formatPrice, type FridgeItem, type ShoppingList } from "@madplan/domain";
 import { shoppingUntilLabel, useFirstItems } from "@/lib/week-model";
@@ -5,8 +6,8 @@ import { shoppingUntilLabel, useFirstItems } from "@/lib/week-model";
 export function ShoppingSummary({ list }: { list: ShoppingList | undefined }) {
   const count = list ? list.items.length - list.checkedCount : 0;
   return (
-    <a
-      href="#/indkob"
+    <Link
+      to="/indkob"
       className="flex min-h-[132px] flex-1 flex-col gap-1.5 rounded-3xl bg-surface px-[22px] py-5 text-ink no-underline"
     >
       <span className="flex items-center gap-2 text-sm text-muted">
@@ -35,7 +36,7 @@ export function ShoppingSummary({ list }: { list: ShoppingList | undefined }) {
       )}
       <span className="flex-1" />
       <span className="text-[15px] font-semibold text-accent">Åbn indkøbslisten →</span>
-    </a>
+    </Link>
   );
 }
 

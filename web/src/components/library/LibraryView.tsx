@@ -1,10 +1,11 @@
+import { Link } from "react-router";
 import { useMemo, useState } from "react";
 import type { Dish } from "@madplan/domain";
 import { useBootstrap } from "@/api/queries";
 import { ErrorState } from "@/components/ui/StatusViews";
 import { useToday } from "@/hooks/use-today";
 import { categoriesOf } from "@/lib/library";
-import { routeHref } from "@/lib/route";
+import { routePath } from "@/lib/route";
 import { Discover } from "./Discover";
 import { DishFormSheet } from "./DishFormSheet";
 import { ImportUrlSheet } from "./ImportUrlSheet";
@@ -39,19 +40,19 @@ export function LibraryView({ dishId, tab }: Props) {
     ) : (
       <div className="rounded-3xl bg-surface p-10 text-center">
         <p className="mb-4 text-[15px] text-ink-2">Retten findes ikke (længere).</p>
-        <a href={routeHref({ name: "retter" })} className="text-accent">Tilbage til retterne</a>
+        <Link to={routePath({ name: "retter" })} className="text-accent">Tilbage til retterne</Link>
       </div>
     );
   } else {
     body = (
       <>
         <nav role="tablist" aria-label="Retter" className="flex w-fit gap-1 rounded-full bg-surface p-1">
-          <a role="tab" aria-selected={tab !== "opdag"} href={routeHref({ name: "retter" })} className={tabClass(tab !== "opdag")}>
+          <Link role="tab" aria-selected={tab !== "opdag"} to={routePath({ name: "retter" })} className={tabClass(tab !== "opdag")}>
             Vores retter
-          </a>
-          <a role="tab" aria-selected={tab === "opdag"} href={routeHref({ name: "retter", tab: "opdag" })} className={tabClass(tab === "opdag")}>
+          </Link>
+          <Link role="tab" aria-selected={tab === "opdag"} to={routePath({ name: "retter", tab: "opdag" })} className={tabClass(tab === "opdag")}>
             Opdag nyt
-          </a>
+          </Link>
         </nav>
         {tab === "opdag" ? (
           <Discover data={data} />

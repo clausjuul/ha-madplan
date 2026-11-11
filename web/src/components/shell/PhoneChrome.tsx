@@ -1,6 +1,7 @@
+import { Link } from "react-router";
 import { BookOpen, CalendarDays, MessageCircle, ShoppingCart, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
-import { navFor, routeHref, type NavName, type Route } from "@/lib/route";
+import { navFor, routePath, type NavName, type Route } from "@/lib/route";
 import { WeekSwitcher, weekTitle } from "./WeekSwitcher";
 import { openAssist } from "@/lib/assist-store";
 
@@ -45,9 +46,9 @@ export function BottomNav({ route }: { route: Route }) {
       style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
     >
       {ITEMS.map((item) => (
-        <a
+        <Link
           key={item.name}
-          href={routeHref({ name: item.name } as Route)}
+          to={routePath({ name: item.name } as Route)}
           aria-current={active === item.name ? "page" : undefined}
           className={`flex flex-col items-center justify-center gap-1 text-xs no-underline ${
             active === item.name ? "font-semibold text-accent" : "font-medium text-muted"
@@ -55,7 +56,7 @@ export function BottomNav({ route }: { route: Route }) {
         >
           {item.icon}
           {item.label}
-        </a>
+        </Link>
       ))}
     </nav>
   );
