@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.10.0
+
+- feat(assist): proposal memory, strict schema, richer context, new actions, partial apply, undo, streaming and voice commands
+
 ## 0.9.0
 
 - feat(planning): alternatives sheet for "Lav om" and meal ratings that steer suggestions
