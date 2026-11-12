@@ -182,7 +182,10 @@ export type WeeklyPlansResponse = {
 // POST   api/assist                       body AssistRequest -> AssistResponse
 //          503 with a Danish message when neither OpenAI nor the Home Assistant agent is available.
 // POST   api/assist/proposals/:id/apply                       -> AssistApplyResult (404 if unknown or expired)
+//          body AssistApplyRequest (optional): apply only the chosen actions
 // DELETE api/assist/proposals/:id                             -> 204 (404 if unknown or expired)
+// POST   api/assist/stream                body AssistRequest -> NDJSON lines of AssistStreamEvent
+// POST   api/assist/undo/:undoId                              -> AssistUndoResult (404 when gone, 409 when data changed since)
 // The assistant only ever PROPOSES typed actions. Nothing changes until the user applies the proposal,
 // and every action is validated again at apply time against the then-current data.
 export type AssistChatMessage = { role: "user" | "assistant"; content: string };
@@ -219,6 +222,10 @@ export type AssistAction =
   | { type: "addShoppingExtra"; item: string; label: string }
   | { type: "addFridgeItem"; name: string; quantity?: string; expiresOn?: string; label: string }
   | { type: "removeFridgeItem"; name: string; label: string }
+  | { type: "removeShoppingExtra"; item: string; label: string }
+  | { type: "setMealNote"; date: string; note: string; label: string }
+  | { type: "skipMeal"; date: string; skipped: boolean; label: string }
+  | { type: "rateMeal"; date: string; rating: MealRating | null; label: string }
   | { type: "addGlobalExclusion"; term: string; label: string }
   | {
       type: "updateProfile";
@@ -244,7 +251,23 @@ export type AssistProposal = {
   expiresAt: string;
 };
 export type AssistActionResult = { label: string; ok: boolean; message?: string };
-export type AssistApplyResult = { applied: number; results: AssistActionResult[] };
+export type AssistApplyRequest = {
+  /** Indexes into proposal.actions to run; omitted runs them all. */
+  only?: number[];
+};
+export type AssistApplyResult = {
+  applied: number;
+  /** One per proposal action, in order; skipped ones say so. */
+  results: AssistActionResult[];
+  /** Present when the change can be undone (for a short while, and only if nothing else changed). */
+  undoId?: string;
+};
+export type AssistUndoResult = { undone: true };
+/** Streamed Assist answer: reply text as it is written, then the final response (which wins). */
+export type AssistStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; response: AssistResponse }
+  | { type: "error"; status: number; message: string };
 
 // Import / export ---------------------------------------------------------------
 // POST api/import/v1   body unknown (a v1 MealPlanState JSON) -> ImportResult  (409 unless database is empty)

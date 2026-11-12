@@ -13,7 +13,7 @@ import {
 import { ApiRequestError, type ApiClient } from "./client";
 import type { FakeState } from "./fake-data";
 
-type AssistMethods = Pick<ApiClient, "assist" | "applyAssistProposal" | "discardAssistProposal">;
+type AssistMethods = Pick<ApiClient, "assist" | "applyAssistProposal" | "discardAssistProposal" | "undoAssist">;
 
 type Context = {
   state: FakeState;
@@ -104,13 +104,20 @@ export function createFakeAssist(context: Context): AssistMethods {
       };
     },
 
-    async applyAssistProposal(id) {
+    async applyAssistProposal(id, only) {
       await context.wait();
       const proposal = proposals.get(id);
       if (!proposal) throw GONE();
       proposals.delete(id);
-      const results = proposal.actions.map(execute);
+      const results = proposal.actions.map((action, index) =>
+        !only || only.includes(index) ? execute(action) : { label: action.label, ok: false, message: "Fravalgt." },
+      );
       return { applied: results.filter((result) => result.ok).length, results };
+    },
+
+    async undoAssist() {
+      await context.wait();
+      throw new ApiRequestError(404, "not_found", "Demoen kan ikke fortryde.");
     },
 
     async discardAssistProposal(id) {

@@ -24,6 +24,8 @@ export function buildEntities(deps: Deps): EntityState[] {
   const meal = state.meals[state.today];
   const dish = meal && !meal.skipped ? state.dishes.find((candidate) => candidate.id === meal.dishId) : undefined;
   const picture = pictureOf(deps, dish);
+  const nextMeal = state.meals[addDaysToKey(state.today, 1)];
+  const tomorrow = nextMeal && !nextMeal.skipped ? state.dishes.find((candidate) => candidate.id === nextMeal.dishId) : undefined;
   const tonight: EntityState = {
     entityId: "sensor.madplan_i_aften",
     state: dish?.name ?? "Ingen ret",
@@ -33,6 +35,9 @@ export function buildEntities(deps: Deps): EntityState[] {
       icon: "mdi:silverware-fork-knife",
       ...(dish ? { dish_id: dish.id, prep_minutes: dish.prepMinutes } : {}),
       ...(dish && picture ? { entity_picture: picture } : {}),
+      ...(meal?.note ? { note: meal.note } : {}),
+      // Spoken answers ("hvad skal vi have i morgen?") read this; see DOCS.md.
+      tomorrow: tomorrow?.name ?? "Ingen ret",
     },
   };
   const list = currentShoppingList(deps);
@@ -44,6 +49,8 @@ export function buildEntities(deps: Deps): EntityState[] {
       unit_of_measurement: "varer",
       icon: "mdi:cart-outline",
       estimated_price_dkk: Math.round(list.totalEstimatedPrice),
+      // What is still missing, for voice answers and lists on the dashboard (capped to keep the state small).
+      items: list.items.filter((item) => !item.checked).slice(0, 60).map((item) => item.label),
       from: list.from,
       to: list.to,
     },

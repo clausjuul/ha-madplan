@@ -14,6 +14,8 @@ export type AiRequest = {
   /** Structured output: the answer must match this JSON schema (strict). Takes precedence over `json`. */
   jsonSchema?: { name: string; schema: Record<string, unknown> };
   signal?: AbortSignal;
+  /** Streams the answer: called with each new piece of output text as it arrives. */
+  onText?: (delta: string) => void;
 };
 
 export type AiResponse = { text: string; usedWebSearch: boolean };
@@ -51,6 +53,7 @@ export function createOpenAiClient(apiKey: string, fetcher: typeof fetch = fetch
             // json_object mode requires the word "json" in the input messages; instructions do not count.
             input: request.json || request.jsonSchema ? `${request.input}\n\nSvar med ét JSON-objekt (json).` : request.input,
             store: false,
+            ...(request.onText ? { stream: true } : {}),
             ...(request.maxOutputTokens ? { max_output_tokens: request.maxOutputTokens } : {}),
             ...(request.jsonSchema
               ? { text: { format: { type: "json_schema", name: request.jsonSchema.name, schema: request.jsonSchema.schema, strict: true } } }
@@ -65,6 +68,7 @@ export function createOpenAiClient(apiKey: string, fetcher: typeof fetch = fetch
       } catch {
         throw new AiError("AI-tjenesten kunne ikke kontaktes.");
       }
+      if (request.onText && response.ok && response.body) return readStream(response.body, request.onText);
       const body = (await response.json().catch(() => ({}))) as {
         output?: OutputItem[];
         error?: { message?: string };
@@ -83,6 +87,57 @@ export function createOpenAiClient(apiKey: string, fetcher: typeof fetch = fetch
       return { text, usedWebSearch: output.some((item) => item.type === "web_search_call") };
     },
   };
+}
+
+type StreamEvent = {
+  type?: string;
+  delta?: string;
+  item?: { type?: string };
+  response?: { error?: { message?: string } };
+  message?: string;
+};
+
+/** Reads a Responses API server-sent event stream; the text is the concatenated output_text deltas. */
+async function readStream(body: ReadableStream<Uint8Array>, onText: (delta: string) => void): Promise<AiResponse> {
+  const decoder = new TextDecoder();
+  const reader = body.getReader();
+  let pending = "";
+  let text = "";
+  let usedWebSearch = false;
+  const handle = (line: string): void => {
+    if (!line.startsWith("data:")) return;
+    const data = line.slice(5).trim();
+    if (!data || data === "[DONE]") return;
+    let event: StreamEvent;
+    try {
+      event = JSON.parse(data) as StreamEvent;
+    } catch {
+      return;
+    }
+    if (event.type === "response.output_text.delta" && typeof event.delta === "string") {
+      text += event.delta;
+      onText(event.delta);
+    } else if (event.type === "response.output_item.added" && event.item?.type === "web_search_call") {
+      usedWebSearch = true;
+    } else if (event.type === "response.failed" || event.type === "error") {
+      throw new AiError(`AI-tjenesten afviste forespørgslen (${event.response?.error?.message ?? event.message ?? "fejl"}).`);
+    }
+  };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      pending += decoder.decode(value, { stream: true });
+      const lines = pending.split("\n");
+      pending = lines.pop() ?? "";
+      lines.forEach(handle);
+    }
+    handle(pending);
+  } catch (error) {
+    if (error instanceof AiError) throw error;
+    throw new AiError("Forbindelsen til AI-tjenesten blev afbrudt.");
+  }
+  return { text, usedWebSearch };
 }
 
 /** Extracts the outermost JSON object from a model answer (models sometimes wrap it in prose or fences). */

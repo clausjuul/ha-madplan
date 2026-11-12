@@ -14,6 +14,8 @@ Madplan er familiens madplan i Home Assistant: planlæg aftensmaden dag for dag,
 - **Familie:** kostønsker, fravalg og præferencer pr. person tages med i alle forslag.
 - **Bedømmelser:** dagen efter spørger ugen "Hvordan var ...?". *Godt* og *Mindre godt* påvirker fremtidige forslag, og *Ikke igen* får retten til ikke at blive foreslået igen.
 - **Assist husker personer:** skriv f.eks. "Emma kan ikke lide svampe", så foreslår Assist at gemme det på Emmas profil.
+- **Assist kender jeres historik:** den ser de sidste fire ugers måltider, jeres bedømmelser, noter, indkøbslisten og hvor længe siden I har spist hver ret. Skriv "vi elskede lasagnen i går", så foreslår den at gemme bedømmelsen. Den kan også skrive noter på en dag, markere en dag som "ikke spist" og fjerne ekstra varer fra indkøbslisten.
+- **Assist-forslag:** du kan fjerne fluebenet ved enkelte handlinger, før du trykker **Udfør**, og trykke **Fortryd** i ti minutter bagefter (så længe intet andet er ændret i mellemtiden). Svaret skrives frem, mens Assist tænker, og Assist husker, hvilke af sine forslag du har udført eller afvist.
 
 ## Installation
 
@@ -30,6 +32,7 @@ Indstillingerne findes under appens fane **Konfiguration**. Begge er valgfri, og
 | Indstilling | Hvad den gør |
 | --- | --- |
 | `openai_api_key` | Slår AI til: Assist-samtalen, "Assist"-motoren i Planlæg og at finde nye opskrifter i Opdag. Du skal selv oprette en nøgle hos OpenAI. **Brug af OpenAI koster penge** og afregnes direkte mellem dig og OpenAI efter forbrug. Appen bruger kun nøglen, når du aktivt beder om et AI-svar. |
+| `voice_commands` | Til som standard. Opretter stemmekommandoer til Home Assistants Assist (se "Spørg med stemmen"). |
 | `prej_api_key` | Reserveret til tilbud fra Netto og REMA 1000. I version 0.1.0 registreres nøglen kun; tilbud vises endnu ikke. |
 
 Efter ændring af konfigurationen skal appen genstartes.
@@ -59,9 +62,25 @@ Madplan opretter tre sensorer, som holdes opdateret automatisk (også ved midnat
 
 | Sensor | Værdi | Attributter |
 | --- | --- | --- |
-| `sensor.madplan_i_aften` | Navnet på aftenens ret, eller "Ingen ret" | `date`, `dish_id`, `prep_minutes`, `entity_picture` |
-| `sensor.madplan_indkob` | Antal varer, der mangler at blive købt | `estimated_price_dkk`, `from`, `to` |
+| `sensor.madplan_i_aften` | Navnet på aftenens ret, eller "Ingen ret" | `date`, `dish_id`, `prep_minutes`, `entity_picture`, `note`, `tomorrow` (morgendagens ret) |
+| `sensor.madplan_indkob` | Antal varer, der mangler at blive købt | `estimated_price_dkk`, `from`, `to`, `items` (de manglende varer, højst 60) |
 | `sensor.madplan_kommende` | Antal planlagte retter de næste 14 dage | `days` (liste med `date`, `weekday`, `dish`, `dish_id`, `prep_minutes`, `picture`, `note`, `skipped`), `ingress_url` |
+
+## Spørg med stemmen (Home Assistant Assist)
+
+Sensorerne kan bruges af Home Assistants egen stemmeassistent, så "Hvad skal vi have i aften?" virker fra telefonen eller en højttaler.
+
+**Med en AI-samtaleagent i Home Assistant** (f.eks. OpenAI- eller Google-integrationen): vis de tre Madplan-sensorer for Assist under **Indstillinger → Stemmeassistenter → Vis**. Så kan agenten selv læse aftenens ret, de kommende dage og indkøbslisten.
+
+**Med den indbyggede agent** (uden AI) virker det af sig selv: Madplan opretter ved opstart tre automationer under **Indstillinger → Automationer**, der svarer på:
+
+- "Hvad skal vi have i aften?" / "Hvad er der til aftensmad?"
+- "Hvad skal vi have i morgen?"
+- "Hvad mangler vi at købe?" / "Hvad står der på indkøbslisten?"
+
+De hedder "Madplan: ..." og opdateres automatisk, når Madplan opdateres. Vil du selv rette i én, så slet linjen "Oprettet af Madplan" i dens beskrivelse; så lader Madplan den være. Slå **Stemmekommandoer** (`voice_commands`) fra i konfigurationen, så fjerner Madplan dem igen. Det kræver, at `automations.yaml` er inkluderet i `configuration.yaml`, hvilket er standard.
+
+Stemmen kan kun læse. Ændringer laver du i Madplans egen Assist, hvor du altid selv trykker **Udfør**.
 
 ## Madplan-kort til dashboards
 

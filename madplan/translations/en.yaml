@@ -7,3 +7,7 @@ configuration:
     name: Prej API key
     description: >-
       Optional. Reserved for offers from Netto and REMA 1000 (not shown yet in version 0.1.0).
+  voice_commands:
+    name: Voice commands
+    description: >-
+      Creates automations so Home Assistant's Assist can answer "Hvad skal vi have i aften/i morgen?" and "Hvad mangler vi at købe?". Turn off to remove them again.

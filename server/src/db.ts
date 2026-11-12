@@ -102,6 +102,13 @@ const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE meals ADD COLUMN rating TEXT;
   `,
+  `
+  CREATE TABLE assist_undo (
+    id TEXT PRIMARY KEY,
+    json TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export function migrate(db: DatabaseSync): void {

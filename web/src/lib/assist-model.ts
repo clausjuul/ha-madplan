@@ -1,4 +1,5 @@
 /** Pure helpers for the Assist chat: context, quick prompts, previews, speech support, session storage. */
+import { addDaysToKey } from "@madplan/domain";
 import type {
   AssistActionResult,
   AssistActionType,
@@ -6,6 +7,9 @@ import type {
   AssistContext,
   AssistEngine,
   AssistProposal,
+  Dish,
+  FridgeItem,
+  MealMap,
 } from "@madplan/domain";
 import type { Route } from "./route";
 
@@ -20,6 +24,13 @@ export type ChatEntry = {
   proposal?: AssistProposal;
   proposalState?: ProposalState;
   results?: AssistActionResult[];
+  /** Indexes of proposal actions the user unticked before "Udfør". */
+  unselected?: number[];
+  /** Set after a successful apply that can be undone. */
+  undoId?: string;
+  undone?: boolean;
+  /** The reply is still being written (streamed). */
+  streaming?: boolean;
 };
 
 export type AssistSession = {
@@ -52,19 +63,67 @@ const CHIPS: Record<string, string[]> = {
 };
 const GENERIC_CHIPS = ["Hvad skal vi have i aften?", "Hvad kan vi lave af det i køleskabet?"];
 
-export function chipsFor(context: AssistContext): string[] {
-  return CHIPS[context.view] ?? GENERIC_CHIPS;
+/** What the quick prompts may look at to be relevant right now. */
+export type ChipData = { today: string; meals: MealMap; fridge: readonly FridgeItem[]; dishes: readonly Dish[] };
+
+/** Prompts that fit the situation: an empty day tomorrow, something about to expire, last night's dinner. */
+function situationChips(data: ChipData): string[] {
+  const chips: string[] = [];
+  const tomorrow = addDaysToKey(data.today, 1);
+  if (!data.meals[tomorrow]) chips.push("Foreslå en ret til i morgen");
+  const soon = addDaysToKey(data.today, 2);
+  const expiring = data.fridge.find((item) => item.expiresOn && item.expiresOn <= soon);
+  if (expiring) chips.push(`Hvad kan vi lave med ${expiring.name.toLocaleLowerCase("da-DK")}, før den bliver for gammel?`);
+  const yesterday = data.meals[addDaysToKey(data.today, -1)];
+  const dish = yesterday && !yesterday.skipped && !yesterday.rating ? data.dishes.find((entry) => entry.id === yesterday.dishId) : undefined;
+  if (dish) chips.push(`Vi elskede ${dish.name.toLocaleLowerCase("da-DK")} i går`);
+  return chips;
+}
+
+export function chipsFor(context: AssistContext, data?: ChipData): string[] {
+  const fixed = CHIPS[context.view] ?? GENERIC_CHIPS;
+  const smart = data ? situationChips(data) : [];
+  return [...new Set([...smart, ...fixed])].slice(0, 4);
 }
 
 // Messages sent to the server ---------------------------------------------------
 
 const MAX_SENT = 20;
 
+const STATUS: Record<ProposalState, string> = {
+  pending: "afventer",
+  applied: "udført",
+  dismissed: "afvist",
+  expired: "udløbet",
+};
+
+/** "[Forslag (udført): a; b (fravalgt)]": tells the assistant what it proposed and what became of it. */
+export function proposalStatusLine(entry: ChatEntry): string | null {
+  if (!entry.proposal) return null;
+  const state: ProposalState = entry.undone ? "dismissed" : (entry.proposalState ?? "pending");
+  const labels = entry.proposal.actions.map((action, index) => {
+    const result = entry.results?.[index];
+    const note = entry.undone
+      ? " (fortrudt)"
+      : result && !result.ok
+        ? ` (ikke udført: ${result.message ?? "fejl"})`
+        : entry.unselected?.includes(index) && state === "pending"
+          ? " (fravalgt)"
+          : "";
+    return `${action.label}${note}`;
+  });
+  return `[Forslag (${STATUS[state]}): ${labels.join("; ")}]`.slice(0, 1200);
+}
+
 export function toApiMessages(entries: readonly ChatEntry[]): AssistChatMessage[] {
   return entries
-    .filter((entry) => !entry.error && entry.content.trim().length > 0)
+    .filter((entry) => !entry.error && !entry.streaming && entry.content.trim().length > 0)
     .slice(-MAX_SENT)
-    .map((entry) => ({ role: entry.role, content: entry.content.slice(0, 4000) }));
+    .map((entry) => {
+      const status = proposalStatusLine(entry);
+      const content = status ? `${entry.content.slice(0, 2700)}\n\n${status}` : entry.content;
+      return { role: entry.role, content: content.slice(0, 4000) };
+    });
 }
 
 // Proposal preview ----------------------------------------------------------------
@@ -83,6 +142,10 @@ const KIND: Record<AssistActionType, PreviewKind> = {
   updateProfile: "household",
   createDish: "dish",
   startPlanDraft: "plan",
+  removeShoppingExtra: "shopping",
+  setMealNote: "meal",
+  skipMeal: "meal",
+  rateMeal: "meal",
 };
 
 export type PreviewLine = { label: string; kind: PreviewKind; result?: AssistActionResult };

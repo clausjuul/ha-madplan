@@ -7,6 +7,7 @@ import { openDatabase } from "./db.ts";
 import { Jobs } from "./deps.ts";
 import type { Deps } from "./deps.ts";
 import { setupCards } from "./ha/cards.ts";
+import { setupVoice } from "./ha/voice.ts";
 import { createPublisher } from "./ha/publisher.ts";
 import { Repo } from "./repo.ts";
 import { failInterruptedDrafts } from "./services/drafts.ts";
@@ -22,6 +23,8 @@ if (config.supervisorToken) {
 console.log(`Tidszone: ${config.timeZone}`);
 // Before the publisher starts, so entity pictures point at /local/madplan and the ingress path is known.
 await setupCards(config);
+// Not awaited: voice commands are a convenience and must never delay the app.
+void setupVoice(config);
 const db = openDatabase(config.dbPath);
 const repo = new Repo(db);
 if (failInterruptedDrafts(repo) > 0) console.warn("Et afbrudt planudkast blev markeret som fejlet.");

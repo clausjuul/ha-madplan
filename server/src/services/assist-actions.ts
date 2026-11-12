@@ -73,12 +73,29 @@ function mealName(env: ActionEnv, date: string): string {
   return meal ? `«${env.dish(meal.dishId)?.name ?? "ukendt ret"}»` : "ingen ret";
 }
 
+/**
+ * Strict structured output has no optional fields, so the model sends null for "not given". Drop those
+ * (one level down too, for dish and plan request), except where null carries meaning (rateMeal.rating).
+ */
+function withoutNulls(raw: Record<string, unknown>): Record<string, unknown> {
+  const clean = (record: Record<string, unknown>): Record<string, unknown> =>
+    Object.fromEntries(Object.entries(record).filter(([key, value]) => value !== null || (raw.type === "rateMeal" && key === "rating")));
+  const top = clean(raw);
+  for (const key of ["dish", "request"]) {
+    const nested = top[key];
+    if (isRec(nested)) top[key] = clean(nested);
+  }
+  return top;
+}
+
 /** Throws an Error with a Danish message when the raw action is malformed. Labels are made here, never by the model. */
-export function parseAction(raw: unknown, env: ActionEnv): AssistAction {
-  if (!isRec(raw)) throw new Error("Handlingen er ikke et objekt.");
+export function parseAction(input: unknown, env: ActionEnv): AssistAction {
+  if (!isRec(input)) throw new Error("Handlingen er ikke et objekt.");
+  const raw = withoutNulls(input);
   const type = oneOf(raw.type, "Handlingstype", [
     "setMeal", "removeMeal", "swapMeals", "lockMeal", "addShoppingExtra", "addFridgeItem",
     "removeFridgeItem", "addGlobalExclusion", "updateProfile", "createDish", "startPlanDraft",
+    "removeShoppingExtra", "setMealNote", "skipMeal", "rateMeal",
   ] as const);
   switch (type) {
     case "setMeal": {
@@ -124,6 +141,32 @@ export function parseAction(raw: unknown, env: ActionEnv): AssistAction {
     case "removeFridgeItem": {
       const name = str(raw.name, "Varenavn", { min: 1, max: 100 });
       return { type, name, label: `Fjern «${name}» fra køleskabet` };
+    }
+    case "removeShoppingExtra": {
+      const item = str(raw.item, "Varenavn", { min: 1, max: 100 });
+      return { type, item, label: `Fjern «${item}» fra indkøbslisten` };
+    }
+    case "setMealNote": {
+      const date = dateField(raw.date, "Datoen");
+      const note = typeof raw.note === "string" ? raw.note.trim().slice(0, 300) : "";
+      return {
+        type, date, note,
+        label: note ? `Skriv note på ${dayName(date)}: «${note}»` : `Fjern noten på ${dayName(date)}`,
+      };
+    }
+    case "skipMeal": {
+      const date = dateField(raw.date, "Datoen");
+      const skipped = raw.skipped !== false;
+      return {
+        type, date, skipped,
+        label: skipped ? `Marker ${dayName(date)} som «ikke spist» (${mealName(env, date)})` : `Fortryd «ikke spist» på ${dayName(date)}`,
+      };
+    }
+    case "rateMeal": {
+      const date = dateField(raw.date, "Datoen");
+      const rating = raw.rating === null ? null : oneOf(raw.rating, "Bedømmelse", ["up", "down", "never"] as const);
+      const verdict = rating === null ? "Fjern bedømmelsen af" : { up: "Godt:", down: "Ikke så godt:", never: "Aldrig igen:" }[rating];
+      return { type, date, rating, label: `${verdict} ${mealName(env, date)} (${dayName(date)})` };
     }
     case "addGlobalExclusion": {
       const term = str(raw.term, "Fravalg", { min: 2, max: 80 });
@@ -197,6 +240,25 @@ export function checkAction(env: ActionEnv, action: AssistAction): string | null
       return env.extras.some((extra) => extraItemId(extra.label) === extraItemId(action.item))
         ? "Står allerede på listen."
         : null;
+    case "removeShoppingExtra":
+      return env.extras.some((extra) => extraItemId(extra.label) === extraItemId(action.item))
+        ? null
+        : "Står ikke på listen som ekstra vare.";
+    case "setMealNote":
+      if (past(action.date)) return "Dagen ligger i fortiden.";
+      return env.meal(action.date) ? null : "Der er ikke planlagt noget den dag.";
+    case "skipMeal": {
+      const meal = env.meal(action.date);
+      if (!meal) return "Der er ikke planlagt noget den dag.";
+      return (meal.skipped === true) === action.skipped ? "Står allerede sådan." : null;
+    }
+    case "rateMeal": {
+      const meal = env.meal(action.date);
+      if (!meal) return "Der var ikke planlagt noget den dag.";
+      if (action.date > env.today) return "I kan først bedømme retten, når I har spist den.";
+      if (meal.skipped) return "Dagen er markeret som ikke spist.";
+      return (meal.rating ?? null) === action.rating ? "Står allerede sådan." : null;
+    }
     case "addFridgeItem":
       return env.fridge.length >= 300 ? "Køleskabet er fyldt op." : null;
     case "removeFridgeItem":

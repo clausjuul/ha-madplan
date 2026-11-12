@@ -93,9 +93,13 @@ export interface ApiClient {
   /** This week's meal plans from Danish food sites; `refresh` asks the server to fetch again. */
   weeklyPlans(refresh?: boolean): Promise<WeeklyPlansResponse>;
 
-  assist(request: AssistRequest): Promise<AssistResponse>;
-  applyAssistProposal(id: string): Promise<AssistApplyResult>;
+  /** With `onReply`, the answer is streamed: called with the reply text so far while the model writes. */
+  assist(request: AssistRequest, onReply?: (replySoFar: string) => void): Promise<AssistResponse>;
+  /** `only`: indexes of the actions to run (all when omitted). */
+  applyAssistProposal(id: string, only?: number[]): Promise<AssistApplyResult>;
   discardAssistProposal(id: string): Promise<void>;
+  /** Puts back what an applied proposal changed (404 when too late, 409 when the data changed since). */
+  undoAssist(undoId: string): Promise<void>;
 
   importV1(body: unknown): Promise<ImportResult>;
   exportData(): Promise<ExportFile>;

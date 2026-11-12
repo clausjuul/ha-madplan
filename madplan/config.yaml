@@ -23,6 +23,8 @@ stage: experimental
 options:
   openai_api_key: ""
   prej_api_key: ""
+  voice_commands: true
 schema:
   openai_api_key: "password?"
   prej_api_key: "password?"
+  voice_commands: bool

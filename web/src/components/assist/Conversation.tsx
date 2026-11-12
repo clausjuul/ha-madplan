@@ -2,7 +2,9 @@ import { AlertCircle, ArrowDown, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AssistContext } from "@madplan/domain";
 import { useAssistChat } from "@/hooks/use-assist-chat";
-import { chipsFor, type ChatEntry } from "@/lib/assist-model";
+import { useBootstrap } from "@/api/queries";
+import { useToday } from "@/hooks/use-today";
+import { chipsFor, type ChatEntry, type ChipData } from "@/lib/assist-model";
 import { Composer } from "./Composer";
 import { ProposalCard } from "./ProposalCard";
 
@@ -66,7 +68,13 @@ function Message({ entry, group, chat }: { entry: ChatEntry; group: Group; chat:
         <p className="m-0 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-ink">{entry.content}</p>
         {entry.proposal ? (
           <div className="w-full">
-            <ProposalCard entry={entry} onApply={() => void chat.apply(entry)} onDismiss={() => void chat.dismiss(entry)} />
+            <ProposalCard
+              entry={entry}
+              onApply={() => void chat.apply(entry)}
+              onDismiss={() => void chat.dismiss(entry)}
+              onToggle={(index) => chat.toggle(entry, index)}
+              onUndo={() => void chat.undo(entry)}
+            />
           </div>
         ) : null}
       </div>
@@ -132,6 +140,10 @@ export function Conversation({ context, chat, demo }: Props) {
   const [atBottom, setAtBottom] = useState(true);
   const empty = session.entries.length === 0;
   const send = (text: string): void => void chat.send(text);
+  const boot = useBootstrap().data;
+  const today = useToday();
+  const chipData: ChipData | undefined = boot ? { today, meals: boot.meals, fridge: boot.fridge, dishes: boot.dishes } : undefined;
+  const chips = chipsFor(context, chipData);
 
   const scrollToEnd = useCallback((smooth: boolean) => {
     const el = scroller.current;
@@ -139,6 +151,13 @@ export function Conversation({ context, chat, demo }: Props) {
   }, []);
 
   useEffect(() => scrollToEnd(false), [session.entries.length, busy, scrollToEnd]);
+  // Follows a streamed reply as it grows, unless the user scrolled up to read.
+  const lastLength = session.entries.at(-1)?.content.length ?? 0;
+  const follow = useRef(atBottom);
+  follow.current = atBottom;
+  useEffect(() => {
+    if (follow.current) scrollToEnd(false);
+  }, [lastLength, scrollToEnd]);
 
   return (
     <div className="relative flex h-full min-h-[360px] flex-col px-2 md:px-0">
@@ -151,13 +170,13 @@ export function Conversation({ context, chat, demo }: Props) {
         className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6"
       >
         {empty ? (
-          <EmptyState demo={demo} prompts={chipsFor(context)} onPick={send} />
+          <EmptyState demo={demo} prompts={chips} onPick={send} />
         ) : (
           <ul className="m-0 flex list-none flex-col gap-1 p-0" aria-live="polite">
             {session.entries.map((entry, index) => (
               <Message key={entry.id} entry={entry} group={groupOf(session.entries, index)} chat={chat} />
             ))}
-            {busy ? <Thinking /> : null}
+            {busy && !session.entries.some((entry) => entry.streaming) ? <Thinking /> : null}
           </ul>
         )}
       </div>
@@ -177,7 +196,7 @@ export function Conversation({ context, chat, demo }: Props) {
         ) : null}
         {empty ? null : (
           <div className="flex items-center justify-between gap-2 pb-2">
-            <QuickPrompts prompts={chipsFor(context).slice(0, 1)} onPick={send} />
+            <QuickPrompts prompts={chips.slice(0, 1)} onPick={send} />
             <button type="button" onClick={chat.reset} className="min-h-10 shrink-0 rounded-full px-3 text-[14px] font-medium text-ink-2 hover:text-ink">
               Ny samtale
             </button>

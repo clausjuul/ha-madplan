@@ -55,7 +55,7 @@ describe("assist with OpenAI", () => {
     const open = prompt.indexOf(`<<<DATA ${fence}`, prompt.indexOf("Samtalen"));
     const close = prompt.indexOf(`DATA ${fence}>>>`, open);
     expect(prompt.slice(open, close)).toContain(JSON.stringify(injected).slice(1, -1));
-    expect(ai.calls[0]?.json).toBe(true);
+    expect(ai.calls[0]?.jsonSchema?.name).toBe("assist_answer");
     const boot = await json<BootstrapResponse>("GET", "bootstrap");
     expect(boot.meals["2026-11-10"]?.dishId).toBe("lasagne");
   });

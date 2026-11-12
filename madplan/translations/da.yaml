@@ -7,3 +7,7 @@ configuration:
     name: Prej API-nøgle
     description: >-
       Valgfri. Reserveret til tilbud fra Netto og REMA 1000 (vises endnu ikke i version 0.1.0).
+  voice_commands:
+    name: Stemmekommandoer
+    description: >-
+      Opretter automationer, så Home Assistants Assist kan svare på "Hvad skal vi have i aften/i morgen?" og "Hvad mangler vi at købe?". Slå fra for at fjerne dem igen.

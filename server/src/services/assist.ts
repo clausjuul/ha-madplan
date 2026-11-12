@@ -7,14 +7,15 @@ import type {
   AssistResponse,
 } from "@madplan/domain";
 import { AiError } from "../ai/openai.ts";
-import { askAssistModel, assistPrompt } from "../ai/assist-ai.ts";
+import { askAssistModel, assistPrompt, assistSchema, correctionPrompt } from "../ai/assist-ai.ts";
+import type { AssistModelAnswer } from "../ai/assist-ai.ts";
 import type { Deps } from "../deps.ts";
 import { HttpError, notFound, unavailable } from "../errors.ts";
 import { askHomeAssistantAgent, haAgentAvailable } from "../ha/agent.ts";
 import { one, run, text, toJson } from "../repo.ts";
-import { snapshot } from "../state.ts";
+import { currentShoppingList, snapshot } from "../state.ts";
 import { envFromDb, parseAssistActions } from "./assist-actions.ts";
-import { applyActions } from "./assist-exec.ts";
+import { applyActions, undoApply } from "./assist-exec.ts";
 
 export const PROPOSAL_TTL_MS = 30 * 60 * 1000;
 const MAX_PROPOSALS = 50;
@@ -71,18 +72,41 @@ export function createProposalStore(deps: Deps): ProposalStore {
 const lastUserText = (request: AssistRequest): string =>
   [...request.messages].reverse().find((message) => message.role === "user")?.content ?? "";
 
-async function answerWithOpenAi(deps: Deps, store: ProposalStore, request: AssistRequest): Promise<AssistResponse> {
+export type AssistProgress = (replySoFar: string) => void;
+
+async function answerWithOpenAi(
+  deps: Deps,
+  store: ProposalStore,
+  request: AssistRequest,
+  onReply?: AssistProgress,
+): Promise<AssistResponse> {
   const state = snapshot(deps);
   const env = envFromDb(deps);
-  const prompt = assistPrompt({ state, env, context: request.context, messages: request.messages });
-  let answer;
+  const prompt = assistPrompt({ state, env, context: request.context, messages: request.messages, shopping: currentShoppingList(deps) });
+  const schema = assistSchema(state);
+  const signal = AbortSignal.timeout(90_000);
+  let answer: AssistModelAnswer;
   try {
-    answer = await askAssistModel(deps.openai, deps.config.planModel, prompt, AbortSignal.timeout(60_000));
+    answer = await askAssistModel(deps.openai, deps.config.planModel, prompt, { schema, signal, ...(onReply ? { onReply } : {}) });
   } catch (error) {
     if (error instanceof AiError) throw new HttpError(502, "ai_failed", error.message);
     throw error;
   }
-  const { actions, dropped } = parseAssistActions(answer.rawActions, env);
+  let parsed = parseAssistActions(answer.rawActions, env);
+  if (parsed.dropped.length > 0) {
+    // One self-correction round: the model sees why actions were refused and may fix them.
+    try {
+      const retry = await askAssistModel(deps.openai, deps.config.planModel, correctionPrompt(prompt, answer.raw, parsed.dropped), { schema, signal });
+      const retried = parseAssistActions(retry.rawActions, env);
+      if (retried.dropped.length < parsed.dropped.length || retried.actions.length > parsed.actions.length) {
+        answer = retry;
+        parsed = retried;
+      }
+    } catch {
+      // Keep the first answer; it stays honest because of the note below.
+    }
+  }
+  const { actions, dropped } = parsed;
   const note = dropped.length > 0 ? `\n\n(${dropped.length} forslag blev fjernet, fordi de ikke overholdt jeres regler.)` : "";
   if (actions.length === 0) return { reply: answer.reply + note, engine: "openai" };
   const proposal = store.create(deps, answer.reply.slice(0, 200), actions);
@@ -100,19 +124,22 @@ async function answerWithHomeAssistant(deps: Deps, request: AssistRequest): Prom
   return { reply: answer.text, engine: "homeassistant", ...(answer.conversationId ? { conversationId: answer.conversationId } : {}) };
 }
 
-export function assist(deps: Deps, store: ProposalStore, request: AssistRequest): Promise<AssistResponse> {
-  if (deps.openai.configured) return answerWithOpenAi(deps, store, request);
+export function assist(deps: Deps, store: ProposalStore, request: AssistRequest, onReply?: AssistProgress): Promise<AssistResponse> {
+  if (deps.openai.configured) return answerWithOpenAi(deps, store, request, onReply);
   if (haAgentAvailable(deps.config)) return answerWithHomeAssistant(deps, request);
   throw unavailable(NO_ENGINE);
 }
 
-export function applyProposal(deps: Deps, store: ProposalStore, id: string): AssistApplyResult {
+export function applyProposal(deps: Deps, store: ProposalStore, id: string, only?: readonly number[]): AssistApplyResult {
   const proposal = store.take(deps, id);
   // One shot: a proposal can never be applied twice.
   store.drop(deps, id);
-  const results = applyActions(deps, proposal.actions);
-  return { applied: results.filter((result) => result.ok).length, results };
+  const chosen = only?.filter((index) => index < proposal.actions.length);
+  const { results, undoId } = applyActions(deps, proposal.actions, chosen);
+  return { applied: results.filter((result) => result.ok).length, results, ...(undoId ? { undoId } : {}) };
 }
+
+export const undoProposal = (deps: Deps, undoId: string): void => undoApply(deps, undoId);
 
 export function discardProposal(deps: Deps, store: ProposalStore, id: string): void {
   store.take(deps, id);

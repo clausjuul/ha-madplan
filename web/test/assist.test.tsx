@@ -10,6 +10,7 @@ import {
   engineTitle,
   loadSession,
   previewLines,
+  proposalStatusLine,
   saveSession,
   speechRecognitionCtor,
   startedPlanDraft,
@@ -107,7 +108,9 @@ describe("header and session", () => {
       { id: "2", role: "assistant", content: "Fejl", error: true },
       { id: "3", role: "assistant", content: "Svar", proposal },
     ]);
-    expect(messages).toEqual([{ role: "user", content: "Hej" }, { role: "assistant", content: "Svar" }]);
+    expect(messages[0]).toEqual({ role: "user", content: "Hej" });
+    expect(messages[1]?.content).toMatch(/^Svar\n\n\[Forslag \(afventer\): Sæt «Tacos»/u);
+    expect(messages).toHaveLength(2);
 
     const store = new Map<string, string>();
     const storage = {
@@ -124,6 +127,53 @@ describe("header and session", () => {
     const blocked = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); }, removeItem: () => { throw new Error("blocked"); } };
     expect(loadSession(blocked).entries).toEqual([]);
     expect(() => saveSession(blocked, { entries: [entry()] })).not.toThrow();
+  });
+});
+
+describe("assistant memory, choice and situation", () => {
+  it("tells the assistant what became of each proposal", () => {
+    const results = [{ label: "", ok: true }, { label: "", ok: false, message: "Låst" }, { label: "", ok: false, message: "Fravalgt." }];
+    expect(proposalStatusLine(entry({ proposalState: "applied", results }))).toMatch(
+      /^\[Forslag \(udført\): Sæt «Tacos».*; Tilføj «Mælk» til indkøbslisten \(ikke udført: Låst\); Lav et planudkast \(ikke udført: Fravalgt\.\)\]$/u,
+    );
+    expect(proposalStatusLine(entry({ proposalState: "dismissed" }))).toMatch(/^\[Forslag \(afvist\)/u);
+    expect(proposalStatusLine(entry({ proposalState: "applied", results, undone: true }))).toMatch(/^\[Forslag \(afvist\).*\(fortrudt\)/u);
+    expect(proposalStatusLine({ id: "x", role: "assistant", content: "Hej" })).toBeNull();
+    expect(toApiMessages([{ id: "s", role: "assistant", content: "Skriver", streaming: true }])).toEqual([]);
+  });
+
+  it("suggests prompts that fit the situation", () => {
+    const chips = chipsFor({ view: "uge" }, {
+      today: "2026-11-09",
+      meals: { "2026-11-08": { dishId: "tacos", locked: false, note: "", source: "manual" } },
+      fridge: [{ name: "Fløde", expiresOn: "2026-11-10" }],
+      dishes: [{ id: "tacos", name: "Tacos", ingredients: [], prepMinutes: 20, category: "Mexicansk", favorite: false, leftoverFriendly: false, freezerFriendly: false }],
+    });
+    expect(chips).toEqual(expect.arrayContaining(["Foreslå en ret til i morgen", "Vi elskede tacos i går"]));
+    expect(chips.some((chip) => chip.includes("fløde"))).toBe(true);
+    expect(chips.length).toBeLessThanOrEqual(4);
+  });
+
+  it("lets the user untick actions and undo afterwards", () => {
+    const onToggle = vi.fn();
+    const { rerender } = render(
+      <ProposalCard entry={entry({ unselected: [1] })} onApply={vi.fn()} onDismiss={vi.fn()} onToggle={onToggle} />,
+      { wrapper: MemoryRouter },
+    );
+    expect(screen.getByRole("button", { name: "Udfør 2 af 3" })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("checkbox")[0]!);
+    expect(onToggle).toHaveBeenCalledWith(0);
+    const onUndo = vi.fn();
+    rerender(
+      <ProposalCard
+        entry={entry({ proposalState: "applied", results: [{ label: "", ok: true }, { label: "", ok: true }, { label: "", ok: true }], undoId: "u1" })}
+        onApply={vi.fn()}
+        onDismiss={vi.fn()}
+        onUndo={onUndo}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Fortryd" }));
+    expect(onUndo).toHaveBeenCalledOnce();
   });
 });
 

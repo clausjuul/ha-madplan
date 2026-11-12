@@ -22,6 +22,8 @@ export type Config = {
   timeZone: string;
   planModel: string;
   discoveryModel: string;
+  /** Create Home Assistant voice-command automations ("hvad skal vi have i aften?"). Default on. */
+  voiceCommands: boolean;
 };
 
 /** Single source of truth: server/package.json (kept equal to madplan/config.yaml by test/version.test.ts). */
@@ -66,5 +68,6 @@ export function loadConfig(env: Env = process.env, optionsPath = "/data/options.
     timeZone: env.TZ && isValidTimeZone(env.TZ.trim()) ? env.TZ.trim() : Intl.DateTimeFormat().resolvedOptions().timeZone,
     planModel: env.MADPLAN_PLAN_MODEL?.trim() || "gpt-4.1-mini",
     discoveryModel: env.MADPLAN_DISCOVERY_MODEL?.trim() || "gpt-4.1",
+    voiceCommands: env.MADPLAN_VOICE_COMMANDS !== undefined ? env.MADPLAN_VOICE_COMMANDS === "1" : options.voice_commands !== false,
   };
 }

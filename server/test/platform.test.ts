@@ -36,11 +36,13 @@ describe("Home Assistant publisher", () => {
         dish_id: "lasagne",
         icon: "mdi:silverware-fork-knife",
         entity_picture: "http://homeassistant.local:8123/local/madplan/images/dishes/lasagne.jpg",
+        tomorrow: "Tacos",
       },
     });
     expect(entities[1]?.entityId).toBe("sensor.madplan_indkob");
     expect(Number(entities[1]?.state)).toBeGreaterThan(5);
     expect(entities[1]?.attributes).toMatchObject({ unit_of_measurement: "varer", from: "2026-11-09", to: "2026-11-10" });
+    expect((entities[1]?.attributes.items as string[]).length).toBe(Number(entities[1]?.state));
 
     const publisher = createPublisher(deps);
     await publisher.publish(true);
