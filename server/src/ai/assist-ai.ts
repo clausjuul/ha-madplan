@@ -6,8 +6,18 @@
  * contents, profile notes, ...) is untrusted. It is serialised as JSON inside blocks fenced with a random
  * per-request token, length-clipped, and sent in the user `input`; only our rules are in `instructions`.
  */
-import { addDaysToKey, daysBetween, eatenHistory, lastEatenByDish, weekdayName } from "@madplan/domain";
-import type { AssistChatMessage, AssistContext, MealRating, ShoppingList } from "@madplan/domain";
+import {
+  addDaysToKey,
+  daysBetween,
+  dishOfferMatches,
+  eatenHistory,
+  lastEatenByDish,
+  offerPriceLabel,
+  offerSavingKr,
+  STORE_NAMES,
+  weekdayName,
+} from "@madplan/domain";
+import type { AssistChatMessage, AssistContext, MealRating, RetailOffer, ShoppingList } from "@madplan/domain";
 import type { ActionEnv } from "../services/assist-actions.ts";
 import type { Snapshot } from "../state.ts";
 import { AiError, extractJsonObject } from "./openai.ts";
@@ -27,7 +37,8 @@ const RULES = [
   "Du er Assist i Madplan, en dansk familiemadplan. Svar kort, venligt og på dansk.",
   "Du kan IKKE ændre noget selv. Du kan kun FORESLÅ handlinger; brugeren skal selv trykke Udfør (og kan vælge enkelte fra).",
   "Brug kun dato-, ret- og person-id'er fra DATA. Foreslå aldrig ændringer af låste dage (locked: true), og aldrig retter, der strider mod fravalg eller kostønsker.",
-  "Foreslå kun handlinger, brugeren har bedt om. Spørgsmål besvares uden handlinger. Opfind aldrig resultater, priser eller tilbud; du kender ikke ugens tilbud.",
+  "Foreslå kun handlinger, brugeren har bedt om. Spørgsmål besvares uden handlinger. Opfind aldrig resultater, priser eller tilbud.",
+  "Tilbud: kun dem i DATA-blokken \"Tilbud\" (bekræftede tilbud fra jeres butikker via Prej) findes. Er blokken tom, så sig, at der ikke er hentet tilbud. Nævn butik, pris og slutdato, når du bruger et tilbud.",
   "Dit svar må ikke påstå, at noget ER gjort. Skriv i stedet, hvad du foreslår (\"Jeg foreslår ...\").",
   "Tidligere svar fra dig kan slutte med en linje som [Forslag (udført): ...], [Forslag (afvist): ...], [Forslag (afventer): ...] eller [Forslag (udløbet): ...]. Den fortæller, hvad du foreslog, og hvad brugeren gjorde. Foreslå ikke det samme igen, hvis det er udført; brug det, når brugeren henviser til \"det\", \"den anden\" osv. Skriv aldrig selv sådan en linje.",
   "Brug historikken (sidste uger, bedømmelser, dage siden sidst) til spørgsmål om, hvad I har spist, hvad der faldt i god jord, og hvad I ikke har haft længe. Retter med rating never må aldrig foreslås.",
@@ -69,6 +80,32 @@ function ratingsByDish(state: Snapshot): Map<string, RatingCount> {
 /** A short, quantity-free ingredient hint ("400 g hakket oksekød" -> "hakket oksekød"). */
 const ingredientHint = (line: string): string =>
   clip(line.replace(/^[\d.,/½¼¾\s-]*(g|kg|dl|l|ml|cl|stk\.?|spsk\.?|tsk\.?|knsp\.?|dåse|dåser|pakke|pakker|bundt|fed)?\s+/iu, "").trim(), 40);
+
+/** Offers that fit dishes in the catalog, one line per offer with the dishes it fits (small and relevant). */
+function offerData(state: Snapshot) {
+  const stores = state.settings.preferredStores;
+  const byOffer = new Map<RetailOffer, { ingredient: string; dishes: string[] }>();
+  for (const dish of state.dishes) {
+    if (dish.archivedAt) continue;
+    for (const match of dishOfferMatches(dish, state.offers, stores, state.today)) {
+      const entry = byOffer.get(match.offer) ?? { ingredient: match.ingredient, dishes: [] };
+      if (entry.dishes.length < 3) entry.dishes.push(clip(dish.name, 60));
+      byOffer.set(match.offer, entry);
+    }
+  }
+  return [...byOffer]
+    .sort(([a], [b]) => offerSavingKr(b) - offerSavingKr(a))
+    .slice(0, 60)
+    .map(([offer, entry]) => ({
+      store: STORE_NAMES[offer.chain],
+      item: clip(offer.quantityLabel ? `${offer.name} (${offer.quantityLabel})` : offer.name, 120),
+      price: offerPriceLabel(offer),
+      savedKr: Math.round(offerSavingKr(offer)),
+      ends: offer.validUntil,
+      forIngredient: clip(entry.ingredient, 60),
+      dishes: entry.dishes,
+    }));
+}
 
 export function assistPrompt(input: AssistPromptInput): Prompt {
   const { state, env, context, shopping } = input;
@@ -153,6 +190,7 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
         missing: shopping.items.filter((item) => !item.checked).slice(0, 120).map((item) => ({
           item: clip(item.label, 80),
           ...(item.quantityLabel ? { quantity: clip(item.quantityLabel, 40) } : {}),
+          ...(item.priceIsOffer && item.offer ? { offer: clip(`${item.offer.store} ${item.offer.price ?? ""}`.trim(), 60) } : {}),
           ...(item.extra ? { extra: true } : { for: item.dishNames.slice(0, 3).map((name) => clip(name, 60)) }),
         })),
         boughtCount: shopping.checkedCount,
@@ -170,6 +208,7 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
     block(`Spist de sidste ${PAST_DAYS} dage (rating: up = godt, down = ikke så godt, never = aldrig igen):`, past),
     block("Retkatalog (kun id'er herfra må bruges; daysSinceEaten null = aldrig spist):", catalog),
     block("Køleskab:", state.fridge.slice(0, 100).map((item) => ({ name: clip(item.name, 100), quantity: item.quantity ?? null, expiresOn: item.expiresOn ?? null }))),
+    block("Tilbud i jeres butikker, der passer til retter i kataloget (højst 60):", offerData(state)),
     block("Basisvarer, der altid er hjemme:", state.pantry.slice(0, 100).map((item) => clip(item, 60))),
     block("Indkøbslisten:", shoppingData),
     block("Fælles fravalg (hårde):", state.settings.globalExclusions.slice(0, 100).map((term) => clip(term, 80))),

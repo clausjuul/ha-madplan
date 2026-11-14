@@ -6,12 +6,18 @@ export const queryKeys = {
   bootstrap: ["bootstrap"] as const,
   shopping: ["shopping"] as const,
   draft: ["plan-draft"] as const,
+  offersStatus: ["offers-status"] as const,
 };
 
 /** Which cached resources a change event makes stale. */
 export function keysForTopics(topics: readonly ChangeTopic[]): (readonly string[])[] {
   const keys = new Set<(typeof queryKeys)[keyof typeof queryKeys]>();
   for (const topic of topics) {
+    if (topic === "offers") {
+      keys.add(queryKeys.offersStatus);
+      keys.add(queryKeys.shopping);
+      continue;
+    }
     if (topic === "shopping") keys.add(queryKeys.shopping);
     else if (topic === "drafts") keys.add(queryKeys.draft);
     else keys.add(queryKeys.bootstrap);
@@ -24,6 +30,12 @@ export function keysForTopics(topics: readonly ChangeTopic[]): (readonly string[
 export function useWeeklyPlans() {
   const api = useApi();
   return useQuery({ queryKey: ["weekly-plans"], queryFn: () => api.weeklyPlans(), staleTime: 30 * 60 * 1000 });
+}
+
+/** Status of the daily Prej fetch; only asked for when a key is configured. */
+export function useOffersStatus(enabled: boolean) {
+  const api = useApi();
+  return useQuery({ queryKey: queryKeys.offersStatus, queryFn: () => api.offersStatus(), enabled });
 }
 
 export function useBootstrap() {

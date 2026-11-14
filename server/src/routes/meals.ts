@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { createLocalSuggestions, normalizeVariants } from "@madplan/domain";
+import { dishOfferMatches, offerReason, offerScore, toOfferReference, createLocalSuggestions, normalizeVariants } from "@madplan/domain";
 import type { Meal, MealMap, MealVariant, SuggestDayInput, SwapMealsInput } from "@madplan/domain";
 import type { Deps } from "../deps.ts";
 import { badRequest, conflict, notFound, unprocessable } from "../errors.ts";
@@ -130,23 +130,32 @@ export function mealRoutes(api: Hono, deps: Deps): void {
     // Other days count as "used"; the day being replaced does not.
     const others = { ...state.meals };
     delete others[date];
+    const dishes = allDishes(repo.db);
+    const stores = state.settings.preferredStores;
+    const offerMatches = new Map(
+      dishes.map((dish) => [dish.id, dishOfferMatches(dish, state.offers, stores, state.today)] as const).filter(([, matches]) => matches.length > 0),
+    );
     const suggestion = createLocalSuggestions({
       days: [date],
       meals: others,
       fridge: state.fridge,
       lastEaten: lastEaten({ ...state, meals: others }),
       seed: input.seed,
-      dishes: allDishes(repo.db),
+      dishes,
       globalExclusions: state.settings.globalExclusions,
       profiles: state.profiles,
+      offerScores: new Map([...offerMatches].map(([id, matches]) => [id, offerScore(matches)])),
     })[0];
     if (!suggestion || !suggestion.dishId) throw unprocessable("Der kunne ikke findes et forslag til dagen.");
+    const matches = offerMatches.get(suggestion.dishId) ?? [];
+    const best = matches[0];
     const meal: Meal = {
       dishId: suggestion.dishId,
       locked: false,
       note: existing?.note ?? "",
       source: "local",
-      reason: suggestion.reason,
+      reason: best ? `${suggestion.reason} ${offerReason(matches)}`.trim() : suggestion.reason,
+      ...(best ? { offer: toOfferReference(best.offer) } : {}),
     };
     return c.json(repo.mutate(["meals", "shopping"], () => (putMeal(repo.db, date, meal), meal)));
   });

@@ -30,7 +30,7 @@ export function OpenRow({ item, onToggle, onRemove }: Props) {
         <span className="flex shrink-0 flex-col items-end gap-0.5">
           <span className="text-[15px] text-ink-2">{item.quantityLabel}</span>
           <span className={`text-[13px] ${item.priceIsOffer ? "font-semibold text-offer" : "text-muted"}`}>
-            {item.priceIsOffer ? `Tilbud ${item.priceLabel}` : item.priceLabel}
+            {item.priceIsOffer ? `Tilbud ${item.priceLabel}${item.offer ? ` · ${item.offer.store}` : ""}` : item.priceLabel}
           </span>
         </span>
       </button>

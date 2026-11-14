@@ -23,6 +23,8 @@ type LibraryMethods = Pick<
   | "importInspiration"
   | "saveInspirations"
   | "weeklyPlans"
+  | "offersStatus"
+  | "refreshOffers"
   | "importV1"
   | "exportData"
 >;
@@ -171,6 +173,16 @@ export function createFakeLibrary({ state, wait, emit, onImported }: Context): L
       state.savedInspirations = structuredClone(recipes);
       emit(["inspirations"]);
       return structuredClone(recipes);
+    },
+
+    async offersStatus() {
+      await wait();
+      return { configured: false, chains: [], callsToday: 0, callLimit: 20, remaining: null, syncing: false };
+    },
+
+    async refreshOffers() {
+      await wait();
+      throw new ApiRequestError(503, "unavailable", "Demoen henter ikke tilbud.");
     },
 
     async weeklyPlans() {

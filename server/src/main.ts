@@ -9,6 +9,7 @@ import type { Deps } from "./deps.ts";
 import { setupCards } from "./ha/cards.ts";
 import { setupVoice } from "./ha/voice.ts";
 import { createPublisher } from "./ha/publisher.ts";
+import { offerSyncFor } from "./offers/sync.ts";
 import { Repo } from "./repo.ts";
 import { failInterruptedDrafts } from "./services/drafts.ts";
 import { fetchSupervisorTimeZone } from "./timezone.ts";
@@ -56,9 +57,12 @@ backupTimer.unref();
 
 const publisher = createPublisher(deps);
 publisher.start();
+const offers = offerSyncFor(deps);
+offers.start();
 
 function shutdown(): void {
   publisher.stop();
+  offers.stop();
   clearInterval(backupTimer);
   server.close(() => {
     db.close();

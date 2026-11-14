@@ -21,6 +21,8 @@ import type {
   OfferReference,
   Profile,
   Settings,
+  GroceryStore,
+  RetailOffer,
 } from "./types.ts";
 
 export type ApiError = {
@@ -183,6 +185,33 @@ export type WeeklyPlansResponse = {
   failures: { sourceName: string; message: string }[];
 };
 
+// Offers (Prej) -----------------------------------------------------------------
+// GET  api/offers?chain=        -> OffersResponse   (stored offers; never calls Prej)
+// GET  api/offers/status        -> OffersStatus
+// POST api/offers/refresh       -> OffersStatus     (409 when today's offers are already in, 429 when the call budget is used)
+// Offers are fetched from Prej at most once a day per chain, and never more than OffersStatus.callLimit calls per UTC day.
+export type OffersResponse = { offers: RetailOffer[]; asOf: string };
+export type OfferChainStatus = {
+  chain: GroceryStore;
+  /** ISO time of the last complete fetch. */
+  syncedAt: string | null;
+  /** Prej's data date for that fetch. */
+  asOf: string | null;
+  count: number;
+  /** Danish, when the last attempt failed (the previous offers are kept). */
+  error: string | null;
+};
+export type OffersStatus = {
+  configured: boolean;
+  chains: OfferChainStatus[];
+  /** Calls Madplan has made to Prej this UTC day, and its own hard limit. */
+  callsToday: number;
+  callLimit: number;
+  /** What Prej last said is left of the key's daily quota (shared with anything else using the key). */
+  remaining: number | null;
+  syncing: boolean;
+};
+
 // Assist (chat) -----------------------------------------------------------------
 // POST   api/assist                       body AssistRequest -> AssistResponse
 //          503 with a Danish message when neither OpenAI nor the Home Assistant agent is available.
@@ -309,7 +338,8 @@ export type ChangeTopic =
   | "household"
   | "settings"
   | "drafts"
-  | "inspirations";
+  | "inspirations"
+  | "offers";
 export type ChangeEvent = { revision: number; topics: ChangeTopic[] };
 
 // The API client both sides agree on (web implements it over fetch, and a fake in memory).

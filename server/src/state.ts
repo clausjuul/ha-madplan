@@ -1,4 +1,5 @@
 /** Read-model helpers shared by routes and services. */
+import { getOffers } from "./offers/store.ts";
 import { addDaysToKey, eatenHistory, lastEatenByDish } from "@madplan/domain";
 import { dateKeyInZone } from "./timezone.ts";
 import type {
@@ -7,6 +8,7 @@ import type {
   FridgeItem,
   MealMap,
   Profile,
+  RetailOffer,
   Settings,
   ShoppingList,
 } from "@madplan/domain";
@@ -35,6 +37,8 @@ export type Snapshot = {
   fridge: FridgeItem[];
   pantry: string[];
   settings: Settings;
+  /** Stored Prej offers that still run (all chains; filter by settings.preferredStores). */
+  offers: RetailOffer[];
 };
 
 export function snapshot(deps: Deps): Snapshot {
@@ -47,6 +51,7 @@ export function snapshot(deps: Deps): Snapshot {
     fridge: getFridge(db),
     pantry: getPantry(db),
     settings: getSettings(db),
+    offers: getOffers(db, todayKey(deps)),
   };
 }
 
@@ -110,5 +115,8 @@ export function currentShoppingList(deps: Deps, range: { from?: string; to?: str
     state: getShoppingState(deps.repo.db),
     servings: state.settings.preferredServings,
     profiles: state.profiles,
+    offers: state.offers,
+    stores: state.settings.preferredStores,
+    asOf: state.today,
   });
 }

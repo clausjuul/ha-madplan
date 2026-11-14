@@ -5,6 +5,8 @@ import { participatingProfiles, preferenceScore } from "./profiles.ts";
 import { fridgeMatchScore, matchingFridgeItems, relaxedDayScore } from "./suggest.ts";
 import { maxVariantDays, normalizeVariants, suggestVariants } from "./variants.ts";
 import { NEVER_SCORE, ratingScores } from "./history.ts";
+import { dishOfferMatches, offerReason, offerScore, toOfferReference } from "./offers.ts";
+import type { DishOfferMatch } from "./offers.ts";
 import {
   normalizePlanningOptions,
   preservedDaysFromRequest,
@@ -14,10 +16,12 @@ import type {
   DraftDay,
   Dish,
   FridgeItem,
+  GroceryStore,
   MealMap,
   MealVariant,
   PlanDraft,
   Profile,
+  RetailOffer,
 } from "./types.ts";
 
 // --- Which days does a plan cover? -------------------------------------------------------------
@@ -109,6 +113,11 @@ export function canIncludeDish(dishId: string, input: FeasibilityInput): boolean
 // --- Planning context -------------------------------------------------------------------------
 
 export type PlanningContextInput = {
+  /** Stored retail offers and the stores they count for; offers are a soft bonus, never a filter. */
+  offers?: readonly RetailOffer[];
+  stores?: readonly GroceryStore[];
+  /** Day the offers must be running on (normally today). */
+  offersAsOf?: string;
   dishes: readonly Dish[];
   /** Candidate dates, normally from planningDays(). */
   dates: readonly string[];
@@ -157,6 +166,8 @@ export type PlanningContext = {
   dayRequests: Record<string, string>;
   globalExclusions: string[];
   profiles: Profile[];
+  /** dishId -> ingredients of that dish on offer in the chosen stores (only dishes with any). */
+  dishOffers: ReadonlyMap<string, DishOfferMatch[]>;
 };
 
 export function buildPlanningContext(input: PlanningContextInput): PlanningContext {
@@ -222,8 +233,26 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
     dayRequests,
     globalExclusions,
     profiles,
+    dishOffers: offersByDish(recipes, input),
   };
 }
+
+function offersByDish(recipes: readonly Dish[], input: PlanningContextInput): Map<string, DishOfferMatch[]> {
+  const result = new Map<string, DishOfferMatch[]>();
+  const offers = input.offers ?? [];
+  const stores = input.stores ?? [];
+  const asOf = input.offersAsOf ?? input.dates[0];
+  if (offers.length === 0 || stores.length === 0 || !asOf) return result;
+  for (const dish of recipes) {
+    const matches = dishOfferMatches(dish, offers, stores, asOf);
+    if (matches.length > 0) result.set(dish.id, matches);
+  }
+  return result;
+}
+
+/** Planning bonus for a dish's ingredients on offer (0 without offers). */
+export const dishOfferScore = (context: Pick<PlanningContext, "dishOffers">, dishId: string): number =>
+  offerScore(context.dishOffers.get(dishId) ?? []);
 
 const withinPrepLimit = (dish: Dish, maxPrepMinutes: number | null | undefined): boolean =>
   !maxPrepMinutes || !Number.isFinite(dish.prepMinutes) || dish.prepMinutes <= maxPrepMinutes;
@@ -384,7 +413,8 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
           (relaxed ? relaxedDayScore(candidate) : 0) +
           dayWishScore(candidate, context.dayRequests[date]) +
           preferenceScore(candidate, context.profiles) +
-          (context.ratingScores.get(candidate.id) ?? 0)
+          (context.ratingScores.get(candidate.id) ?? 0) +
+          dishOfferScore(context, candidate.id)
         );
       };
       dish = context.recipes
@@ -430,14 +460,21 @@ export function toDraft(
   meals: MealMap,
   message?: string,
 ): PlanDraft {
-  const planned: DraftDay[] = addSuggestedVariants(items, context).map((item) => ({
-    date: item.date,
-    dishId: item.dishId,
-    reason: item.reason,
-    locked: false,
-    source: item.source,
-    ...(item.variants?.length ? { variants: item.variants } : {}),
-  }));
+  const planned: DraftDay[] = addSuggestedVariants(items, context).map((item) => {
+    const matches = context.dishOffers.get(item.dishId) ?? [];
+    const best = [...matches].sort((a, b) => (b.offer.normalPriceOre ?? 0) - b.offer.amountOre - ((a.offer.normalPriceOre ?? 0) - a.offer.amountOre))[0];
+    // Say so when an offer helped, unless the reason (e.g. from the AI) already does.
+    const offerNote = best && !/tilbud/iu.test(item.reason) ? offerReason(matches) : "";
+    return {
+      date: item.date,
+      dishId: item.dishId,
+      reason: offerNote ? `${item.reason} ${offerNote}`.trim().slice(0, 240) : item.reason,
+      locked: false,
+      source: item.source,
+      ...(best ? { offer: toOfferReference(best.offer) } : {}),
+      ...(item.variants?.length ? { variants: item.variants } : {}),
+    };
+  });
   const kept: DraftDay[] = [...context.lockedDays].map(([date, dishId]) => {
     const meal = meals[date];
     return {

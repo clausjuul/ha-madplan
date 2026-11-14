@@ -6,7 +6,7 @@ configuration:
   prej_api_key:
     name: Prej API-nøgle
     description: >-
-      Valgfri. Reserveret til tilbud fra Netto og REMA 1000 (vises endnu ikke i version 0.1.0).
+      Valgfri. Henter ugens tilbud fra Netto og REMA 1000 én gang om morgenen (højst 20 kald i døgnet, så den gratis nøgle er nok). Opret en nøgle på prej.dk/api.
   voice_commands:
     name: Stemmekommandoer
     description: >-

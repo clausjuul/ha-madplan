@@ -11,12 +11,17 @@ import type { IngredientUnit, ShoppingCategory } from "./ingredients.ts";
 import { estimateItemPrice, formatPrice, parseOfferPrice } from "./pricing.ts";
 import { baseServings, scaleIngredients } from "./portions.ts";
 import { variantPortions } from "./variants.ts";
+import { compareBaskets } from "./basket.ts";
+import type { BasketComparison } from "./basket.ts";
+import { bestOffer, offerResult } from "./offers.ts";
 import type {
   Dish,
   FridgeItem,
+  GroceryStore,
   MealMap,
   OfferReference,
   Profile,
+  RetailOffer,
   ShoppingListState,
 } from "./types.ts";
 
@@ -58,6 +63,11 @@ export type ShoppingListInput = {
   servings?: number;
   /** For variants: how many portions a swapped part takes from the dish. */
   profiles?: readonly Profile[];
+  /** Stored retail offers; items without a planned offer get the best current one from these stores. */
+  offers?: readonly RetailOffer[];
+  stores?: readonly GroceryStore[];
+  /** The day offers must be running on (normally today); defaults to `from`. */
+  asOf?: string;
 };
 
 export type ShoppingList = {
@@ -69,6 +79,8 @@ export type ShoppingList = {
   totalEstimatedPrice: number;
   offerItemCount: number;
   checkedCount: number;
+  /** Store comparison from the stored offers; only when offers were given. */
+  basket?: BasketComparison;
 };
 
 export const EMPTY_SHOPPING_STATE: ShoppingListState = { checked: [], extras: [] };
@@ -167,9 +179,13 @@ export function createShoppingList(input: ShoppingListInput): ShoppingList {
   }
 
   const checked = new Set(state.checked);
+  const asOf = input.asOf ?? from;
+  const stores = input.stores ?? [];
+  const retailOffer = (name: string) => (input.offers?.length ? bestOffer(name, input.offers, stores, asOf) : undefined);
+  const withOffer = (item: AggregatedItem): AggregatedItem => (item.offer ? item : { ...item, offer: retailOffer(item.label) });
   const planned = [...ingredients.values()]
     .sort((a, b) => a.label.localeCompare(b.label, "da-DK"))
-    .map((item) => priced(item, checked));
+    .map((item) => priced(withOffer(item), checked));
   const availableOffers = days.flatMap((day) => {
     const offer = meals[day]?.offer;
     return offer ? [offer] : [];
@@ -190,13 +206,16 @@ export function createShoppingList(input: ShoppingListInput): ShoppingList {
           dishNames: [],
           extra: true,
           category: categorizeIngredient(parsed.name),
-          offer: availableOffers.find((offer) => ingredientsMatch(parsed.name, offer.item)),
+          offer: availableOffers.find((offer) => ingredientsMatch(parsed.name, offer.item)) ?? retailOffer(parsed.name),
         },
         checked,
       );
     });
 
   const items = [...planned, ...manual];
+  const basket = input.offers?.length && stores.length > 0
+    ? compareBaskets(items.filter((item) => !item.checked), offerResult(items.map((item) => item.label), input.offers, stores, asOf), stores)
+    : undefined;
   return {
     listId,
     from,
@@ -206,6 +225,7 @@ export function createShoppingList(input: ShoppingListInput): ShoppingList {
     totalEstimatedPrice: items.reduce((total, item) => total + item.estimatedPrice, 0),
     offerItemCount: items.filter((item) => item.priceIsOffer).length,
     checkedCount: items.filter((item) => item.checked).length,
+    ...(basket ? { basket } : {}),
   };
 }
 

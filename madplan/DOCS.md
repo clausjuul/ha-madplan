@@ -35,7 +35,7 @@ Indstillingerne findes under appens fane **Konfiguration**. Begge er valgfri, og
 | --- | --- |
 | `openai_api_key` | Slår AI til: Assist-samtalen, "Assist"-motoren i Planlæg og at finde nye opskrifter i Opdag. Du skal selv oprette en nøgle hos OpenAI. **Brug af OpenAI koster penge** og afregnes direkte mellem dig og OpenAI efter forbrug. Appen bruger kun nøglen, når du aktivt beder om et AI-svar. |
 | `voice_commands` | Til som standard. Opretter stemmekommandoer til Home Assistants Assist (se "Spørg med stemmen"). |
-| `prej_api_key` | Reserveret til tilbud fra Netto og REMA 1000. I version 0.1.0 registreres nøglen kun; tilbud vises endnu ikke. |
+| `prej_api_key` | Valgfri. Henter ugens tilbud fra Netto og REMA 1000 via [Prej](https://prej.dk/api). Den gratis nøgle (25 kald i døgnet) er nok: se "Tilbud" nedenfor. |
 
 Efter ændring af konfigurationen skal appen genstartes.
 
@@ -60,13 +60,24 @@ Importen virker kun i en **tom database**, så gør det, før du begynder at bru
 
 ## Sensorer i Home Assistant
 
-Madplan opretter tre sensorer, som holdes opdateret automatisk (også ved midnat, når dagen skifter):
+Madplan opretter fire sensorer, som holdes opdateret automatisk (også ved midnat, når dagen skifter):
 
 | Sensor | Værdi | Attributter |
 | --- | --- | --- |
 | `sensor.madplan_i_aften` | Navnet på aftenens ret, eller "Ingen ret" | `date`, `dish_id`, `prep_minutes`, `entity_picture`, `note`, `tomorrow` (morgendagens ret) |
 | `sensor.madplan_indkob` | Antal varer, der mangler at blive købt | `estimated_price_dkk`, `from`, `to`, `items` (de manglende varer, højst 60) |
+| `sensor.madplan_tilbud` | Antal varer på indkøbslisten, der er på tilbud | `items` (f.eks. "hakket oksekød: Netto 29,95 kr."), `attribution` |
 | `sensor.madplan_kommende` | Antal planlagte retter de næste 14 dage | `days` (liste med `date`, `weekday`, `dish`, `dish_id`, `prep_minutes`, `picture`, `note`, `skipped`), `ingress_url` |
+
+## Tilbud
+
+Med en Prej API-nøgle (`prej_api_key`) henter Madplan ugens tilbud fra de butikker, I har valgt under **Indstillinger → Butikker og tilbud**. Opret en gratis nøgle på [prej.dk/api](https://prej.dk/api). Den gratis nøgle må kun bruges privat, hvilket passer til Madplan derhjemme.
+
+- **Indkøbslisten** viser tilbudspris og butik på varer, der er på tilbud, og hvilken butik der er billigst på de varer, begge butikker har.
+- **Planlæggeren** giver retter med ingredienser på tilbud et lille plus og skriver det i begrundelsen. Tilbud vejer aldrig tungere end fravalg, bedømmelser eller variation.
+- **Assist** kan svare på "Hvad er på tilbud, vi kan bruge?".
+
+**Så få kald som muligt:** Prej opdaterer kun deres data om natten. Madplan henter derfor tilbuddene én gang om morgenen (efter kl. 6) og gemmer dem. Alt andet læser de gemte tilbud. En normal dag koster det 4-10 kald. Madplan bruger aldrig mere end 20 kald i døgnet (Prejs døgn følger UTC), heller ikke ved genstart eller hvis du trykker **Hent tilbud nu** flere gange. Status og forbrug står under **Indstillinger → Butikker og tilbud**. Data fra [Prej](https://prej.dk).
 
 ## Spørg med stemmen (Home Assistant Assist)
 
@@ -74,11 +85,12 @@ Sensorerne kan bruges af Home Assistants egen stemmeassistent, så "Hvad skal vi
 
 **Med en AI-samtaleagent i Home Assistant** (f.eks. OpenAI- eller Google-integrationen): vis de tre Madplan-sensorer for Assist under **Indstillinger → Stemmeassistenter → Vis**. Så kan agenten selv læse aftenens ret, de kommende dage og indkøbslisten.
 
-**Med den indbyggede agent** (uden AI) virker det af sig selv: Madplan opretter ved opstart tre automationer under **Indstillinger → Automationer**, der svarer på:
+**Med den indbyggede agent** (uden AI) virker det af sig selv: Madplan opretter ved opstart fire automationer under **Indstillinger → Automationer**, der svarer på:
 
 - "Hvad skal vi have i aften?" / "Hvad er der til aftensmad?"
 - "Hvad skal vi have i morgen?"
 - "Hvad mangler vi at købe?" / "Hvad står der på indkøbslisten?"
+- "Hvad er på tilbud?" (kræver en Prej-nøgle)
 
 De hedder "Madplan: ..." og opdateres automatisk, når Madplan opdateres. Vil du selv rette i én, så slet linjen "Oprettet af Madplan" i dens beskrivelse; så lader Madplan den være. Slå **Stemmekommandoer** (`voice_commands`) fra i konfigurationen, så fjerner Madplan dem igen. Det kræver, at `automations.yaml` er inkluderet i `configuration.yaml`, hvilket er standard.
 

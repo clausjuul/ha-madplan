@@ -1,6 +1,6 @@
 import type { ApiError } from "@madplan/domain";
 
-export type ErrorStatus = 400 | 403 | 404 | 409 | 413 | 422 | 500 | 502 | 503;
+export type ErrorStatus = 400 | 403 | 404 | 409 | 413 | 422 | 429 | 500 | 502 | 503;
 
 /** Thrown anywhere in a request; the app's error handler turns it into an ApiError response. */
 export class HttpError extends Error {

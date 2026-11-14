@@ -57,6 +57,15 @@ export const VOICE_AUTOMATIONS: readonly VoiceAutomation[] = [
       "{% elif varer | count <= 10 %}I mangler {{ varer | join(', ') }}." +
       "{% else %}I mangler {{ varer[:10] | join(', ') }} og {{ varer | count - 10 }} andre ting.{% endif %}",
   ),
+  automation(
+    "madplan_stemme_tilbud",
+    "Madplan: Hvad er på tilbud?",
+    ["hvad er på tilbud", "er der [nogen] tilbud [på indkøbslisten]", "hvad kan vi købe på tilbud"],
+    "{% set varer = state_attr('sensor.madplan_tilbud', 'items') or [] %}" +
+      "{% if varer | count == 0 %}Der er ingen af jeres varer på tilbud lige nu." +
+      "{% elif varer | count <= 5 %}På tilbud: {{ varer | join('; ') }}." +
+      "{% else %}På tilbud: {{ varer[:5] | join('; ') }} og {{ varer | count - 5 }} andre varer.{% endif %}",
+  ),
 ];
 
 export type VoiceOutcome = "created" | "updated" | "unchanged" | "kept" | "removed" | "absent";

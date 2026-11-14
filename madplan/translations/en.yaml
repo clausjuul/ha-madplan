@@ -6,7 +6,7 @@ configuration:
   prej_api_key:
     name: Prej API key
     description: >-
-      Optional. Reserved for offers from Netto and REMA 1000 (not shown yet in version 0.1.0).
+      Optional. Fetches this week's offers from Netto and REMA 1000 once each morning (at most 20 calls a day, so the free key is enough). Get a key at prej.dk/api.
   voice_commands:
     name: Voice commands
     description: >-

@@ -163,6 +163,13 @@ export type RetailOffer = {
   sourceUrl: string;
   confirmed: true;
   matchMethod: "all-query-tokens";
+  /** Prej's product id (stable across chains). */
+  productId?: number;
+  brand?: string;
+  /** The price before the offer, when known. */
+  normalPriceOre?: number | null;
+  /** "2 for 30": quantity and the total price for that many. */
+  multiBuy?: { quantity: number; priceOre: number } | null;
 };
 
 export type RetailOfferResult = {

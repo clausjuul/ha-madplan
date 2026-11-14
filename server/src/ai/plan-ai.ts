@@ -1,5 +1,5 @@
 /** AI week planning: the model proposes, the domain validates. Nothing the model says is trusted. */
-import { completePlan, daysBetween, maxVariantDays, validateProposal, weekdayName } from "@madplan/domain";
+import { completePlan, offerPriceLabel, offerSavingKr, STORE_NAMES, daysBetween, maxVariantDays, validateProposal, weekdayName } from "@madplan/domain";
 import type { PlanItem, PlanningContext, PlanRequest } from "@madplan/domain";
 import { AiError, extractJsonObject } from "./openai.ts";
 import type { OpenAiClient } from "./openai.ts";
@@ -22,6 +22,18 @@ export function planningPrompt(context: PlanningContext, request: PlanRequest, f
       leftoverFriendly: dish.leftoverFriendly,
       daysSinceEaten: last && firstDate ? Math.max(0, daysBetween(last, firstDate)) : null,
       familyRating: context.ratingScores.get(dish.id) ?? 0,
+      // Only dishes with something on offer carry this, to keep the prompt small.
+      ...(context.dishOffers.has(dish.id)
+        ? {
+            onOffer: (context.dishOffers.get(dish.id) ?? []).slice(0, 4).map((match) => ({
+              ingredient: clip(match.ingredient, 60),
+              store: STORE_NAMES[match.offer.chain],
+              price: offerPriceLabel(match.offer),
+              savedKr: Math.round(offerSavingKr(match.offer)),
+              ends: match.offer.validUntil,
+            })),
+          }
+        : {}),
     };
   });
   const profiles = context.profiles.slice(0, 30).map((profile) => ({
@@ -65,7 +77,9 @@ export function planningPrompt(context: PlanningContext, request: PlanRequest, f
     "så vælg gerne noget lidt mere spændende eller en favorit her), dayRequests (bløde ønsker til enkelte dage), fridge (brug gerne først, især varer med useFirst eller en nær expiresOn),",
     "preservedDates (beholdte dage),",
     "profiles (individuelle brugerprofiler: tag rimeligt hensyn til alle, fremhæv ingen enkeltperson) og userRequest (brugerens ønske).",
-    "Giv aldrig garanti for butikstilbud eller totalpriser uden verificerede data.",
+    "Giv aldrig garanti for butikstilbud eller totalpriser uden verificerede data. onOffer i kataloget er bekræftede tilbud fra jeres butikker (Prej):",
+    "brug dem som et blødt plus (især stor savedKr, og ends før eller i planperioden: læg retten inden tilbuddet slutter), men aldrig over bedømmelser, variation eller ønsker.",
+    "Nævn tilbuddet i reason, når det var en grund (f.eks. \"Hakket oksekød er på tilbud i Netto\"). Nævn aldrig tilbud, der ikke står i onOffer.",
     "Foretrukne retter og ting brugerne ikke kan lide er bløde ønsker; kostfravalg er hårde filtre.",
     "Foretræk hurtige retter (lav prepMinutes) på hverdage, der ikke er i relaxedDates, retter der ikke er spist længe, og læg ikke samme kategori to dage i træk.",
     "familyRating er familiens samlede bedømmelse (positiv = godt modtaget, negativ = dårligt modtaget): foretræk høje, undgå negative.",

@@ -18,3 +18,4 @@ export * from "./migrate-v1.ts";
 export { DISHES, DISH_BY_ID } from "./catalog/dishes.ts";
 export { INSPIRATION_RECIPES } from "./catalog/inspiration.ts";
 export type * from "./api.ts";
+export * from "./offers.ts";

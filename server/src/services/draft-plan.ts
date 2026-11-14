@@ -1,6 +1,7 @@
 /** Pure-ish planning helpers: build the planning context for a draft and produce/assemble days. */
 import {
   buildPlanningContext,
+  dishOfferScore,
   createLocalSuggestions,
   lastEatenByDish,
   planningDays,
@@ -75,6 +76,9 @@ export function prepare(
     fridge: override ? override.map((name) => ({ name })) : state.fridge,
     globalExclusions: state.settings.globalExclusions,
     profiles: state.profiles,
+    offers: state.offers,
+    stores: state.settings.preferredStores,
+    offersAsOf: state.today,
   });
   return { context, meals, dishes };
 }
@@ -95,6 +99,7 @@ export function localItems(state: Snapshot, request: PlanRequest, prep: PlanPrep
     globalExclusions: context.globalExclusions,
     profiles: context.profiles,
     ratingScores: context.ratingScores,
+    offerScores: new Map([...context.dishOffers.keys()].map((id) => [id, dishOfferScore(context, id)])),
     maxPrepMinutes: context.maxPrepMinutes,
     relaxedDates: context.relaxedDates,
   });

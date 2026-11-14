@@ -153,6 +153,8 @@ export function createHttpClient(): ApiClient {
     importInspiration: (recipe) => request("POST", "api/discover/import", { recipe }),
     saveInspirations: (recipes) => request("PUT", "api/inspirations/saved", recipes),
     weeklyPlans: (refresh) => request("GET", refresh ? "api/weekly-plans?refresh=1" : "api/weekly-plans"),
+    offersStatus: () => request("GET", "api/offers/status"),
+    refreshOffers: () => request("POST", "api/offers/refresh"),
 
     assist: (input, onReply) => (onReply ? streamAssist(input, onReply) : request("POST", "api/assist", input)),
     applyAssistProposal: (id, only) => request("POST", `api/assist/proposals/${enc(id)}/apply`, only ? { only } : {}),

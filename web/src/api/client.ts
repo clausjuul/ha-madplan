@@ -1,4 +1,5 @@
 import type {
+  OffersStatus,
   AssistApplyResult,
   AssistRequest,
   AssistResponse,
@@ -92,6 +93,10 @@ export interface ApiClient {
   saveInspirations(recipes: InspirationRecipe[]): Promise<InspirationRecipe[]>;
   /** This week's meal plans from Danish food sites; `refresh` asks the server to fetch again. */
   weeklyPlans(refresh?: boolean): Promise<WeeklyPlansResponse>;
+
+  /** Offers from Prej: status of the daily fetch, and the "Hent tilbud nu" button. */
+  offersStatus(): Promise<OffersStatus>;
+  refreshOffers(): Promise<OffersStatus>;
 
   /** With `onReply`, the answer is streamed: called with the reply text so far while the model writes. */
   assist(request: AssistRequest, onReply?: (replySoFar: string) => void): Promise<AssistResponse>;

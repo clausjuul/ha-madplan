@@ -50,11 +50,12 @@ describe("Home Assistant publisher", () => {
       "http://supervisor/core/api/states/sensor.madplan_i_aften",
       "http://supervisor/core/api/states/sensor.madplan_indkob",
       "http://supervisor/core/api/states/sensor.madplan_kommende",
+      "http://supervisor/core/api/states/sensor.madplan_tilbud",
     ]);
     expect((http.calls[0]?.init.headers as Record<string, string>).authorization).toBe("Bearer tok");
     expect(JSON.parse(String(http.calls[0]?.init.body))).toMatchObject({ state: "Lasagne" });
     await publisher.publish();
-    expect(http.calls).toHaveLength(3);
+    expect(http.calls).toHaveLength(4);
   });
 
   it("says 'Ingen ret' without a meal, does nothing without a token, and survives failures", async () => {
@@ -73,7 +74,7 @@ describe("Home Assistant publisher", () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await createPublisher(setup({ fetch: rejected.impl, env: { SUPERVISOR_TOKEN: "t" } }).deps).publish(true);
     quiet.mockRestore();
-    expect(rejected.calls).toHaveLength(3);
+    expect(rejected.calls).toHaveLength(4);
   });
 
   it("republishes after a debounce when relevant data changes", async () => {
@@ -84,11 +85,11 @@ describe("Home Assistant publisher", () => {
       const publisher = createPublisher(deps, 100);
       publisher.start();
       await vi.advanceTimersByTimeAsync(0);
-      expect(http.calls).toHaveLength(3);
+      expect(http.calls).toHaveLength(4);
       await json("PUT", "meals/2026-11-09", { dishId: "pizza" });
       await json("PUT", "meals/2026-11-09", { dishId: "tacos" });
       await vi.advanceTimersByTimeAsync(150);
-      expect(http.calls.length).toBeGreaterThanOrEqual(5);
+      expect(http.calls.length).toBeGreaterThanOrEqual(6);
       expect(http.calls.filter((c) => c.url.endsWith("i_aften")).at(-1)?.init.body).toContain("Tacos");
       publisher.stop();
     } finally {

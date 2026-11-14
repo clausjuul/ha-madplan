@@ -113,6 +113,29 @@ const MIGRATIONS: readonly string[] = [
   ALTER TABLE meals ADD COLUMN variants TEXT;
   ALTER TABLE profiles ADD COLUMN safe_foods TEXT;
   `,
+  `
+  CREATE TABLE retail_offers (
+    chain TEXT NOT NULL,
+    product_id INTEGER NOT NULL,
+    json TEXT NOT NULL,
+    valid_until TEXT NOT NULL,
+    PRIMARY KEY (chain, product_id)
+  );
+  CREATE TABLE offer_sync (
+    chain TEXT PRIMARY KEY,
+    synced_on TEXT,
+    synced_at TEXT,
+    as_of TEXT,
+    count INTEGER NOT NULL DEFAULT 0,
+    error TEXT,
+    error_on TEXT
+  );
+  CREATE TABLE prej_calls (
+    day TEXT PRIMARY KEY,
+    calls INTEGER NOT NULL DEFAULT 0,
+    remaining INTEGER
+  );
+  `,
 ];
 
 export function migrate(db: DatabaseSync): void {

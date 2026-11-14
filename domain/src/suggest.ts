@@ -31,6 +31,8 @@ export type SuggestionInput = {
   profiles?: readonly Profile[];
   /** dishId -> score adjustment from the family's ratings (see ratingScores). */
   ratingScores?: ReadonlyMap<string, number>;
+  /** dishId -> bonus for ingredients on offer (see dishOfferScore). */
+  offerScores?: ReadonlyMap<string, number>;
   /** Prep-time limit for ordinary days. */
   maxPrepMinutes?: number | null;
   /** Days with plenty of time: no prep-time limit, and slower or favourite dishes are welcome. */
@@ -42,6 +44,7 @@ const FRIDAY = 5;
 function createRanker(input: SuggestionInput) {
   const { fridge, lastEaten, seed, dayRequests = {}, globalExclusions = [] } = input;
   const ratings = input.ratingScores ?? new Map<string, number>();
+  const offerBonus = input.offerScores ?? new Map<string, number>();
   const profiles = participatingProfiles(input.profiles ?? []);
   const dishes = (input.dishes ?? DISHES).filter((dish) => !dish.archivedAt);
   const dishById = new Map(dishes.map((dish) => [dish.id, dish]));
@@ -108,7 +111,8 @@ function createRanker(input: SuggestionInput) {
           (usedCategories.get(dish.category) ?? 0) * 14 +
           requestScore +
           preferenceScore(dish, profiles) +
-          (ratings.get(dish.id) ?? 0);
+          (ratings.get(dish.id) ?? 0) +
+          (offerBonus.get(dish.id) ?? 0);
         const requestMatched = requestMatchCount > 0 || (wantsSomethingNew && !last) || fridayTreat;
         const dayRequestMatched =
           dayMatchCount > 0 ||

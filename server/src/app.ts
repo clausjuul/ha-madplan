@@ -9,6 +9,7 @@ import { dishRoutes } from "./routes/dishes.ts";
 import { draftRoutes } from "./routes/drafts.ts";
 import { householdRoutes } from "./routes/household.ts";
 import { mealRoutes } from "./routes/meals.ts";
+import { offerRoutes } from "./routes/offers.ts";
 import { shoppingRoutes } from "./routes/shopping.ts";
 import { weeklyRoutes } from "./routes/weekly.ts";
 import { ingressGuard } from "./security.ts";
@@ -35,6 +36,7 @@ export function createApp(deps: Deps, options: AppOptions = {}): Hono {
   discoveryRoutes(api, deps);
   weeklyRoutes(api, deps);
   assistRoutes(api, deps);
+  offerRoutes(api, deps);
   api.all("*", (c) => c.json({ error: "not_found", message: "Endepunktet findes ikke." }, 404));
   app.route("/api", api);
 

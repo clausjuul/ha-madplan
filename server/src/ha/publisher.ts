@@ -6,7 +6,7 @@ import type { Deps } from "../deps.ts";
 import { currentShoppingList, snapshot } from "../state.ts";
 
 const STATES_URL = "http://supervisor/core/api/states/";
-const RELEVANT: readonly ChangeTopic[] = ["meals", "dishes", "shopping", "settings", "household"];
+const RELEVANT: readonly ChangeTopic[] = ["meals", "dishes", "shopping", "settings", "household", "offers"];
 
 export type EntityState = { entityId: string; state: string; attributes: Record<string, unknown> };
 
@@ -80,7 +80,20 @@ export function buildEntities(deps: Deps): EntityState[] {
       ...(deps.config.ingressUrl ? { ingress_url: deps.config.ingressUrl } : {}),
     },
   };
-  return [tonight, shopping, upcoming];
+  const onOffer = list.items.filter((item) => !item.checked && item.priceIsOffer && item.offer);
+  const offers: EntityState = {
+    entityId: "sensor.madplan_tilbud",
+    state: String(onOffer.length),
+    attributes: {
+      friendly_name: "Madplan tilbud",
+      unit_of_measurement: "varer",
+      icon: "mdi:sale-outline",
+      // "Hakket oksekød: Netto 29,95 kr." for the voice command and dashboards (capped).
+      items: onOffer.slice(0, 30).map((item) => `${item.label}: ${item.offer?.store} ${item.offer?.price ?? ""}`.trim()),
+      attribution: "Data fra Prej",
+    },
+  };
+  return [tonight, shopping, upcoming, offers];
 }
 
 export type Publisher = {

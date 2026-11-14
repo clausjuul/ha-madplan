@@ -11,7 +11,7 @@ export function isValidTimeZone(zone: string): boolean {
 
 type Clock = { year: number; month: number; day: number; hour: number; minute: number; second: number };
 
-function clockIn(date: Date, timeZone: string): Clock {
+export function clockIn(date: Date, timeZone: string): Clock {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     hourCycle: "h23",
