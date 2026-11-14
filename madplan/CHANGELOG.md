@@ -1,5 +1,12 @@
 # Ændringer
 
+## 0.11.0
+
+- test(e2e): plan from a Monday so the integration test does not cross into the next week
+- docs: nice-to-have list for the planner, Assist and Home Assistant
+- feat(offers): weekly offers from Prej in the shopping list, planner, Assist and Home Assistant
+- feat(planning): days with plenty of time and swapping one part of a dish for one person
+
 ## 0.10.0
 
 - feat(assist): proposal memory, strict schema, richer context, new actions, partial apply, undo, streaming and voice commands
