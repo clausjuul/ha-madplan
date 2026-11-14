@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.12.0
+
+- feat(offers): browse the fetched offers with sorting and filters, and settings on phones
+
 ## 0.11.0
 
 - test(e2e): plan from a Monday so the integration test does not cross into the next week
