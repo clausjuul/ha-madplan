@@ -19,7 +19,9 @@ const mondayOf = (key: string): string => {
 };
 
 test("@integration a local plan draft is made, edited and saved into the week", async ({ page, request }) => {
-  const from = addDays(copenhagenToday(), 28);
+  // A Monday about four weeks ahead, so all three days are in the week the app shows after saving
+  // (from "today + 28" the plan crossed into the next week on Fridays to Sundays).
+  const from = mondayOf(addDays(copenhagenToday(), 28));
   const current = await (await request.get("/api/plan-drafts/current")).json();
   if (current) await request.delete(`/api/plan-drafts/${current.id}`);
 
