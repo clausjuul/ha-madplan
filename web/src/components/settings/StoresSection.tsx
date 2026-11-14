@@ -77,6 +77,7 @@ function OffersPanel({ stores }: { stores: GroceryStore[] }) {
             <p className="m-0 text-muted">
               {status.callsToday} af højst {status.callLimit} kald brugt i dag
               {status.remaining !== null ? ` · ${status.remaining} tilbage på nøglen` : ""}. Tilbuddene hentes én gang om morgenen.
+              Se dem under Indkøb → Tilbud.
             </p>
           ) : null}
           <button

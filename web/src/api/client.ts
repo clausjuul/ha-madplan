@@ -1,5 +1,6 @@
 import type {
   OffersStatus,
+  OffersResponse,
   AssistApplyResult,
   AssistRequest,
   AssistResponse,
@@ -96,6 +97,8 @@ export interface ApiClient {
 
   /** Offers from Prej: status of the daily fetch, and the "Hent tilbud nu" button. */
   offersStatus(): Promise<OffersStatus>;
+  /** The stored offers (never makes a call to Prej). */
+  offers(): Promise<OffersResponse>;
   refreshOffers(): Promise<OffersStatus>;
 
   /** With `onReply`, the answer is streamed: called with the reply text so far while the model writes. */

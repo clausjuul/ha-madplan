@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/ui/StatusViews";
 import { AddExtraField } from "./AddExtraField";
 import { PantryChips } from "./PantryChips";
 import { PriceSummary } from "./PriceSummary";
+import { OffersSheet } from "./OffersSheet";
 import { RangeSheet } from "./RangeSheet";
 import { ResetSheet } from "./ResetSheet";
 import { DoneRow, OpenRow } from "./ShoppingRow";
@@ -28,6 +29,8 @@ export function ShoppingView() {
   const actions = useShoppingActions();
   const [rangeOpen, setRangeOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [offersOpen, setOffersOpen] = useState(false);
+  const offersOn = bootstrap.data?.capabilities.offers === true;
 
   const list = shopping.data;
   const open = useMemo(() => groupByCategory((list?.items ?? []).filter((item) => !item.checked)), [list]);
@@ -91,6 +94,7 @@ export function ShoppingView() {
         today={today}
         wide={wide}
         onOpenRange={() => setRangeOpen(true)}
+        {...(offersOn ? { onOpenOffers: () => setOffersOpen(true) } : {})}
         addField={wide ? null : <AddExtraField onAdd={actions.addExtra} />}
       />
       {wide ? (
@@ -119,6 +123,17 @@ export function ShoppingView() {
           <PriceSummary list={list} footer />
         </>
       )}
+      {offersOn ? (
+        <OffersSheet
+          open={offersOpen}
+          onClose={() => setOffersOpen(false)}
+          list={list}
+          stores={bootstrap.data?.settings.preferredStores ?? []}
+          dishes={bootstrap.data?.dishes ?? []}
+          today={today}
+          onAdd={actions.addExtra}
+        />
+      ) : null}
       <RangeSheet
         open={rangeOpen}
         onClose={() => setRangeOpen(false)}

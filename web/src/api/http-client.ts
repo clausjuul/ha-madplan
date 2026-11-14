@@ -154,6 +154,7 @@ export function createHttpClient(): ApiClient {
     saveInspirations: (recipes) => request("PUT", "api/inspirations/saved", recipes),
     weeklyPlans: (refresh) => request("GET", refresh ? "api/weekly-plans?refresh=1" : "api/weekly-plans"),
     offersStatus: () => request("GET", "api/offers/status"),
+    offers: () => request("GET", "api/offers"),
     refreshOffers: () => request("POST", "api/offers/refresh"),
 
     assist: (input, onReply) => (onReply ? streamAssist(input, onReply) : request("POST", "api/assist", input)),

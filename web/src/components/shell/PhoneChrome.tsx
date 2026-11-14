@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { BookOpen, CalendarDays, MessageCircle, ShoppingCart, Sparkles } from "lucide-react";
+import { BookOpen, CalendarDays, MessageCircle, Settings, ShoppingCart, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { navFor, routePath, type NavName, type Route } from "@/lib/route";
 import { WeekSwitcher, weekTitle } from "./WeekSwitcher";
@@ -33,6 +33,13 @@ export function PhoneHeader({ weekStart, onWeekChange }: HeaderProps) {
       >
         <MessageCircle size={20} aria-hidden="true" />
       </button>
+      <Link
+        to={routePath({ name: "indstillinger" })}
+        aria-label="Indstillinger"
+        className="ml-0.5 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink-2"
+      >
+        <Settings size={20} aria-hidden="true" />
+      </Link>
     </header>
   );
 }

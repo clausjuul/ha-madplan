@@ -7,6 +7,7 @@ export const queryKeys = {
   shopping: ["shopping"] as const,
   draft: ["plan-draft"] as const,
   offersStatus: ["offers-status"] as const,
+  offers: ["offers"] as const,
 };
 
 /** Which cached resources a change event makes stale. */
@@ -15,6 +16,7 @@ export function keysForTopics(topics: readonly ChangeTopic[]): (readonly string[
   for (const topic of topics) {
     if (topic === "offers") {
       keys.add(queryKeys.offersStatus);
+      keys.add(queryKeys.offers);
       keys.add(queryKeys.shopping);
       continue;
     }
@@ -36,6 +38,12 @@ export function useWeeklyPlans() {
 export function useOffersStatus(enabled: boolean) {
   const api = useApi();
   return useQuery({ queryKey: queryKeys.offersStatus, queryFn: () => api.offersStatus(), enabled });
+}
+
+/** Stored offers; they change once a day, so they stay fresh for a while. */
+export function useOffers(enabled: boolean) {
+  const api = useApi();
+  return useQuery({ queryKey: queryKeys.offers, queryFn: () => api.offers(), enabled, staleTime: 10 * 60 * 1000 });
 }
 
 export function useBootstrap() {

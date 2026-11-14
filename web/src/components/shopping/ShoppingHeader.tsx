@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import type { ReactNode } from "react";
-import { CalendarDays, ChevronLeft } from "lucide-react";
+import { CalendarDays, ChevronLeft, Tag } from "lucide-react";
 import type { ShoppingList } from "@madplan/domain";
 import { rangeTitle } from "@/lib/shopping-view";
 
@@ -11,9 +11,11 @@ type Props = {
   onOpenRange: () => void;
   /** Phone: the add-item field sits under the title like in the mockup. */
   addField: ReactNode;
+  /** Opens the offers list; omitted when no offers are set up. */
+  onOpenOffers?: () => void;
 };
 
-export function ShoppingHeader({ list, today, wide, onOpenRange, addField }: Props) {
+export function ShoppingHeader({ list, today, wide, onOpenRange, addField, onOpenOffers }: Props) {
   return (
     <header className={`flex shrink-0 flex-col gap-3 ${wide ? "px-8 pb-5 pt-6" : "px-4 pb-3 pt-[18px]"}`}>
       <div className="flex items-center gap-2.5">
@@ -38,6 +40,16 @@ export function ShoppingHeader({ list, today, wide, onOpenRange, addField }: Pro
             <CalendarDays size={15} className="text-accent" aria-hidden="true" />
           </button>
         </div>
+        {onOpenOffers ? (
+          <button
+            type="button"
+            onClick={onOpenOffers}
+            className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-offer-soft px-3.5 text-[14px] font-semibold text-offer"
+          >
+            <Tag size={16} aria-hidden="true" />
+            Tilbud
+          </button>
+        ) : null}
         <span className="text-sm font-semibold text-accent" aria-label="Afkrydsede varer">
           {list.checkedCount}/{list.items.length}
         </span>

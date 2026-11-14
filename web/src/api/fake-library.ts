@@ -24,6 +24,7 @@ type LibraryMethods = Pick<
   | "saveInspirations"
   | "weeklyPlans"
   | "offersStatus"
+  | "offers"
   | "refreshOffers"
   | "importV1"
   | "exportData"
@@ -178,6 +179,11 @@ export function createFakeLibrary({ state, wait, emit, onImported }: Context): L
     async offersStatus() {
       await wait();
       return { configured: false, chains: [], callsToday: 0, callLimit: 20, remaining: null, syncing: false };
+    },
+
+    async offers() {
+      await wait();
+      return { offers: [], asOf: "" };
     },
 
     async refreshOffers() {
