@@ -13,6 +13,7 @@ export * from "./planning-rules.ts";
 export * from "./planning.ts";
 export * from "./plan-review.ts";
 export * from "./suggest.ts";
+export * from "./variants.ts";
 export * from "./migrate-v1.ts";
 export { DISHES, DISH_BY_ID } from "./catalog/dishes.ts";
 export { INSPIRATION_RECIPES } from "./catalog/inspiration.ts";

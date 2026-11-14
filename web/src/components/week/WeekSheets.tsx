@@ -8,9 +8,10 @@ import { DishPickerSheet } from "./sheets/DishPickerSheet";
 import { NoteSheet } from "./sheets/NoteSheet";
 import { RecipeSheet } from "./sheets/RecipeSheet";
 import { SwapDaySheet } from "./sheets/SwapDaySheet";
+import { VariantSheet } from "./sheets/VariantSheet";
 
 export type SheetState = {
-  kind: "actions" | "picker" | "swap" | "note" | "recipe";
+  kind: "actions" | "picker" | "swap" | "note" | "variant" | "recipe";
   date: string;
 } | null;
 
@@ -25,12 +26,12 @@ type Props = {
 /** Renders whichever day sheet is open and wires its choices to the meal mutations. */
 export function WeekSheets({ sheet, setSheet, data, today, actions }: Props) {
   const day: DayModel | null = useMemo(
-    () => (sheet ? buildDay(sheet.date, today, data.meals, data.dishes) : null),
-    [sheet, today, data.meals, data.dishes],
+    () => (sheet ? buildDay(sheet.date, today, data.meals, data.dishes, data.profiles) : null),
+    [sheet, today, data.meals, data.dishes, data.profiles],
   );
   const sameWeek = useMemo(
-    () => (sheet ? buildWeek(mondayOf(sheet.date), today, data.meals, data.dishes) : []),
-    [sheet, today, data.meals, data.dishes],
+    () => (sheet ? buildWeek(mondayOf(sheet.date), today, data.meals, data.dishes, data.profiles) : []),
+    [sheet, today, data.meals, data.dishes, data.profiles],
   );
   const close = (): void => setSheet(null);
   const forKind = (kind: NonNullable<SheetState>["kind"]): DayModel | null =>
@@ -46,6 +47,8 @@ export function WeekSheets({ sheet, setSheet, data, today, actions }: Props) {
         return setSheet({ kind: "swap", date });
       case "note":
         return setSheet({ kind: "note", date });
+      case "variant":
+        return setSheet({ kind: "variant", date });
       case "suggest":
         actions.suggest(date);
         return close();
@@ -89,6 +92,15 @@ export function WeekSheets({ sheet, setSheet, data, today, actions }: Props) {
         onClose={close}
         onSave={(note) => {
           if (sheet) actions.patchMeal(sheet.date, { note });
+          close();
+        }}
+      />
+      <VariantSheet
+        day={forKind("variant")}
+        profiles={data.profiles}
+        onClose={close}
+        onSave={(variants) => {
+          if (sheet) actions.patchMeal(sheet.date, { variants });
           close();
         }}
       />

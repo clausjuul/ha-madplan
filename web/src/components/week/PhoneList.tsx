@@ -45,6 +45,11 @@ function PhoneRow({ day, handlers }: { day: DayModel; handlers: DayHandlers }) {
           >
             {dish ? dish.name : "Vælg en ret"}
           </span>
+          {day.variantLines.map((line) => (
+            <span key={line} className="block truncate text-[13px] text-ink-2">
+              {line}
+            </span>
+          ))}
         </span>
       </button>
       <button

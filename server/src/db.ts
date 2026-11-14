@@ -109,6 +109,10 @@ const MIGRATIONS: readonly string[] = [
     expires_at TEXT NOT NULL
   );
   `,
+  `
+  ALTER TABLE meals ADD COLUMN variants TEXT;
+  ALTER TABLE profiles ADD COLUMN safe_foods TEXT;
+  `,
 ];
 
 export function migrate(db: DatabaseSync): void {

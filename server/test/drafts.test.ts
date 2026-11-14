@@ -239,3 +239,50 @@ describe("AI plan drafts", () => {
     expect(await json("GET", "plan-drafts/current")).toBeNull();
   });
 });
+
+describe("god tid and variants in drafts", () => {
+  const son = {
+    id: "son",
+    name: "Oliver",
+    active: true,
+    exclusions: [],
+    preferences: [],
+    dislikes: ["oksekød"],
+    safeFoods: ["nuggets"],
+    favoriteDishIds: [],
+  };
+
+  it("lets slow dishes onto relaxed days only", async () => {
+    const { json } = setup();
+    const relaxed = "2026-11-11";
+    const draft = await json<PlanDraftRecord>(
+      "POST",
+      "plan-drafts",
+      request({ maxPrepMinutes: 30, relaxedDates: [relaxed] }),
+    );
+    expect(draft.request.relaxedDates).toEqual([relaxed]);
+    const prep = (id: string | undefined) => DISHES.find((dish) => dish.id === id)?.prepMinutes ?? 0;
+    for (const day of draft.days) if (day.date !== relaxed) expect(prep(day.dishId)).toBeLessThanOrEqual(30);
+    expect(draft.review?.checks.find((check) => check.id === "prepTime")?.status).toBe("ok");
+  });
+
+  it("keeps a variant through patching and applying the draft", async () => {
+    const { json } = setup();
+    await json("PUT", "profiles", [son]);
+    const draft = await json<PlanDraftRecord>("POST", "plan-drafts", request({ requiredDishIds: ["lasagne"] }));
+    const day = draft.days.find((candidate) => candidate.dishId === "lasagne");
+    expect(day?.variants).toEqual([{ profileId: "son", replaces: "hakket oksekød", with: "nuggets" }]);
+
+    const cleared = await json<PlanDraftRecord>("PATCH", `plan-drafts/${draft.id}/days/${day?.date}`, { variants: null });
+    expect(cleared.days.find((candidate) => candidate.date === day?.date)?.variants).toBeUndefined();
+    const again = await json<PlanDraftRecord>("PATCH", `plan-drafts/${draft.id}/days/${day?.date}`, {
+      variants: [{ profileId: "son", replaces: "oksekød", with: "nuggets" }],
+    });
+    expect(again.days.find((candidate) => candidate.date === day?.date)?.variants).toHaveLength(1);
+
+    await json("POST", `plan-drafts/${draft.id}/apply`);
+    const boot = await json<BootstrapResponse>("GET", "bootstrap");
+    expect(boot.meals[day?.date ?? ""]?.variants).toEqual([{ profileId: "son", replaces: "hakket oksekød", with: "nuggets" }]);
+    expect(boot.profiles[0]?.safeFoods).toEqual(["nuggets"]);
+  });
+});

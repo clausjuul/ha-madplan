@@ -46,6 +46,7 @@ const TOPICS: Record<AssistAction["type"], ChangeTopic[]> = {
   setMealNote: ["meals"],
   skipMeal: ["meals", "shopping"],
   rateMeal: ["meals"],
+  setMealVariant: ["meals", "shopping"],
 };
 
 /** What the data looked like before an apply, for exactly the parts the actions can touch. */
@@ -70,6 +71,7 @@ function remember(deps: Deps, before: Before, action: AssistAction): void {
     case "setMealNote":
     case "skipMeal":
     case "rateMeal":
+    case "setMealVariant":
       meal(action.date);
       return;
     case "swapMeals":
@@ -168,7 +170,7 @@ function write(deps: Deps, action: AssistAction, before: Before): void {
         db,
         getProfiles(db).map((profile) => {
           if (profile.id !== action.profileId) return profile;
-          const kept = profile[action.field].filter((entry) => entry.trim().toLocaleLowerCase("da-DK") !== key);
+          const kept = (profile[action.field] ?? []).filter((entry) => entry.trim().toLocaleLowerCase("da-DK") !== key);
           return { ...profile, [action.field]: action.remove ? kept : [...kept, action.term.trim()] };
         }),
       );
@@ -190,6 +192,17 @@ function write(deps: Deps, action: AssistAction, before: Before): void {
       if (!existing) return;
       const { skipped: _skipped, ...rest } = existing;
       putMeal(db, action.date, action.skipped ? { ...rest, skipped: true } : rest);
+      return;
+    }
+    case "setMealVariant": {
+      const existing = getMeal(db, action.date);
+      if (!existing) return;
+      const others = (existing.variants ?? []).filter((variant) => variant.profileId !== action.profileId);
+      const variants = action.remove
+        ? others
+        : [...others, { profileId: action.profileId, replaces: action.replaces, with: action.with }];
+      const { variants: _variants, ...rest } = existing;
+      putMeal(db, action.date, variants.length ? { ...rest, variants } : rest);
       return;
     }
     case "rateMeal": {

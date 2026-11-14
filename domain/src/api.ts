@@ -17,6 +17,7 @@ import type {
   MealMap,
   MealRating,
   MealSource,
+  MealVariant,
   OfferReference,
   Profile,
   Settings,
@@ -73,6 +74,8 @@ export type MealInput = {
   skipped?: boolean;
   /** null clears the rating (PATCH). */
   rating?: MealRating | null;
+  /** null (or []) clears the variants (PATCH). Variants that do not fit the dish are dropped. */
+  variants?: MealVariant[] | null;
 };
 export type SwapMealsInput = { a: string; b: string };
 export type SuggestDayInput = { seed: number };
@@ -122,6 +125,8 @@ export type PlanRequest = {
   /** Free-text wish per date. */
   dayRequests: Record<string, string>;
   maxPrepMinutes?: number;
+  /** Days with plenty of time: no prep-time limit, and the dish may cost a little more. */
+  relaxedDates?: string[];
   budgetDkk?: number;
   /** One-off fridge contents for this plan; not persisted to the fridge. */
   fridgeOverride?: string[];
@@ -140,7 +145,7 @@ export type PlanDraftRecord = {
   /** Danish, when status is "failed". */
   error?: string;
 };
-export type DraftDayPatch = { locked?: boolean; dishId?: string };
+export type DraftDayPatch = { locked?: boolean; dishId?: string; variants?: MealVariant[] | null };
 
 // Discovery -------------------------------------------------------------------
 // POST api/discover             body DiscoverInput -> { recipes: InspirationRecipe[] }  (503 without OpenAI)
@@ -237,10 +242,22 @@ export type AssistAction =
       remove: boolean;
       label: string;
     }
+  | {
+      type: "setMealVariant";
+      date: string;
+      profileId: string;
+      /** The dish's ingredient that is swapped (ignored when removing). */
+      replaces: string;
+      /** One of the profile's safe foods (ignored when removing). */
+      with: string;
+      /** True removes this person's swap from the day. */
+      remove: boolean;
+      label: string;
+    }
   | { type: "createDish"; dish: DishInput; label: string }
   | { type: "startPlanDraft"; request: PlanRequest; label: string };
 export type AssistActionType = AssistAction["type"];
-export type ProfileTermField = "preferences" | "dislikes" | "exclusions";
+export type ProfileTermField = "preferences" | "dislikes" | "exclusions" | "safeFoods";
 
 export type AssistProposal = {
   id: string;

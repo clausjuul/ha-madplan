@@ -30,4 +30,24 @@ describe("AI planning prompt", () => {
     expect(item.date.enum).toEqual(["2026-11-09", "2026-11-10"]);
     expect(item.dishId.enum).toEqual(["a", "b"]);
   });
+
+  it("tells the model about relaxed days and who can get a part of the dish swapped", () => {
+    const relaxed = buildPlanningContext({
+      dishes: [dish("a", 20), dish("b", 60)],
+      dates: ["2026-11-09", "2026-11-10"],
+      meals: {},
+      maxPrepMinutes: 30,
+      relaxedDates: ["2026-11-10"],
+      profiles: [
+        { id: "son", name: "Oliver", active: true, exclusions: [], preferences: [], dislikes: [], safeFoods: ["nuggets"], favoriteDishIds: [] },
+      ],
+    });
+    const { input } = planningPrompt(relaxed, { dayCount: 2, from: "2026-11-09", request: "", newDishCount: 0 } as never, "F");
+    expect(input).toContain('"relaxedDates":["2026-11-10"]');
+    expect(input).toContain('"alwaysEats":["nuggets"]');
+    expect(input).toContain('"maxVariantDays":1');
+    const variants = (planSchema(relaxed).schema as any).properties.plan.items.properties.variants;
+    expect(variants.items.properties.profileId.enum).toEqual(["son"]);
+    expect(relaxed.recipes.map((d) => d.id)).toEqual(["a", "b"]);
+  });
 });

@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
-import { createLocalSuggestions } from "@madplan/domain";
-import type { Meal, MealMap, SuggestDayInput, SwapMealsInput } from "@madplan/domain";
+import { createLocalSuggestions, normalizeVariants } from "@madplan/domain";
+import type { Meal, MealMap, MealVariant, SuggestDayInput, SwapMealsInput } from "@madplan/domain";
 import type { Deps } from "../deps.ts";
 import { badRequest, conflict, notFound, unprocessable } from "../errors.ts";
 import { readJson } from "../http.ts";
@@ -15,7 +15,15 @@ const LOCKED = "Måltidet er låst. Lås det op, før du ændrer det.";
 /** A locked meal may only be replaced by one that differs in `locked` alone (i.e. unlocking it). */
 function onlyLockChanges(existing: Meal, next: Meal): boolean {
   const key = (meal: Meal): string =>
-    JSON.stringify([meal.dishId, meal.note, meal.source, meal.reason ?? null, meal.offer ?? null, meal.skipped ?? false]);
+    JSON.stringify([
+      meal.dishId,
+      meal.note,
+      meal.source,
+      meal.reason ?? null,
+      meal.offer ?? null,
+      meal.skipped ?? false,
+      meal.variants ?? [],
+    ]);
   return key(existing) === key(next);
 }
 
@@ -24,6 +32,14 @@ export function mealRoutes(api: Hono, deps: Deps): void {
 
   const assertDish = (dishId: string): void => {
     if (!findDish(repo.db, dishId)) throw unprocessable("Retten findes ikke.");
+  };
+
+  /** Only variants that fit the dish and an active profile's safe foods are kept. */
+  const fitVariants = (dishId: string, variants: readonly MealVariant[]): MealVariant[] => {
+    const dish = findDish(repo.db, dishId);
+    if (!dish) return [];
+    const state = snapshot(deps);
+    return normalizeVariants(variants, dish, state.profiles, state.settings.globalExclusions);
   };
 
   api.put("/meals/:date", async (c) => {
@@ -41,6 +57,8 @@ export function mealRoutes(api: Hono, deps: Deps): void {
     if (input.offer) meal.offer = input.offer;
     if (input.skipped) meal.skipped = true;
     if (input.rating) meal.rating = input.rating;
+    const variants = input.variants ? fitVariants(dishId, input.variants) : [];
+    if (variants.length) meal.variants = variants;
     const existing = getMeal(repo.db, date);
     if (existing?.locked && !onlyLockChanges(existing, meal)) throw conflict(LOCKED);
     return c.json(repo.mutate(["meals", "shopping"], () => (putMeal(repo.db, date, meal), meal)));
@@ -52,8 +70,13 @@ export function mealRoutes(api: Hono, deps: Deps): void {
     if (patch.dishId !== undefined) assertDish(patch.dishId);
     const existing = getMeal(repo.db, date);
     if (!existing) throw notFound("Der er ikke planlagt noget den dag.");
-    const { rating, ...rest } = patch;
+    const { rating, variants, ...rest } = patch;
     const merged: Meal = { ...existing, ...rest };
+    const changedDish = rest.dishId !== undefined && rest.dishId !== existing.dishId;
+    const nextVariants =
+      variants === null ? [] : fitVariants(merged.dishId, variants ?? (changedDish ? [] : existing.variants ?? []));
+    if (nextVariants.length) merged.variants = nextVariants;
+    else delete merged.variants;
     if (patch.skipped === false) delete merged.skipped;
     if (rating === null) delete merged.rating;
     else if (rating !== undefined) merged.rating = rating;

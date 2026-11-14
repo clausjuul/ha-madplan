@@ -146,6 +146,7 @@ const KIND: Record<AssistActionType, PreviewKind> = {
   setMealNote: "meal",
   skipMeal: "meal",
   rateMeal: "meal",
+  setMealVariant: "meal",
 };
 
 export type PreviewLine = { label: string; kind: PreviewKind; result?: AssistActionResult };

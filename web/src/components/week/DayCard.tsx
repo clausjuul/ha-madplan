@@ -141,6 +141,11 @@ export function DayCard(props: Props) {
           </span>
           <strong className="text-base font-semibold leading-tight">{dish.name}</strong>
           <span className="text-[13px] text-muted">{day.meta}</span>
+          {day.variantLines.map((line) => (
+            <span key={line} className="line-clamp-2 text-[13px] text-ink-2">
+              {line}
+            </span>
+          ))}
           {day.meal?.note ? (
             <span className="line-clamp-1 text-[13px] italic text-ink-2">{day.meal.note}</span>
           ) : null}

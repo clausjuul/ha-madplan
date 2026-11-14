@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { Meal, MealMap, MealSource, OfferReference } from "@madplan/domain";
+import type { Meal, MealMap, MealSource, MealVariant, OfferReference } from "@madplan/domain";
 import { all, flag, one, optText, parseJson, run, text, toJson } from "./repo.ts";
 import type { Row } from "./repo.ts";
 
@@ -17,6 +17,8 @@ function toMeal(row: Row): Meal {
   if (flag(row, "skipped")) meal.skipped = true;
   const rating = optText(row, "rating");
   if (rating === "up" || rating === "down" || rating === "never") meal.rating = rating;
+  const variants = parseJson<MealVariant[] | null>(row, "variants", null);
+  if (variants?.length) meal.variants = variants;
   return meal;
 }
 
@@ -34,11 +36,12 @@ export function getMeal(db: DatabaseSync, date: string): Meal | undefined {
 export function putMeal(db: DatabaseSync, date: string, meal: Meal): void {
   run(
     db,
-    `INSERT INTO meals (date, dish_id, locked, note, source, reason, offer, skipped, rating)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO meals (date, dish_id, locked, note, source, reason, offer, skipped, rating, variants)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(date) DO UPDATE SET dish_id = excluded.dish_id, locked = excluded.locked,
        note = excluded.note, source = excluded.source, reason = excluded.reason,
-       offer = excluded.offer, skipped = excluded.skipped, rating = excluded.rating`,
+       offer = excluded.offer, skipped = excluded.skipped, rating = excluded.rating,
+       variants = excluded.variants`,
     date,
     meal.dishId,
     meal.locked ? 1 : 0,
@@ -48,6 +51,7 @@ export function putMeal(db: DatabaseSync, date: string, meal: Meal): void {
     meal.offer ? toJson(meal.offer) : null,
     meal.skipped ? 1 : 0,
     meal.rating ?? null,
+    meal.variants?.length ? toJson(meal.variants) : null,
   );
 }
 

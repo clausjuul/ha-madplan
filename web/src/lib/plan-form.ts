@@ -26,6 +26,8 @@ export type PlanForm = {
   skippedDates: string[];
   request: string;
   dayRequests: Record<string, string>;
+  /** Days with plenty of time (no time limit, may cost a little more). */
+  relaxedDates: string[];
   requiredDishIds: string[];
   newDishCount: number;
   maxPrepMinutes: number | null;
@@ -46,6 +48,7 @@ export function initialForm(today: string, fridge: readonly string[], aiAvailabl
     skippedDates: [],
     request: "",
     dayRequests: {},
+    relaxedDates: [],
     requiredDishIds: [],
     newDishCount: 1,
     maxPrepMinutes: null,
@@ -63,6 +66,7 @@ export function formFromRequest(request: PlanRequest, aiAvailable: boolean): Pla
     skippedDates: [...request.skippedDates],
     request: request.request,
     dayRequests: { ...request.dayRequests },
+    relaxedDates: [...(request.relaxedDates ?? [])],
     requiredDishIds: [...request.requiredDishIds],
     newDishCount: request.newDishCount,
     maxPrepMinutes: request.maxPrepMinutes ?? null,
@@ -151,6 +155,7 @@ export function toRequest(form: PlanForm, today: string, baseFridge: readonly st
   for (const [date, wish] of Object.entries(form.dayRequests)) {
     if (dates.includes(date) && wish.trim()) dayRequests[date] = wish.trim();
   }
+  const relaxedDates = form.relaxedDates.filter((date) => dates.includes(date)).sort();
   return {
     engine: form.engine,
     from: form.from < today ? today : form.from,
@@ -160,6 +165,7 @@ export function toRequest(form: PlanForm, today: string, baseFridge: readonly st
     requiredDishIds: form.requiredDishIds,
     request: form.request.trim(),
     dayRequests,
+    ...(relaxedDates.length ? { relaxedDates } : {}),
     ...(form.maxPrepMinutes ? { maxPrepMinutes: form.maxPrepMinutes } : {}),
     ...(Number.isFinite(budget) && budget > 0 ? { budgetDkk: Math.round(budget) } : {}),
     ...(sameFridge ? {} : { fridgeOverride: form.fridge }),

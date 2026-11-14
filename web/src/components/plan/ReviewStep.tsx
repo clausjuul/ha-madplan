@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check } from "lucide-react";
-import { eatenHistory, lastEatenByDish, parseDateKey, weekdayName, type BootstrapResponse, type PlanDraftRecord } from "@madplan/domain";
+import { describeVariant, eatenHistory, lastEatenByDish, parseDateKey, weekdayName, type BootstrapResponse, type PlanDraftRecord } from "@madplan/domain";
 import type { DraftActions } from "@/api/draft-mutations";
 import { useIsWide } from "@/hooks/use-media";
 import { dishOfDay, engineLabel, draftDayBadge, summarizeDraft } from "@/lib/draft-summary";
@@ -71,6 +71,9 @@ export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: 
           day={day}
           dish={dishOfDay(day, dishes)}
           badge={draftDayBadge(day, lastEaten)}
+          relaxed={draft.request.relaxedDates?.includes(day.date) ?? false}
+          variantLines={(day.variants ?? []).map((variant) => describeVariant(variant, data.profiles))}
+          onDropVariants={() => void actions.patchDay(draft.id, day.date, { variants: null })}
           busy={actions.busy}
           onLock={() => void actions.patchDay(draft.id, day.date, { locked: !day.locked })}
           onRegenerate={() => setAltDate(day.date)}

@@ -4,6 +4,7 @@ import {
   createLocalSuggestions,
   eatenHistory,
   lastEatenByDish,
+  normalizeVariants,
   planningDays,
   reviewPlan,
   toDraft,
@@ -109,6 +110,7 @@ export function createFakeDrafts(ctx: Context): DraftMethods {
       dayRequests: request.dayRequests,
       budgetDkk: request.budgetDkk,
       maxPrepMinutes: request.maxPrepMinutes,
+      relaxedDates: request.relaxedDates,
       fridge: request.fridgeOverride ? request.fridgeOverride.map((name) => ({ name })) : state.fridge,
       globalExclusions: state.settings.globalExclusions,
       profiles: state.profiles,
@@ -128,6 +130,8 @@ export function createFakeDrafts(ctx: Context): DraftMethods {
     const all = [...new Set([...context.dates, ...context.lockedDays.keys()])].sort();
     const suggestions = createLocalSuggestions({
       ratingScores: context.ratingScores,
+      maxPrepMinutes: context.maxPrepMinutes,
+      relaxedDates: context.relaxedDates,
       days: all,
       meals: prep.meals,
       fridge: context.fridge,
@@ -253,6 +257,15 @@ export function createFakeDrafts(ctx: Context): DraftMethods {
         next = { date, dishId: dish.id, reason: "Valgt manuelt.", locked: day.locked, source: "manual" };
       }
       if (patch.locked !== undefined) next = { ...next, locked: patch.locked };
+      if (patch.variants !== undefined) {
+        const dish = next.newDish ?? state.dishes.find((candidate) => candidate.id === next.dishId);
+        const variants =
+          dish && patch.variants
+            ? normalizeVariants(patch.variants, dish, state.profiles, state.settings.globalExclusions)
+            : [];
+        next = { ...next, variants };
+        if (!variants.length) delete next.variants;
+      }
       const days = current.days.map((candidate, position) => (position === index ? next : candidate));
       draft = { ...current, days, review: produce(current.request, windowOf(current.request), days.filter((d) => d.locked), "local").review };
       ctx.emit(["drafts"]);
@@ -293,6 +306,7 @@ export function createFakeDrafts(ctx: Context): DraftMethods {
         const meal: Meal = {
           dishId: dayDishId(day), locked: day.locked, note: "", source: day.source, reason: day.reason,
           ...(day.offer ? { offer: day.offer } : {}),
+          ...(day.variants?.length ? { variants: day.variants } : {}),
         };
         state.meals[day.date] = meal;
         applied[day.date] = meal;

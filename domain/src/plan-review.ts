@@ -170,13 +170,16 @@ function prepTimeCheck(days: PlannedDay[], context: PlanningContext): PlanCheck 
   if (max === null) {
     return { id: "prepTime", label, status: "skipped", message: "Ingen tidsgrænse er valgt.", dates: [] };
   }
-  const slow = days.filter(({ dish }) => dish.prepMinutes > max);
+  const relaxed = new Set(context.relaxedDates);
+  const slow = days.filter(({ day, dish }) => dish.prepMinutes > max && !relaxed.has(day.date));
   if (!slow.length) {
     return {
       id: "prepTime",
       label,
       status: "ok",
-      message: `Alle retter kan laves på højst ${max} minutter.`,
+      message: relaxed.size
+        ? `Alle retter kan laves på højst ${max} minutter, undtagen på dage med god tid.`
+        : `Alle retter kan laves på højst ${max} minutter.`,
       dates: [],
     };
   }
@@ -210,6 +213,7 @@ function estimateCost(
       note: "",
       source: day.source,
       offer: day.offer,
+      ...(day.variants?.length ? { variants: day.variants } : {}),
     };
   }
   return createShoppingList({
@@ -220,6 +224,7 @@ function estimateCost(
     dishes: [...dishById.values()],
     fridge: input.context.fridge,
     pantry: input.pantry ?? [],
+    profiles: input.context.profiles,
   }).totalEstimatedPrice;
 }
 

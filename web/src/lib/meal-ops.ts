@@ -46,9 +46,12 @@ export function removeMealFrom(meals: MealMap, date: string): MealMap {
 export function patchMealIn(meals: MealMap, date: string, patch: Partial<MealInput>): MealMap {
   const current = meals[date];
   if (!current) return meals;
-  const { rating, ...rest } = patch;
+  const { rating, variants, ...rest } = patch;
   const next = { ...current, ...rest };
   if (rating === null) delete next.rating;
   else if (rating !== undefined) next.rating = rating;
+  if (variants?.length) next.variants = variants;
+  else if (variants === null || (variants !== undefined && !variants.length)) delete next.variants;
+  else if (rest.dishId !== undefined && rest.dishId !== current.dishId) delete next.variants;
   return { ...meals, [date]: next };
 }

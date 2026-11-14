@@ -39,7 +39,8 @@ const RULES = [
   "rateMeal(date, rating: up|down|never|null) gem familiens dom over en ret, de HAR spist (i dag eller tidligere). Når brugeren siger, at de elskede/ikke kunne lide aftensmaden, så brug den.",
   "addShoppingExtra(item) · removeShoppingExtra(item) kun ekstra varer, ikke varer der kommer fra retterne",
   "addFridgeItem(name, quantity?, expiresOn?) · removeFridgeItem(name) · addGlobalExclusion(term) kun for hele familien",
-  "updateProfile(profileId, field: preferences|dislikes|exclusions, term, remove) når én person kan lide, ikke kan lide eller ikke må få noget (dislikes er bløde, exclusions er hårde).",
+  "updateProfile(profileId, field: preferences|dislikes|exclusions|safeFoods, term, remove) når én person kan lide, ikke kan lide, ikke må få noget eller altid spiser noget (dislikes er bløde, exclusions er hårde, safeFoods = alwaysEats).",
+  "setMealVariant(date, profileId, replaces, with, remove) én person får én del af dagens ret byttet, fx nuggets i stedet for bøf; resten af retten er den samme. replaces er en af rettens ingredients, with er det, personen skal have i stedet (helst fra alwaysEats). remove=true fjerner byttet.",
   "createDish(dish) ny ret i kataloget · startPlanDraft(request) planudkast for flere dage (dayCount 1-14, from, request = fritekst-ønske, newDishCount).",
 ].join("\n");
 
@@ -89,6 +90,8 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
             skipped: meal.skipped === true,
             ...(meal.note ? { note: clip(meal.note, 200) } : {}),
             ...(meal.rating ? { rating: meal.rating } : {}),
+            ...(meal.variants?.length ? { variants: meal.variants } : {}),
+            ingredients: (state.dishes.find((dish) => dish.id === meal.dishId)?.ingredients ?? []).slice(0, 30),
           }
         : null,
     };
@@ -140,6 +143,7 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
       restrictions: profile.exclusions.slice(0, 20),
       likes: profile.preferences.slice(0, 20),
       dislikes: profile.dislikes.slice(0, 20),
+      alwaysEats: (profile.safeFoods ?? []).slice(0, 20),
     }));
   const history = input.messages.slice(-HISTORY).map((message) => ({ role: message.role, content: clip(message.content, 2000) }));
   const shoppingData = shopping
@@ -239,8 +243,15 @@ export function assistSchema(state: Snapshot): { name: string; schema: Record<st
               action("addGlobalExclusion", { term: text }),
               action("updateProfile", {
                 profileId: enumOrString(profileIds),
-                field: { type: "string", enum: ["preferences", "dislikes", "exclusions"] },
+                field: { type: "string", enum: ["preferences", "dislikes", "exclusions", "safeFoods"] },
                 term: text,
+                remove: { type: "boolean" },
+              }),
+              action("setMealVariant", {
+                date,
+                profileId: enumOrString(profileIds),
+                replaces: text,
+                with: text,
                 remove: { type: "boolean" },
               }),
               action("createDish", {

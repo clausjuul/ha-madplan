@@ -109,5 +109,6 @@ export function currentShoppingList(deps: Deps, range: { from?: string; to?: str
     pantry: state.pantry,
     state: getShoppingState(deps.repo.db),
     servings: state.settings.preferredServings,
+    profiles: state.profiles,
   });
 }

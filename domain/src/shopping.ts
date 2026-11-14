@@ -10,11 +10,13 @@ import {
 import type { IngredientUnit, ShoppingCategory } from "./ingredients.ts";
 import { estimateItemPrice, formatPrice, parseOfferPrice } from "./pricing.ts";
 import { baseServings, scaleIngredients } from "./portions.ts";
+import { variantPortions } from "./variants.ts";
 import type {
   Dish,
   FridgeItem,
   MealMap,
   OfferReference,
+  Profile,
   ShoppingListState,
 } from "./types.ts";
 
@@ -54,6 +56,8 @@ export type ShoppingListInput = {
   /** Checked ids and extra items for this list id. */
   state?: ShoppingListState;
   servings?: number;
+  /** For variants: how many portions a swapped part takes from the dish. */
+  profiles?: readonly Profile[];
 };
 
 export type ShoppingList = {
@@ -78,6 +82,7 @@ export function createShoppingList(input: ShoppingListInput): ShoppingList {
   const days = daysInRange(from, to);
   const dishById = new Map(dishes.map((dish) => [dish.id, dish]));
   const ingredients = new Map<string, AggregatedItem>();
+  const replacements = new Map<string, { label: string; portions: number; dishNames: string[] }>();
   let excludedCount = 0;
 
   for (const day of days) {
@@ -89,10 +94,28 @@ export function createShoppingList(input: ShoppingListInput): ShoppingList {
     const scaled = servings
       ? scaleIngredients(dish.ingredients, servings, baseServings(dish.servings))
       : dish.ingredients;
+    // A variant takes its portions out of the swapped part and adds the replacement instead.
+    const total = servings ?? baseServings(dish.servings);
+    const variants = meal.variants ?? [];
+    for (const variant of variants) {
+      const key = normalizeItem(variant.with);
+      const entry = replacements.get(key) ?? { label: variant.with, portions: 0, dishNames: [] };
+      entry.portions += variantPortions(variant, input.profiles ?? []);
+      if (!entry.dishNames.includes(dish.name)) entry.dishNames.push(dish.name);
+      replacements.set(key, entry);
+    }
     for (const ingredient of scaled) {
       const sourceLabel = ingredient.trim();
       if (!sourceLabel) continue;
       const parsed = parseIngredient(sourceLabel);
+      const swapped = variants
+        .filter((variant) => ingredientsMatch(parsed.name, variant.replaces))
+        .reduce((sum, variant) => sum + variantPortions(variant, input.profiles ?? []), 0);
+      if (swapped > 0 && parsed.amount !== undefined) {
+        const share = Math.max(0, total - swapped) / total;
+        if (share === 0) continue;
+        parsed.amount *= share;
+      }
       const matchingOffer = meal.offer && ingredientsMatch(parsed.name, meal.offer.item)
         ? meal.offer
         : undefined;
@@ -127,6 +150,20 @@ export function createShoppingList(input: ShoppingListInput): ShoppingList {
         });
       }
     }
+  }
+
+  for (const [key, entry] of replacements) {
+    const id = `variant:${key}`;
+    const portions = Math.round(entry.portions * 10) / 10;
+    ingredients.set(id, {
+      id,
+      label: entry.label,
+      quantityLabel: `${String(portions).replace(".", ",")} ${portions === 1 ? "portion" : "portioner"}`,
+      sourceLabel: entry.label,
+      dishNames: entry.dishNames,
+      extra: false,
+      category: categorizeIngredient(entry.label),
+    });
   }
 
   const checked = new Set(state.checked);

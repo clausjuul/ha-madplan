@@ -5,10 +5,12 @@
  */
 import {
   dishAllowed,
+  describeVariant,
   dishConflictReasons,
   extraItemId,
   formatFullDate,
   isDateKey,
+  normalizeVariants,
   parseExclusionTerms,
   weekdayName,
 } from "@madplan/domain";
@@ -95,7 +97,7 @@ export function parseAction(input: unknown, env: ActionEnv): AssistAction {
   const type = oneOf(raw.type, "Handlingstype", [
     "setMeal", "removeMeal", "swapMeals", "lockMeal", "addShoppingExtra", "addFridgeItem",
     "removeFridgeItem", "addGlobalExclusion", "updateProfile", "createDish", "startPlanDraft",
-    "removeShoppingExtra", "setMealNote", "skipMeal", "rateMeal",
+    "removeShoppingExtra", "setMealNote", "skipMeal", "rateMeal", "setMealVariant",
   ] as const);
   switch (type) {
     case "setMeal": {
@@ -176,13 +178,49 @@ export function parseAction(input: unknown, env: ActionEnv): AssistAction {
       const profileId = str(raw.profileId, "Person", { min: 1, max: 200 });
       const profile = env.profiles.find((entry) => entry.id === profileId);
       if (!profile) throw new Error("Personen findes ikke.");
-      const field = oneOf(raw.field, "Felt", ["preferences", "dislikes", "exclusions"] as const);
+      const field = oneOf(raw.field, "Felt", ["preferences", "dislikes", "exclusions", "safeFoods"] as const);
       const term = str(raw.term, "Ord", { min: 2, max: 80 });
       const remove = raw.remove === true;
-      const what = { preferences: "kan lide", dislikes: "kan ikke lide", exclusions: "må/vil ikke have (fravalg)" }[field];
+      const what = {
+        preferences: "kan lide",
+        dislikes: "kan ikke lide",
+        exclusions: "må/vil ikke have (fravalg)",
+        safeFoods: "spiser altid",
+      }[field];
       return {
         type, profileId, field, term, remove,
         label: remove ? `Fjern «${term}» fra ${profile.name}: ${what}` : `Husk: ${profile.name} ${what} «${term}»`,
+      };
+    }
+    case "setMealVariant": {
+      const date = dateField(raw.date, "Datoen");
+      const profileId = str(raw.profileId, "Person", { min: 1, max: 200 });
+      const profile = env.profiles.find((entry) => entry.id === profileId);
+      if (!profile) throw new Error("Personen findes ikke.");
+      const remove = raw.remove === true;
+      if (remove) {
+        return { type, date, profileId, replaces: "", with: "", remove, label: `${profile.name} får det samme som resten ${dayName(date)}` };
+      }
+      const meal = env.meal(date);
+      const dish = meal ? env.dish(meal.dishId) : undefined;
+      if (!dish) throw new Error("Der er ikke planlagt noget den dag.");
+      // The user asked for this swap, so the replacement need not be on the "spiser altid" list yet.
+      const replacement = str(raw.with, "Det, der byttes til", { min: 2, max: 80 });
+      const asked = env.profiles.map((entry) =>
+        entry.id === profileId ? { ...entry, safeFoods: [...(entry.safeFoods ?? []), replacement] } : entry,
+      );
+      const [variant] = normalizeVariants(
+        [{ profileId, replaces: raw.replaces, with: replacement }],
+        dish,
+        asked,
+        env.settings.globalExclusions,
+      );
+      if (!variant) {
+        throw new Error(`Byttet passer ikke: det skal være en del af ${dish.name}, og ${profile.name} må gerne få det.`);
+      }
+      return {
+        type, date, profileId, replaces: variant.replaces, with: variant.with, remove,
+        label: `${dayName(date)}: ${describeVariant(variant, env.profiles)}`,
       };
     }
     case "createDish": {
@@ -271,10 +309,19 @@ export function checkAction(env: ActionEnv, action: AssistAction): string | null
     case "updateProfile": {
       const profile = env.profiles.find((entry) => entry.id === action.profileId);
       if (!profile) return "Personen findes ikke.";
-      const has = profile[action.field].some((entry) => sameName(entry, action.term));
+      const terms = profile[action.field] ?? [];
+      const has = terms.some((entry) => sameName(entry, action.term));
       if (action.remove) return has ? null : "Står der ikke.";
       if (has) return "Står der allerede.";
-      return profile[action.field].length >= 30 ? "Listen er fuld." : null;
+      return terms.length >= 30 ? "Listen er fuld." : null;
+    }
+    case "setMealVariant": {
+      if (past(action.date)) return "Dagen ligger i fortiden.";
+      const meal = env.meal(action.date);
+      if (!meal) return "Der er ikke planlagt noget den dag.";
+      const has = meal.variants?.some((variant) => variant.profileId === action.profileId) ?? false;
+      if (action.remove) return has ? null : "Der er ikke byttet noget for personen den dag.";
+      return null;
     }
     case "createDish": {
       if (!dishAllowed(action.dish, global, env.profiles)) {

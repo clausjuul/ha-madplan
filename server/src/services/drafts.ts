@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { checkFeasibility } from "@madplan/domain";
+import { checkFeasibility, normalizeVariants } from "@madplan/domain";
 import type {
   Dish,
   DraftDay,
@@ -179,6 +179,16 @@ export function patchDraftDay(deps: Deps, id: string, date: string, patch: Draft
     next = { date, dishId: dish.id, reason: "Valgt manuelt.", locked: day.locked, source: "manual" };
   }
   if (patch.locked !== undefined) next = { ...next, locked: patch.locked };
+  if (patch.variants !== undefined) {
+    const dish = next.newDish ?? findDish(deps.repo.db, dayDishId(next));
+    const state = snapshot(deps);
+    const variants =
+      dish && patch.variants
+        ? normalizeVariants(patch.variants, dish, state.profiles, state.settings.globalExclusions)
+        : [];
+    next = { ...next, variants };
+    if (!variants.length) delete next.variants;
+  }
   const days = draft.days.map((candidate, position) => (position === index ? next : candidate));
   const state = snapshot(deps);
   const pinned = days.filter((candidate) => candidate.locked);
@@ -213,7 +223,12 @@ export function applyDraft(deps: Deps, id: string): { meals: MealMap; addedDishe
         addedDishes.push(dish);
       }
       const dishId = dayDishId(day);
-      if (current && current.dishId === dishId && !current.skipped) {
+      if (
+        current &&
+        current.dishId === dishId &&
+        !current.skipped &&
+        JSON.stringify(current.variants ?? []) === JSON.stringify(day.variants ?? [])
+      ) {
         applied[day.date] = current;
         continue;
       }
@@ -224,6 +239,7 @@ export function applyDraft(deps: Deps, id: string): { meals: MealMap; addedDishe
         source: day.source,
         reason: day.reason,
         ...(day.offer ? { offer: day.offer } : {}),
+        ...(day.variants?.length ? { variants: day.variants } : {}),
       };
       putMeal(repo.db, day.date, meal);
       applied[day.date] = meal;

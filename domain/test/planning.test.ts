@@ -238,3 +238,38 @@ describe("planning context and validation", () => {
     expect(draft.days[1]?.locked).toBe(false);
   });
 });
+
+describe("relaxed days (god tid)", () => {
+  const base = { dishes, dates, meals: {}, maxPrepMinutes: 30 };
+
+  it("keeps slow dishes out of ordinary days but allows them on relaxed days", () => {
+    const context = buildPlanningContext({ ...base, relaxedDates: ["2026-10-22", "2026-12-01"] });
+    expect(context.relaxedDates).toEqual(["2026-10-22"]);
+    expect(context.recipes.map((d) => d.id)).toContain("lasagne");
+    const validated = validateProposal(
+      [
+        { date: "2026-10-19", dishId: "lasagne", reason: "" },
+        { date: "2026-10-22", dishId: "kylling", reason: "" },
+      ],
+      context,
+    );
+    expect(validated.rejectedCount).toBe(1);
+    expect(ids(validated.plan)).toEqual(["kylling"]);
+  });
+
+  it("only fills ordinary days with dishes within the time limit", () => {
+    const context = buildPlanningContext({ ...base, relaxedDates: ["2026-10-22"] });
+    const completed = completePlan(validateProposal([], context), context);
+    for (const item of completed.plan) {
+      const prep = dishes.find((d) => d.id === item.dishId)!.prepMinutes;
+      if (item.date !== "2026-10-22") expect(prep).toBeLessThanOrEqual(30);
+    }
+    // The relaxed day gets one of the slower dishes that ordinary days could not have.
+    expect(["lasagne", "kylling"]).toContain(completed.plan.find((item) => item.date === "2026-10-22")?.dishId);
+  });
+
+  it("without relaxed days the time limit filters the catalog as before", () => {
+    const context = buildPlanningContext(base);
+    expect(context.recipes.map((d) => d.id).sort()).toEqual(["linser", "pasta"]);
+  });
+});

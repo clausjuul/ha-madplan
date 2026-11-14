@@ -76,6 +76,15 @@ export function FamilySection({ profiles, onChange }: Props) {
               onChange={(preferences) => update(profile.id, { preferences })}
               placeholder="Fx pasta"
             />
+            <ChipInput
+              label={`Spiser altid (${profile.name})`}
+              values={profile.safeFoods ?? []}
+              onChange={(safeFoods) => update(profile.id, { safeFoods })}
+              placeholder="Fx nuggets, fiskefrikadeller"
+            />
+            <p className="m-0 -mt-1 text-[13px] leading-snug text-muted">
+              Planlæggeren må nogle gange bytte én del af retten ud med noget herfra, fx nuggets i stedet for bøf, så resten af retten er den samme.
+            </p>
             <button
               type="button"
               onClick={() => onChange(profiles.filter((item) => item.id !== profile.id))}

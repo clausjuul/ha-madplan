@@ -21,6 +21,8 @@ export function getProfiles(db: DatabaseSync): Profile[] {
     };
     const portions = optNumeric(row, "portions");
     if (portions !== undefined) profile.portions = portions;
+    const safeFoods = parseJson<string[]>(row, "safe_foods", []);
+    if (safeFoods.length) profile.safeFoods = safeFoods;
     return profile;
   });
 }
@@ -31,7 +33,7 @@ export function setProfiles(db: DatabaseSync, profiles: readonly Profile[]): voi
     run(
       db,
       `INSERT OR REPLACE INTO profiles (id, position, name, active, exclusions, preferences, dislikes,
-         favorite_dish_ids, portions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         favorite_dish_ids, portions, safe_foods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       profile.id,
       position,
       profile.name,
@@ -41,6 +43,7 @@ export function setProfiles(db: DatabaseSync, profiles: readonly Profile[]): voi
       toJson(profile.dislikes),
       toJson(profile.favoriteDishIds),
       profile.portions ?? null,
+      profile.safeFoods?.length ? toJson(profile.safeFoods) : null,
     );
   });
 }

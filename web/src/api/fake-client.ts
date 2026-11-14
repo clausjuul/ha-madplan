@@ -46,7 +46,7 @@ const NOT_FOUND = (): ApiRequestError =>
 /** Mirrors the server: a locked meal may only be replaced by one that differs in `locked` alone. */
 function onlyLockChanges(existing: Meal, next: Meal): boolean {
   const key = (meal: Meal): string =>
-    JSON.stringify([meal.dishId, meal.note, meal.source, meal.reason ?? null, meal.offer ?? null, meal.skipped ?? false]);
+    JSON.stringify([meal.dishId, meal.note, meal.source, meal.reason ?? null, meal.offer ?? null, meal.skipped ?? false, meal.variants ?? []]);
   return key(existing) === key(next);
 }
 
@@ -88,6 +88,7 @@ export function createFakeClient(options: FakeClientOptions = {}): ApiClient {
       pantry: state.pantry,
       state: shoppingState,
       servings: targetServings(profileServings(state.profiles), state.settings.preferredServings),
+      profiles: state.profiles,
     });
   };
 
@@ -134,6 +135,7 @@ export function createFakeClient(options: FakeClientOptions = {}): ApiClient {
         ...(input.offer ? { offer: input.offer } : {}),
         ...(input.skipped ? { skipped: true } : {}),
         ...(input.rating ? { rating: input.rating } : {}),
+        ...(input.variants?.length ? { variants: input.variants } : {}),
       };
       if (existing?.locked && !onlyLockChanges(existing, next)) throw LOCKED();
       state.meals[date] = next;
@@ -144,10 +146,13 @@ export function createFakeClient(options: FakeClientOptions = {}): ApiClient {
     async patchMeal(date, patch) {
       await wait();
       const current = requireMeal(date);
-      const { rating, ...rest } = patch;
+      const { rating, variants, ...rest } = patch;
       const next: Meal = { ...current, ...rest };
       if (rating === null) delete next.rating;
       else if (rating !== undefined) next.rating = rating;
+      if (variants?.length) next.variants = variants;
+      else if (variants === null || (variants !== undefined && !variants.length)) delete next.variants;
+      else if (rest.dishId !== undefined && rest.dishId !== current.dishId) delete next.variants;
       state.meals[date] = next;
       emit(["meals"]);
       return structuredClone(next);

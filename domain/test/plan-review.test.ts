@@ -92,6 +92,11 @@ describe("reviewPlan", () => {
     expect(byId(fine, "prepTime")?.status).toBe("ok");
   });
 
+  it("does not hold relaxed days to the prep-time limit", () => {
+    const result = review({ days: [day("2026-11-10", "lasagne")] }, { maxPrepMinutes: 30, relaxedDates: ["2026-11-10"] });
+    expect(byId(result, "prepTime")?.status).toBe("ok");
+  });
+
   it("compares a rough estimate with the budget", () => {
     const cheap = review({ days: [day("2026-11-10", "pasta")] }, { budgetDkk: 500 });
     expect(byId(cheap, "budget")?.status).toBe("ok");

@@ -5,6 +5,15 @@ import { dishContent, parseExclusionTerms } from "./exclusions.ts";
 import { participatingProfiles, preferenceScore } from "./profiles.ts";
 import type { DraftDay, Dish, FridgeItem, MealMap, Profile } from "./types.ts";
 
+/**
+ * Extra weight on a day with plenty of time: a dish that takes a bit longer or is a family favourite
+ * is welcome (and completePlan weighs price less on such days).
+ */
+export function relaxedDayScore(dish: Dish): number {
+  const minutes = Number.isFinite(dish.prepMinutes) ? dish.prepMinutes : 0;
+  return (minutes >= 40 ? 14 : minutes >= 30 ? 6 : 0) + (dish.favorite ? 8 : 0);
+}
+
 export type SuggestionInput = {
   /** Date keys to fill, ascending. */
   days: readonly string[];
@@ -22,6 +31,10 @@ export type SuggestionInput = {
   profiles?: readonly Profile[];
   /** dishId -> score adjustment from the family's ratings (see ratingScores). */
   ratingScores?: ReadonlyMap<string, number>;
+  /** Prep-time limit for ordinary days. */
+  maxPrepMinutes?: number | null;
+  /** Days with plenty of time: no prep-time limit, and slower or favourite dishes are welcome. */
+  relaxedDates?: readonly string[];
 };
 
 const FRIDAY = 5;
@@ -40,6 +53,12 @@ function createRanker(input: SuggestionInput) {
     ...globalExclusions,
     ...profiles.flatMap((profile) => profile.exclusions),
   ]);
+  const relaxed = new Set(input.relaxedDates ?? []);
+  const fitsDay = (dish: Dish, day: string): boolean =>
+    relaxed.has(day) ||
+    !input.maxPrepMinutes ||
+    !Number.isFinite(dish.prepMinutes) ||
+    dish.prepMinutes <= input.maxPrepMinutes;
   const wantsSomethingNew =
     /(?:noget nyt|ny ret|ikke (?:har )?fået før|aldrig fået)/u.test(request);
   const conflicts = (dish: Dish): boolean => {
@@ -57,8 +76,8 @@ function createRanker(input: SuggestionInput) {
     const wantsLeftovers = /\b(?:rest|rester|restemad)\b/u.test(dayRequest);
     const weekday = parseDateKey(day).getDay();
     return dishes
-      // Exclusions are mandatory, not merely a ranking penalty.
-      .filter((dish) => !conflicts(dish))
+      // Exclusions and the day's time limit are mandatory, not merely a ranking penalty.
+      .filter((dish) => !conflicts(dish) && fitsDay(dish, day))
       .map((dish): RankedDish => {
         const content = normalize([dish.name, dish.category, ...dish.ingredients].join(" "));
         const matches = matchingFridgeItems(dish.ingredients, fridge, day);
@@ -77,7 +96,8 @@ function createRanker(input: SuggestionInput) {
           (wantsLeftovers && dish.leftoverFriendly ? 36 : 0) +
           (wantsSomethingNew && !last ? 24 : 0) +
           (fridayTreat && dish.favorite ? 18 : 0) +
-          (fridayTreat && dish.prepMinutes >= 35 ? 5 : 0);
+          (fridayTreat && dish.prepMinutes >= 35 ? 5 : 0) +
+          (relaxed.has(day) ? relaxedDayScore(dish) : 0);
         const score =
           matches.reduce((total, match) => total + fridgeMatchScore(match), 0) +
           recencyScore +
@@ -104,7 +124,7 @@ function createRanker(input: SuggestionInput) {
       .sort((a, b) => b.score - a.score);
   };
 
-  return { rank, usedDishIds, dishById, count, conflicts };
+  return { rank, usedDishIds, dishById, count, conflicts, fitsDay };
 }
 
 export type RankedDish = { dish: Dish; score: number; reason: string; used: boolean };
@@ -138,7 +158,7 @@ export function rankAlternatives(
 
 export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
   const { days, meals, requiredDishIds = [] } = input;
-  const { rank, usedDishIds, dishById, count, conflicts } = createRanker(input);
+  const { rank, usedDishIds, dishById, count, conflicts, fitsDay } = createRanker(input);
 
   for (const day of days) {
     const existing = meals[day];
@@ -158,7 +178,7 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
     // Required recipes must obey exclusions too, including those selected in the UI.
     const requiredId = requiredQueue.find((id) => {
       const dish = dishById.get(id);
-      return dish !== undefined && !conflicts(dish);
+      return dish !== undefined && !conflicts(dish) && fitsDay(dish, day);
     });
     const required = requiredId ? dishById.get(requiredId) : undefined;
     if (requiredId && required) {

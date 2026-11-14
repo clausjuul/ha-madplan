@@ -52,11 +52,22 @@ export function StepWishes({ form, onChange, data, today }: Props) {
               className={`${input} py-3`}
             />
           </Card>
-          <Card title="Ønsker til bestemte dage" hint="Valgfrit. Tryk på en dag for at skrive et ønske.">
+          <Card
+            title="Ønsker til bestemte dage"
+            hint="Valgfrit. Tryk på en dag for at skrive et ønske. “God tid” betyder, at retten må tage længere tid og koste lidt mere."
+          >
             <DayWishes
               dates={dates}
               wishes={form.dayRequests}
+              relaxed={form.relaxedDates}
               onChange={(date, wish) => patch({ dayRequests: { ...form.dayRequests, [date]: wish } })}
+              onToggleRelaxed={(date) =>
+                patch({
+                  relaxedDates: form.relaxedDates.includes(date)
+                    ? form.relaxedDates.filter((other) => other !== date)
+                    : [...form.relaxedDates, date],
+                })
+              }
             />
           </Card>
           <Card title="Skal med" hint="Retter, der skal være med i planen.">
@@ -89,7 +100,7 @@ export function StepWishes({ form, onChange, data, today }: Props) {
               Hurtigt forslag bruger kun jeres egne retter. Vælg Assist for at få nye retter.
             </p>
           )}
-          <Card title="Tid pr. ret">
+          <Card title="Tid pr. ret" hint={form.relaxedDates.length ? "Gælder ikke dage med god tid." : undefined}>
             <div role="group" aria-label="Højeste tilberedningstid" className="flex flex-wrap gap-2">
               {PREP_CHOICES.map((choice) => (
                 <button

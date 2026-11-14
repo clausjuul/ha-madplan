@@ -12,6 +12,8 @@ Madplan er familiens madplan i Home Assistant: planlæg aftensmaden dag for dag,
 - **Kogetilstand:** fuldskærm med ingredienser, trin, timere og skærmen tændt, mens du laver mad.
 - **Assist:** en samtale, der kan svare og foreslå ændringer ("byt torsdag ud med noget vegetarisk"). Assist ændrer aldrig noget af sig selv: du skal selv trykke **Udfør**.
 - **Familie:** kostønsker, fravalg og præferencer pr. person tages med i alle forslag.
+- **Dage med god tid:** marker en dag som *God tid* i Planlæg (under "Ønsker til bestemte dage"). Den dag gælder tidsgrænsen ikke, og retten må koste lidt mere, så planlæggeren gerne vælger noget lidt mere spændende.
+- **Byt en del for én:** skriv under **Indstillinger → Familie**, hvad en person altid spiser (f.eks. nuggets). Så må planlæggeren nogle gange bytte én del af retten for den person, f.eks. nuggets i stedet for bøf, mens resten af retten er den samme. Det er en mulighed, ikke en regel, og det sker højst på hver tredje dag. Du kan også selv gøre det under en dags handlinger (**Byt en del for én**) eller bede Assist om det ("giv Oliver nuggets i stedet på lørdag"). Indkøbslisten køber én portion mindre af det, der byttes, og tilføjer erstatningen.
 - **Bedømmelser:** dagen efter spørger ugen "Hvordan var ...?". *Godt* og *Mindre godt* påvirker fremtidige forslag, og *Ikke igen* får retten til ikke at blive foreslået igen.
 - **Assist husker personer:** skriv f.eks. "Emma kan ikke lide svampe", så foreslår Assist at gemme det på Emmas profil.
 - **Assist kender jeres historik:** den ser de sidste fire ugers måltider, jeres bedømmelser, noter, indkøbslisten og hvor længe siden I har spist hver ret. Skriv "vi elskede lasagnen i går", så foreslår den at gemme bedømmelsen. Den kan også skrive noter på en dag, markere en dag som "ikke spist" og fjerne ekstra varer fra indkøbslisten.
@@ -175,7 +177,7 @@ Skift `notify.notify` til jeres egen notify-tjeneste, fx `notify.mobile_app_...`
 
 - Alle data (retter, planer, familie, indkøb) ligger lokalt i appens database i din Home Assistant. Der er ingen konto og ingen sky.
 - Uden OpenAI-nøgle sendes **ingenting** ud af huset, ud over at du selv kan hente opskrifter fra et link, du indsætter, og at billeder kan hentes fra en adresse, du angiver.
-- Med en OpenAI-nøgle sendes der ved et AI-svar følgende til OpenAI: din besked eller dit ønske, ugens planlagte retter, retkataloget (navne, kategorier og ingredienser for relevante retter), køleskabets indhold, fælles fravalg og familieprofilerne (navne, kostønsker, præferencer). Der sendes ikke andre persondata. Opdag-søgninger sendes med websøgning slået til. Dataene sendes med `store: false`. Læs OpenAIs egne vilkår for, hvordan de behandler data.
+- Med en OpenAI-nøgle sendes der ved et AI-svar følgende til OpenAI: din besked eller dit ønske, ugens planlagte retter, retkataloget (navne, kategorier og ingredienser for relevante retter), køleskabets indhold, fælles fravalg og familieprofilerne (navne, kostønsker, præferencer og hvad de altid spiser). Der sendes ikke andre persondata. Opdag-søgninger sendes med websøgning slået til. Dataene sendes med `store: false`. Læs OpenAIs egne vilkår for, hvordan de behandler data.
 - Sensorerne sendes kun til din egen Home Assistant.
 
 ## Fejlfinding

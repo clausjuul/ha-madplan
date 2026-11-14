@@ -71,6 +71,7 @@ export function prepare(
     dayRequests: request.dayRequests,
     budgetDkk: request.budgetDkk,
     maxPrepMinutes: request.maxPrepMinutes,
+    relaxedDates: request.relaxedDates,
     fridge: override ? override.map((name) => ({ name })) : state.fridge,
     globalExclusions: state.settings.globalExclusions,
     profiles: state.profiles,
@@ -94,6 +95,8 @@ export function localItems(state: Snapshot, request: PlanRequest, prep: PlanPrep
     globalExclusions: context.globalExclusions,
     profiles: context.profiles,
     ratingScores: context.ratingScores,
+    maxPrepMinutes: context.maxPrepMinutes,
+    relaxedDates: context.relaxedDates,
   });
   return suggestions.flatMap((day) =>
     day.dishId !== undefined && context.dates.includes(day.date)

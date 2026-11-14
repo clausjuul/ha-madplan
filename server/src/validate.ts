@@ -9,6 +9,7 @@ import type {
   MealInput,
   OfferReference,
   PlanRequest,
+  MealVariant,
   Profile,
   Settings,
 } from "@madplan/domain";
@@ -64,7 +65,20 @@ export function mealInput(value: unknown, partial: boolean): Partial<MealInput> 
         : o.rating === null
           ? null
           : oneOf(o.rating, "Bedømmelse", ["up", "down", "never"] as const),
+    variants: o.variants === undefined ? undefined : o.variants === null ? null : variantList(o.variants),
   });
+}
+
+/** Shape only; whether a variant fits the dish and the profile is checked with normalizeVariants. */
+export function variantList(value: unknown): MealVariant[] {
+  return list(value, "Varianter", (entry) => {
+    const o = rec(entry, "Variant");
+    return {
+      profileId: str(o.profileId, "Profil-id", { min: 1, max: 100 }),
+      replaces: str(o.replaces, "Det, der byttes", { min: 1, max: 100 }),
+      with: str(o.with, "Det, der byttes til", { min: 1, max: 100 }),
+    };
+  }, 10);
 }
 
 export function dishInput(value: unknown): DishInput {
@@ -96,6 +110,7 @@ export function profiles(value: unknown): Profile[] {
       exclusions: strList(o.exclusions, "Fravalg", 100, 80),
       preferences: strList(o.preferences, "Præferencer", 100, 80),
       dislikes: strList(o.dislikes, "Ikke-favoritter", 100, 80),
+      safeFoods: o.safeFoods === undefined ? undefined : strList(o.safeFoods, "Spiser altid", 30, 80),
       favoriteDishIds: strList(o.favoriteDishIds, "Favoritretter", 500, 200),
       portions: optNum(o.portions, "Portioner", { min: 0.5, max: 30 }),
     });
@@ -162,6 +177,10 @@ export function planRequest(value: unknown): PlanRequest {
     request: o.request === undefined ? "" : str(o.request, "Ønske", { max: 1000 }),
     dayRequests,
     maxPrepMinutes: optNum(o.maxPrepMinutes, "Maks. tilberedningstid", { min: 1, max: 1440 }),
+    relaxedDates:
+      o.relaxedDates === undefined
+        ? undefined
+        : list(o.relaxedDates, "Dage med god tid", (d) => dateParam(typeof d === "string" ? d : undefined), 14),
     budgetDkk: optNum(o.budgetDkk, "Budget", { min: 0, max: 100000 }),
     fridgeOverride: optStrList(o.fridgeOverride, "Køleskabsindhold", 100),
     seed: optNum(o.seed, "Seed", { int: true }),
@@ -173,6 +192,7 @@ export function draftDayPatch(value: unknown): DraftDayPatch {
   return compact({
     locked: optBool(o.locked, "Låst"),
     dishId: optStr(o.dishId, "Ret", 200),
+    variants: o.variants === undefined ? undefined : o.variants === null ? null : variantList(o.variants),
   });
 }
 

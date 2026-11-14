@@ -25,6 +25,27 @@ describe("bootstrap and health", () => {
 });
 
 describe("meals", () => {
+  it("stores variants that fit the dish and a profile's safe foods, and drops them with a new dish", async () => {
+    const { json } = setup();
+    await json("PUT", "profiles", [
+      { id: "son", name: "Oliver", active: true, exclusions: [], preferences: [], dislikes: [], safeFoods: ["nuggets"], favoriteDishIds: [] },
+    ]);
+    const meal = await json<Meal>("PUT", "meals/2026-11-10", {
+      dishId: "lasagne",
+      variants: [
+        { profileId: "son", replaces: "oksekød", with: "nuggets" },
+        { profileId: "son", replaces: "ost", with: "pizza" },
+      ],
+    });
+    expect(meal.variants).toEqual([{ profileId: "son", replaces: "hakket oksekød", with: "nuggets" }]);
+    expect((await json<Meal>("PATCH", "meals/2026-11-10", { note: "x" })).variants).toHaveLength(1);
+    const list = await json<{ items: { id: string; quantityLabel: string }[] }>("GET", "shopping?from=2026-11-10&to=2026-11-10");
+    expect(list.items.find((item) => item.id === "variant:nuggets")?.quantityLabel).toBe("1 portion");
+    expect((await json<Meal>("PATCH", "meals/2026-11-10", { variants: null })).variants).toBeUndefined();
+    await json("PATCH", "meals/2026-11-10", { variants: [{ profileId: "son", replaces: "oksekød", with: "nuggets" }] });
+    expect((await json<Meal>("PATCH", "meals/2026-11-10", { dishId: "tacos" })).variants).toBeUndefined();
+  });
+
   it("stores, clears and validates a rating, and drops it when the dish changes", async () => {
     const { json, call } = setup();
     await json("PUT", "meals/2026-11-08", { dishId: "lasagne" });

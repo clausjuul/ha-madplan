@@ -1,6 +1,7 @@
 import {
   addDaysToKey,
   daysBetween,
+  describeVariant,
   daysInRange,
   eatenHistory,
   isNewDish,
@@ -12,6 +13,7 @@ import {
   type FridgeItem,
   type Meal,
   type MealMap,
+  type Profile,
 } from "@madplan/domain";
 
 export type DayModel = {
@@ -31,6 +33,8 @@ export type DayModel = {
   hasOffer: boolean;
   locked: boolean;
   meta: string;
+  /** "Oliver: nuggets i stedet for bøf", one per variant. */
+  variantLines: string[];
 };
 
 const capitalize = (value: string): string => value.charAt(0).toLocaleUpperCase("da-DK") + value.slice(1);
@@ -53,6 +57,7 @@ export function buildWeek(
   today: string,
   meals: MealMap,
   dishes: readonly Dish[],
+  profiles: readonly Profile[] = [],
 ): DayModel[] {
   const dishById = new Map(dishes.map((dish) => [dish.id, dish]));
   const lastEaten = lastEatenByDish(eatenHistory(meals, today));
@@ -71,13 +76,20 @@ export function buildWeek(
       hasOffer: Boolean(meal?.offer),
       locked: Boolean(meal?.locked),
       meta: dish ? mealMeta(dish) : "",
+      variantLines: (meal?.variants ?? []).map((variant) => describeVariant(variant, profiles)),
     };
   });
 }
 
 /** One day's model (used for sheets that can target a day outside the shown week). */
-export function buildDay(date: string, today: string, meals: MealMap, dishes: readonly Dish[]): DayModel {
-  const [day] = buildWeek(date, today, meals, dishes);
+export function buildDay(
+  date: string,
+  today: string,
+  meals: MealMap,
+  dishes: readonly Dish[],
+  profiles: readonly Profile[] = [],
+): DayModel {
+  const [day] = buildWeek(date, today, meals, dishes, profiles);
   if (!day) throw new Error(`Ugyldig dato: ${date}`);
   return day;
 }

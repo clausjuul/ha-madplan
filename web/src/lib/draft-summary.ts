@@ -43,7 +43,13 @@ export function summarizeDraft(draft: Pick<PlanDraftRecord, "days">, data: Summa
   const dishes = [...data.dishes, ...days.flatMap((day) => (day.newDish ? [day.newDish] : []))];
   const meals: MealMap = {};
   for (const day of days) {
-    meals[day.date] = { dishId: dayDishId(day), locked: day.locked, note: "", source: day.source };
+    meals[day.date] = {
+      dishId: dayDishId(day),
+      locked: day.locked,
+      note: "",
+      source: day.source,
+      ...(day.variants?.length ? { variants: day.variants } : {}),
+    };
   }
   const list = createShoppingList({
     listId: "draft",
@@ -55,6 +61,7 @@ export function summarizeDraft(draft: Pick<PlanDraftRecord, "days">, data: Summa
     pantry: data.pantry,
     state: EMPTY_SHOPPING_STATE,
     servings: targetServings(profileServings(data.profiles), data.settings.preferredServings),
+    profiles: data.profiles,
   });
   const minutes = days.flatMap((day) => {
     const dish = dishOfDay(day, dishes);

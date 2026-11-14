@@ -141,6 +141,31 @@ describe("assist with OpenAI", () => {
     expect(boot.profiles[0]).toMatchObject({ dislikes: ["svampe"], preferences: [] });
   });
 
+  it("swaps one part of a day's dish for one person with setMealVariant", async () => {
+    const ai = fakeAi();
+    const { json } = setup({ openai: ai });
+    const son = { id: "son", name: "Oliver", active: true, exclusions: [], preferences: [], dislikes: [], favoriteDishIds: [] };
+    await json("PUT", "profiles", [son]);
+    await json("PUT", "meals/2026-11-12", { dishId: "lasagne" });
+    ai.next(
+      answer("Forslag.", [
+        { type: "updateProfile", profileId: "son", field: "safeFoods", term: "nuggets" },
+        { type: "setMealVariant", date: "2026-11-12", profileId: "son", replaces: "oksekød", with: "nuggets" },
+        { type: "setMealVariant", date: "2026-11-12", profileId: "son", replaces: "laks", with: "nuggets" },
+      ]),
+    );
+    const response = await json<AssistResponse>("POST", "assist", ASK);
+    expect(response.proposal?.actions.map((action) => action.label)).toEqual([
+      "Husk: Oliver spiser altid «nuggets»",
+      expect.stringContaining("Oliver: nuggets i stedet for hakket oksekød"),
+    ]);
+    const result = await json<AssistApplyResult>("POST", `assist/proposals/${response.proposal?.id}/apply`);
+    expect(result.applied).toBe(2);
+    const boot = await json<BootstrapResponse>("GET", "bootstrap");
+    expect(boot.profiles[0]?.safeFoods).toEqual(["nuggets"]);
+    expect(boot.meals["2026-11-12"]?.variants).toEqual([{ profileId: "son", replaces: "hakket oksekød", with: "nuggets" }]);
+  });
+
   it("refuses locked days at apply time but still applies the rest", async () => {
     const ai = fakeAi();
     const { json } = setup({ openai: ai });

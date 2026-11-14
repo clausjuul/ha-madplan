@@ -2,7 +2,8 @@
 import { addDaysToKey, isDateKey } from "./dates.ts";
 import { dishAllowed } from "./exclusions.ts";
 import { participatingProfiles, preferenceScore } from "./profiles.ts";
-import { fridgeMatchScore, matchingFridgeItems } from "./suggest.ts";
+import { fridgeMatchScore, matchingFridgeItems, relaxedDayScore } from "./suggest.ts";
+import { maxVariantDays, normalizeVariants, suggestVariants } from "./variants.ts";
 import { NEVER_SCORE, ratingScores } from "./history.ts";
 import {
   normalizePlanningOptions,
@@ -14,6 +15,7 @@ import type {
   Dish,
   FridgeItem,
   MealMap,
+  MealVariant,
   PlanDraft,
   Profile,
 } from "./types.ts";
@@ -121,6 +123,8 @@ export type PlanningContextInput = {
   dayRequests?: Readonly<Record<string, string>>;
   budgetDkk?: number | null;
   maxPrepMinutes?: number | null;
+  /** Days with plenty of time: no prep-time limit, and a dish may cost a little more. */
+  relaxedDates?: readonly string[];
   fridge?: readonly FridgeItem[];
   globalExclusions?: readonly string[];
   profiles?: readonly Profile[];
@@ -129,7 +133,10 @@ export type PlanningContextInput = {
 export type PlanningContext = {
   /** Open dates the planner must fill. */
   dates: string[];
-  /** Eligible dishes: not archived, no exclusion conflicts, within the prep-time limit. */
+  /**
+   * Eligible dishes: not archived, no exclusion conflicts, within the prep-time limit. With relaxed
+   * days, slower dishes are included too; use fitsDay() to check a dish against a specific date.
+   */
   recipes: Dish[];
   /** date -> dishId for locked and request-preserved days. */
   lockedDays: Map<string, string>;
@@ -143,6 +150,8 @@ export type PlanningContext = {
   newDishCount: number;
   budgetDkk: number | null;
   maxPrepMinutes: number | null;
+  /** Open dates with plenty of time (see fitsDay). */
+  relaxedDates: string[];
   economical: boolean;
   fridge: FridgeItem[];
   dayRequests: Record<string, string>;
@@ -181,6 +190,7 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
     maxPrepMinutes: input.maxPrepMinutes,
     request: input.request,
   });
+  const relaxedDates = [...new Set(input.relaxedDates ?? [])].filter((date) => dates.includes(date)).sort();
   const profiles = participatingProfiles(input.profiles ?? []);
   const globalExclusions = [...(input.globalExclusions ?? [])];
   const ratings = ratingScores(meals);
@@ -189,9 +199,7 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
       !dish.archivedAt &&
       (ratings.get(dish.id) ?? 0) > NEVER_SCORE &&
       dishAllowed(dish, globalExclusions, profiles) &&
-      (!options.maxPrepMinutes ||
-        !Number.isFinite(dish.prepMinutes) ||
-        dish.prepMinutes <= options.maxPrepMinutes),
+      (relaxedDates.length > 0 || withinPrepLimit(dish, options.maxPrepMinutes)),
   );
   return {
     dates,
@@ -208,12 +216,25 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
     newDishCount: Math.max(0, Math.min(7, Math.floor(input.newDishCount ?? 0))),
     budgetDkk: options.budgetDkk,
     maxPrepMinutes: options.maxPrepMinutes,
+    relaxedDates,
     economical: options.economical,
     fridge: [...(input.fridge ?? [])],
     dayRequests,
     globalExclusions,
     profiles,
   };
+}
+
+const withinPrepLimit = (dish: Dish, maxPrepMinutes: number | null | undefined): boolean =>
+  !maxPrepMinutes || !Number.isFinite(dish.prepMinutes) || dish.prepMinutes <= maxPrepMinutes;
+
+/** Whether a dish may be planned on `date`: the prep-time limit does not apply on relaxed days. */
+export function fitsDay(
+  dish: Dish,
+  date: string,
+  context: Pick<PlanningContext, "maxPrepMinutes" | "relaxedDates">,
+): boolean {
+  return context.relaxedDates.includes(date) || withinPrepLimit(dish, context.maxPrepMinutes);
 }
 
 // --- Validating a proposed plan ---------------------------------------------------------------
@@ -223,6 +244,8 @@ export type PlanItem = {
   dishId: string;
   reason: string;
   source: "ai" | "local";
+  /** Someone gets one part of the dish swapped (see variants.ts). */
+  variants?: MealVariant[];
 };
 
 export type ValidatedPlan = {
@@ -244,10 +267,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export function validateProposal(raw: unknown, context: PlanningContext): ValidatedPlan {
   const proposals: unknown[] = Array.isArray(raw) ? raw : [];
   const validDates = new Set(context.dates);
-  const validIds = new Set(context.recipes.map((dish) => dish.id));
+  const recipeById = new Map(context.recipes.map((dish) => [dish.id, dish]));
   const seenDates = new Set<string>();
   const seenDishes = new Set(context.lockedDays.values());
   const plan: PlanItem[] = [];
+  const variantLimit = maxVariantDays(context.dates.length);
+  let variantDays = 0;
   let rejectedCount = 0;
   for (const item of proposals.slice(0, 30)) {
     const date = isRecord(item) ? item.date : undefined;
@@ -257,7 +282,8 @@ export function validateProposal(raw: unknown, context: PlanningContext): Valida
       typeof date !== "string" ||
       typeof dishId !== "string" ||
       !validDates.has(date) ||
-      !validIds.has(dishId) ||
+      !recipeById.has(dishId) ||
+      !fitsDay(recipeById.get(dishId)!, date, context) ||
       seenDates.has(date) ||
       seenDishes.has(dishId)
     ) {
@@ -266,6 +292,11 @@ export function validateProposal(raw: unknown, context: PlanningContext): Valida
     }
     seenDates.add(date);
     seenDishes.add(dishId);
+    const variants =
+      variantDays < variantLimit
+        ? normalizeVariants(item.variants, recipeById.get(dishId)!, context.profiles, context.globalExclusions)
+        : [];
+    if (variants.length) variantDays += 1;
     plan.push({
       date,
       dishId,
@@ -274,6 +305,7 @@ export function validateProposal(raw: unknown, context: PlanningContext): Valida
           ? item.reason.slice(0, 180)
           : "Valgt ud fra dine præferencer.",
       source: "ai",
+      ...(variants.length ? { variants } : {}),
     });
   }
   plan.sort((a, b) => a.date.localeCompare(b.date));
@@ -329,12 +361,15 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
   const wanted = context.requiredDishIds.filter((id) => !used.has(id));
 
   for (const date of validated.missingDates) {
-    let dish = context.recipes.find((candidate) => wanted.includes(candidate.id) && !used.has(candidate.id));
+    let dish = context.recipes.find(
+      (candidate) => wanted.includes(candidate.id) && !used.has(candidate.id) && fitsDay(candidate, date, context),
+    );
     if (!dish) {
       const needsNovel =
         plan.filter((item) => !context.eatenDishIds.has(item.dishId)).length < context.newDishCount;
       const score = (candidate: Dish): number => {
         const novel = !context.eatenDishIds.has(candidate.id) ? 1 : 0;
+        const relaxed = context.relaxedDates.includes(date);
         const pantry = matchingFridgeItems(candidate.ingredients, context.fridge, date).reduce(
           (total, match) => total + fridgeMatchScore(match) / 2,
           0,
@@ -344,15 +379,16 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
           pantry -
           (categories.get(candidate.category) ?? 0) * 12 -
           (context.economical || context.budgetDkk
-            ? relativeRecipeCost(candidate, context.fridge) * 12
+            ? relativeRecipeCost(candidate, context.fridge) * (relaxed ? 4 : 12)
             : 0) +
+          (relaxed ? relaxedDayScore(candidate) : 0) +
           dayWishScore(candidate, context.dayRequests[date]) +
           preferenceScore(candidate, context.profiles) +
           (context.ratingScores.get(candidate.id) ?? 0)
         );
       };
       dish = context.recipes
-        .filter((candidate) => !used.has(candidate.id))
+        .filter((candidate) => !used.has(candidate.id) && fitsDay(candidate, date, context))
         .sort((a, b) => score(b) - score(a) || a.name.localeCompare(b.name, "da-DK"))[0];
     }
     if (!dish) continue;
@@ -371,6 +407,22 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
   return summarize(plan, context, validated.rejectedCount);
 }
 
+/**
+ * Gives days without a variant one when a profile with safe foods dislikes a part of the dish,
+ * until the plan has maxVariantDays() days with a variant.
+ */
+export function addSuggestedVariants(items: readonly PlanItem[], context: PlanningContext): PlanItem[] {
+  let left = maxVariantDays(context.dates.length) - items.filter((item) => item.variants?.length).length;
+  return items.map((item) => {
+    if (left <= 0 || item.variants?.length) return item;
+    const dish = context.recipes.find((candidate) => candidate.id === item.dishId);
+    const variants = dish ? suggestVariants(dish, context.profiles, context.globalExclusions) : [];
+    if (!variants.length) return item;
+    left -= 1;
+    return { ...item, variants };
+  });
+}
+
 /** Turns plan items into a draft; locked/preserved days from the context are included as locked. */
 export function toDraft(
   items: readonly PlanItem[],
@@ -378,12 +430,13 @@ export function toDraft(
   meals: MealMap,
   message?: string,
 ): PlanDraft {
-  const planned: DraftDay[] = items.map((item) => ({
+  const planned: DraftDay[] = addSuggestedVariants(items, context).map((item) => ({
     date: item.date,
     dishId: item.dishId,
     reason: item.reason,
     locked: false,
     source: item.source,
+    ...(item.variants?.length ? { variants: item.variants } : {}),
   }));
   const kept: DraftDay[] = [...context.lockedDays].map(([date, dishId]) => {
     const meal = meals[date];
@@ -394,6 +447,7 @@ export function toDraft(
       locked: meal?.locked ?? false,
       source: meal?.source ?? "manual",
       offer: meal?.offer,
+      ...(meal?.variants?.length ? { variants: meal.variants } : {}),
     };
   });
   return {

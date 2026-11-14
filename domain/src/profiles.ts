@@ -1,3 +1,4 @@
+import { swappableDislike } from "./variants.ts";
 import type { Dish, Profile } from "./types.ts";
 
 /** Inactive profiles do not count towards planning, exclusions or portions. */
@@ -45,7 +46,8 @@ const matched = (text: string, values: readonly string[]): number =>
   terms(values).filter((value) => text.includes(value)).length;
 
 /**
- * Equal consideration for each participating profile; a dislike is a strong soft penalty.
+ * Equal consideration for each participating profile; a dislike is a strong soft penalty, but only a
+ * mild one when the disliked part can be swapped for one of the profile's safe foods (see variants.ts).
  * Hard exclusions are handled separately (see exclusions.ts).
  */
 export function preferenceScore(
@@ -58,9 +60,15 @@ export function preferenceScore(
   let sum = 0;
   for (const member of members) {
     const positive = Math.min(2, matched(content, member.preferences));
-    const negative = Math.min(2, matched(content, member.dislikes));
+    const disliked = terms(member.dislikes)
+      .filter((value) => content.includes(value))
+      .slice(0, 2);
+    const penalty = disliked.reduce(
+      (total, value) => total + (swappableDislike(dish, member, value) ? 6 : 18),
+      0,
+    );
     const favorite = member.favoriteDishIds.includes(dish.id) ? 1 : 0;
-    sum += Math.max(-25, Math.min(25, positive * 8 + favorite * 18 - negative * 18));
+    sum += Math.max(-25, Math.min(25, positive * 8 + favorite * 18 - penalty));
   }
   return Math.round(sum / members.length);
 }

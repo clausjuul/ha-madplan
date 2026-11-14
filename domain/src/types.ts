@@ -45,6 +45,17 @@ export type Meal = {
   skipped?: boolean;
   /** The family's verdict after eating it; steers future suggestions (see ratingScores). */
   rating?: MealRating;
+  /** One person gets one part of the dish swapped (see variants.ts). */
+  variants?: MealVariant[];
+};
+
+/** "Oliver gets nuggets instead of the steak"; the rest of the dish is the same for everyone. */
+export type MealVariant = {
+  profileId: string;
+  /** The dish's ingredient that is swapped, by its own name. */
+  replaces: string;
+  /** One of the profile's safe foods. */
+  with: string;
 };
 
 /** "never": do not suggest the dish again. */
@@ -65,6 +76,8 @@ export type Profile = {
   preferences: string[];
   /** Foods the profile would rather avoid (soft). */
   dislikes: string[];
+  /** What the profile always eats; the planner may swap one part of a dish for one of these. */
+  safeFoods?: string[];
   favoriteDishIds: string[];
   portions?: number;
 };
@@ -125,6 +138,7 @@ type DraftDayBase = {
   locked: boolean;
   source: MealSource;
   offer?: OfferReference;
+  variants?: MealVariant[];
 };
 
 /** Either an existing dish (dishId) or a brand-new one proposed by the planner (newDish). */

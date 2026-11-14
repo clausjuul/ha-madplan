@@ -26,11 +26,11 @@ export function WeekView({ weekStart }: { weekStart: string }) {
   const [sheet, setSheet] = useState<SheetState>(null);
 
   const days = useMemo(
-    () => (data ? buildWeek(weekStart, today, data.meals, data.dishes) : []),
+    () => (data ? buildWeek(weekStart, today, data.meals, data.dishes, data.profiles) : []),
     [data, weekStart, today],
   );
   const tonight = useMemo(
-    () => (data ? buildDay(today, today, data.meals, data.dishes) : null),
+    () => (data ? buildDay(today, today, data.meals, data.dishes, data.profiles) : null),
     [data, today],
   );
 

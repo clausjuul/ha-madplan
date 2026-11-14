@@ -22,11 +22,16 @@ function ForslagTag() {
 
 function ReasonLine({ day }: { day: DayModel }) {
   const reason = day.meal?.reason;
-  if (!reason) return null;
+  if (!reason && !day.variantLines.length) return null;
   return (
-    <p className="mt-0.5 text-[15px] leading-normal text-muted">
-      {reason}
-    </p>
+    <>
+      {day.variantLines.map((line) => (
+        <p key={line} className="m-0 mt-0.5 text-[15px] font-medium leading-normal text-ink-2">
+          {line}
+        </p>
+      ))}
+      {reason ? <p className="mt-0.5 text-[15px] leading-normal text-muted">{reason}</p> : null}
+    </>
   );
 }
 
@@ -89,6 +94,11 @@ export function TonightHero({ day, servings, handlers, wide }: Props) {
             <div className="mt-1 text-[13px] text-ink-2">
               {dish.prepMinutes} min · til {servings}
             </div>
+            {day.variantLines.map((line) => (
+              <div key={line} className="truncate text-[13px] text-ink-2">
+                {line}
+              </div>
+            ))}
           </div>
           <Link
             to={routePath({ name: "lav-mad", dishId: dish.id })}

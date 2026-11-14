@@ -1,4 +1,4 @@
-import { Lock, RefreshCw, Search } from "lucide-react";
+import { Lock, RefreshCw, Search, X } from "lucide-react";
 import { parseDateKey, weekdayName, type Dish, type DraftDay } from "@madplan/domain";
 import type { DayBadge } from "@/lib/draft-summary";
 import { DishImage } from "@/components/ui/DishImage";
@@ -7,6 +7,11 @@ type Props = {
   day: DraftDay;
   dish: Dish | undefined;
   badge: DayBadge;
+  /** A day marked "god tid" in the request. */
+  relaxed?: boolean;
+  /** "Oliver: nuggets i stedet for bøf". */
+  variantLines?: string[];
+  onDropVariants?: () => void;
   busy: boolean;
   onLock: () => void;
   onRegenerate: () => void;
@@ -17,7 +22,7 @@ const iconButton =
   "flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-raised text-sm font-medium text-ink-2 hover:text-ink disabled:opacity-40 md:w-11";
 
 /** One day of the draft: photo, dish, badges, reason and the three per-day actions. */
-export function ReviewRow({ day, dish, badge, busy, onLock, onRegenerate, onPick }: Props) {
+export function ReviewRow({ day, dish, badge, relaxed, variantLines = [], onDropVariants, busy, onLock, onRegenerate, onPick }: Props) {
   const date = parseDateKey(day.date);
   const weekday = weekdayName(day.date, "long");
   return (
@@ -41,12 +46,29 @@ export function ReviewRow({ day, dish, badge, busy, onLock, onRegenerate, onPick
           <strong className="text-base font-semibold md:text-[17px]">{dish?.name ?? "Ukendt ret"}</strong>
           {badge === "new" ? <span className="rounded-full bg-new px-2 py-[3px] text-xs font-semibold text-on-new">Ny ret</span> : null}
           {badge === "untried" ? <span className="rounded-full bg-raised px-2 py-[3px] text-xs font-medium text-muted">Ikke prøvet</span> : null}
+          {relaxed ? <span className="rounded-full bg-accent-soft px-2 py-[3px] text-xs font-semibold text-accent">God tid</span> : null}
           {day.offer ? (
             <span className="rounded-full bg-offer px-2 py-[3px] text-xs font-semibold text-on-offer">
               {day.offer.store}{day.offer.price ? ` · ${day.offer.price}` : ""}
             </span>
           ) : null}
         </div>
+        {variantLines.map((line) => (
+          <span key={line} className="flex items-center gap-1 text-sm font-medium leading-snug text-ink-2">
+            {line}
+            {onDropVariants ? (
+              <button
+                type="button"
+                aria-label={`Fjern bytte: ${line}`}
+                disabled={busy}
+                onClick={onDropVariants}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-ink disabled:opacity-40"
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            ) : null}
+          </span>
+        ))}
         <span className="line-clamp-3 text-sm leading-snug text-muted md:line-clamp-1">{day.reason}</span>
       </div>
       <div className="grid w-full shrink-0 grid-cols-3 gap-1.5 md:flex md:w-auto">
