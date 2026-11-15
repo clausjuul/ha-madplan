@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.14.0
+
+- feat(assist): find and add photos to dishes
+- fix(offers): treat multi-buys as an extra deal on top of the single price
+
 ## 0.13.0
 
 - feat(offers): Tilbudsvagt - watch items and exact products for offers
