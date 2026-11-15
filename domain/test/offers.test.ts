@@ -12,8 +12,14 @@ import {
   offerPriceLabel,
   offerSavingKr,
   toOfferReference,
+  productLabel,
+  sameWatch,
+  watchedProduct,
+  watchlistHits,
+  watchMatches,
+  watchTokens,
 } from "../src/offers.ts";
-import type { Dish, GroceryStore, RetailOffer } from "../src/types.ts";
+import type { Dish, GroceryStore, RetailOffer, WatchItem } from "../src/types.ts";
 
 const offer = (name: string, extra: Partial<RetailOffer> = {}): RetailOffer => ({
   name,
@@ -181,5 +187,54 @@ describe("offers in planning", () => {
     expect(dishOfferMatches(dishes[1]!, offers, ["netto"], "2026-11-15").map((match) => match.ingredient)).toEqual(["hakket oksekød"]);
     expect(offerScore([])).toBe(0);
     expect(offerReason([])).toBe("");
+  });
+});
+
+describe("watched items (Tilbudsvagt)", () => {
+  const stores: GroceryStore[] = ["netto", "rema1000"];
+  const offers = [
+    offer("Merrild mellemristet kaffe", { amountOre: 4495, brand: "Merrild", productId: 1 }),
+    offer("Kaffe filtermalet", { chain: "rema1000", amountOre: 3995, productId: 2 }),
+    offer("Kaffefløde 9 %", { amountOre: 1295, productId: 3 }),
+    offer("Libero bleer str. 4", { amountOre: 9900, brand: "Libero", productId: 4 }),
+    offer("Smør", { brand: "Lurpak", amountOre: 1995, productId: 5 }),
+    offer("Smør", { chain: "rema1000", brand: "Lurpak", amountOre: 1895, productId: 5 }),
+    offer("Smørbar", { brand: "Lurpak", amountOre: 2195, productId: 6 }),
+    offer("Coca-Cola Zero 1,5 l", { amountOre: 1500 }),
+    offer("Grillpølser", { amountOre: 2500, productId: 7 }),
+    offer("Kaffe gammel", { amountOre: 100, validUntil: "2026-11-13", productId: 8 }),
+  ];
+  const names = (found: RetailOffer[]) => found.map((entry) => `${entry.chain}:${entry.name}`);
+  const find = (item: WatchItem, chains = stores) => names(watchMatches(item, offers, chains, "2026-11-15"));
+
+  it("keeps brand words and drops only tiny filler", () => {
+    expect(watchTokens("Lurpak smør")).toEqual(["lurpak", "smør"]);
+    expect(watchTokens("Kaffe og te")).toEqual(["kaffe", "te"]);
+    expect(watchTokens("  ")).toEqual([]);
+  });
+
+  it("finds word starts in name and brand for free text, cheapest first, incl. non-food", () => {
+    expect(find({ name: "kaffe" })).toEqual(["netto:Kaffefløde 9 %", "rema1000:Kaffe filtermalet", "netto:Merrild mellemristet kaffe"]);
+    expect(find({ name: "Lurpak smør" })).toEqual(["rema1000:Smør", "netto:Smør", "netto:Smørbar"]);
+    expect(find({ name: "bleer" })).toEqual(["netto:Libero bleer str. 4"]);
+    expect(find({ name: "coca cola" })).toEqual(["netto:Coca-Cola Zero 1,5 l"]);
+    expect(find({ name: "øl" })).toEqual([]);
+    expect(find({ name: "kaffe" }, ["rema1000"])).toEqual(["rema1000:Kaffe filtermalet"]);
+  });
+
+  it("finds an exact product in every store by id, or by name and brand without one", () => {
+    const lurpak = offers[4]!;
+    expect(productLabel(lurpak)).toBe("Lurpak Smør");
+    expect(productLabel(offers[0]!)).toBe("Merrild mellemristet kaffe");
+    expect(find({ name: "Lurpak Smør", product: watchedProduct(lurpak) })).toEqual(["rema1000:Smør", "netto:Smør"]);
+    expect(find({ name: "Cola", product: { name: "coca-cola zero 1,5 l" } })).toEqual(["netto:Coca-Cola Zero 1,5 l"]);
+    expect(find({ name: "Smør", product: { productId: 99, name: "Smør", brand: "Lurpak" } })).toEqual([]);
+  });
+
+  it("spots duplicates and lists every watched item, also those not on offer", () => {
+    expect(sameWatch({ name: "Kaffe" }, { name: " kaffe" })).toBe(true);
+    expect(sameWatch({ name: "Smør", product: { productId: 5, name: "Smør" } }, { name: "Smør" })).toBe(false);
+    const hits = watchlistHits([{ name: "Smør", product: { productId: 5, name: "Smør" } }, { name: "Rugbrød" }], offers, stores, "2026-11-15");
+    expect(hits.map((hit) => [hit.item.name, hit.offers.length])).toEqual([["Smør", 2], ["Rugbrød", 0]]);
   });
 });

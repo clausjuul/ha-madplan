@@ -13,9 +13,11 @@ type Props = {
   addField: ReactNode;
   /** Opens the offers list; omitted when no offers are set up. */
   onOpenOffers?: () => void;
+  /** Watched items ("Tilbudsvagt") on offer right now; shown on the offers button. */
+  watchedOnOffer?: number;
 };
 
-export function ShoppingHeader({ list, today, wide, onOpenRange, addField, onOpenOffers }: Props) {
+export function ShoppingHeader({ list, today, wide, onOpenRange, addField, onOpenOffers, watchedOnOffer = 0 }: Props) {
   return (
     <header className={`flex shrink-0 flex-col gap-3 ${wide ? "px-8 pb-5 pt-6" : "px-4 pb-3 pt-[18px]"}`}>
       <div className="flex items-center gap-2.5">
@@ -44,10 +46,16 @@ export function ShoppingHeader({ list, today, wide, onOpenRange, addField, onOpe
           <button
             type="button"
             onClick={onOpenOffers}
+            aria-label={watchedOnOffer > 0 ? `Tilbud. ${watchedOnOffer} af de varer, I holder øje med, er på tilbud` : undefined}
             className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-offer-soft px-3.5 text-[14px] font-semibold text-offer"
           >
             <Tag size={16} aria-hidden="true" />
             Tilbud
+            {watchedOnOffer > 0 ? (
+              <span aria-hidden="true" className="flex h-5 min-w-5 items-center justify-center rounded-full bg-offer px-1.5 text-[12px] text-on-offer">
+                {watchedOnOffer}
+              </span>
+            ) : null}
           </button>
         ) : null}
         <span className="text-sm font-semibold text-accent" aria-label="Afkrydsede varer">

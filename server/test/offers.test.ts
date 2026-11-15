@@ -4,6 +4,7 @@ import { offerSyncFor, CALL_LIMIT } from "../src/offers/sync.ts";
 import { toRetailOffer } from "../src/offers/prej.ts";
 import { buildPlanningContext } from "@madplan/domain";
 import { planningPrompt } from "../src/ai/plan-ai.ts";
+import { buildEntities } from "../src/ha/publisher.ts";
 import { fakeAi, setup } from "./helpers.ts";
 
 type Reply = { status?: number; body?: unknown; remaining?: number };
@@ -158,6 +159,30 @@ describe("Prej offers in the shopping list", () => {
       multiBuy: { quantity: 2, priceOre: 3000 },
       normalPriceOre: null,
     });
+  });
+});
+
+describe("Tilbudsvagt (watched items)", () => {
+  it("stores the watchlist in settings and publishes the watched items on offer", async () => {
+    const prej = fakePrej({ perChain: 3 });
+    const { deps, json, call } = await withStores(prej.impl, ["netto"]);
+    await offerSyncFor(deps).run();
+    const settings = {
+      globalExclusions: [],
+      preferredStores: ["netto"],
+      offerWatchlist: [{ name: "Kaffe" }, { name: "Vare 1", product: { productId: 2, name: "Vare 1" } }, { name: "Hakket oksekød" }],
+    };
+    expect(await json("PUT", "settings", settings)).toEqual(settings);
+    const sensor = buildEntities(deps).find((entity) => entity.entityId === "sensor.madplan_tilbudsvagt");
+    expect(sensor).toMatchObject({
+      state: "2",
+      attributes: {
+        items: ["Vare 1: Vare 1 i Netto 29,95 kr.", "Hakket oksekød: Hakket oksekød 8-12 % i Netto 29,95 kr."],
+        watching: ["Kaffe", "Vare 1", "Hakket oksekød"],
+      },
+    });
+    expect((await call("PUT", "settings", { ...settings, offerWatchlist: [{ name: "x".repeat(81) }] })).status).toBe(400);
+    expect((await call("PUT", "settings", { ...settings, offerWatchlist: [{ name: "x", product: { productId: 1.5, name: "x" } }] })).status).toBe(400);
   });
 });
 

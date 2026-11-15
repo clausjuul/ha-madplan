@@ -67,6 +67,7 @@ Madplan opretter fire sensorer, som holdes opdateret automatisk (også ved midna
 | `sensor.madplan_i_aften` | Navnet på aftenens ret, eller "Ingen ret" | `date`, `dish_id`, `prep_minutes`, `entity_picture`, `note`, `tomorrow` (morgendagens ret) |
 | `sensor.madplan_indkob` | Antal varer, der mangler at blive købt | `estimated_price_dkk`, `from`, `to`, `items` (de manglende varer, højst 60) |
 | `sensor.madplan_tilbud` | Antal varer på indkøbslisten, der er på tilbud | `items` (f.eks. "hakket oksekød: Netto 29,95 kr."), `attribution` |
+| `sensor.madplan_tilbudsvagt` | Antal af de varer, I holder øje med, der er på tilbud | `items` (f.eks. "Kaffe: Kaffe filtermalet i REMA 1000 39,95 kr."), `watching`, `attribution` |
 | `sensor.madplan_kommende` | Antal planlagte retter de næste 14 dage | `days` (liste med `date`, `weekday`, `dish`, `dish_id`, `prep_minutes`, `picture`, `note`, `skipped`), `ingress_url` |
 
 ## Tilbud
@@ -76,6 +77,7 @@ Med en Prej API-nøgle (`prej_api_key`) henter Madplan ugens tilbud fra de butik
 - **Indkøbslisten** viser tilbudspris og butik på varer, der er på tilbud, og hvilken butik der er billigst på de varer, begge butikker har.
 - **Planlæggeren** giver retter med ingredienser på tilbud et lille plus og skriver det i begrundelsen. Tilbud vejer aldrig tungere end fravalg, bedømmelser eller variation.
 - **Assist** kan svare på "Hvad er på tilbud, vi kan bruge?".
+- **Tilbudsvagt** (øverst under **Indkøb → Tilbud**): hold øje med varer, I gerne vil vide, når de er på tilbud. Der er to slags. **Alt med et ord**: skriv f.eks. "kaffe" eller "bleer". Alle ord skal stå i begyndelsen af et ord i varens navn eller mærke, så "kaffe" finder både "Merrild kaffe" og "Kaffefløde". **En præcis vare**: mens du skriver, foreslås de varer, der er på tilbud nu (f.eks. Lurpak Smør eller Coca-Cola Zero). Du kan også trykke på klokken ved en vare i tilbudslisten. En præcis vare findes igen, når den kommer på tilbud i en af jeres butikker. Madplan tjekker listen mod de gemte tilbud hver morgen, uden ekstra kald til Prej. Varer på tilbud står øverst, og tallet på **Tilbud**-knappen viser, hvor mange af dem der er på tilbud. Vil I have besked, kan en automation reagere, når `sensor.madplan_tilbudsvagt` stiger.
 
 **Så få kald som muligt:** Prej opdaterer kun deres data om natten. Madplan henter derfor tilbuddene én gang om morgenen (efter kl. 6) og gemmer dem. Alt andet læser de gemte tilbud. En normal dag koster det 4-10 kald. Madplan bruger aldrig mere end 20 kald i døgnet (Prejs døgn følger UTC), heller ikke ved genstart eller hvis du trykker **Hent tilbud nu** flere gange. Status og forbrug står under **Indstillinger → Butikker og tilbud**. Data fra [Prej](https://prej.dk).
 

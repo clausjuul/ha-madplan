@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, X } from "lucide-react";
-import { offerPriceLabel, offerSavingKr, STORE_NAMES } from "@madplan/domain";
-import type { Dish, GroceryStore, RetailOffer, ShoppingCategory, ShoppingList } from "@madplan/domain";
+import { Bell, BellRing, Plus, Search, X } from "lucide-react";
+import { offerPriceLabel, offerSavingKr, productLabel, sameProduct, STORE_NAMES, watchlistHits } from "@madplan/domain";
+import type { Dish, GroceryStore, RetailOffer, ShoppingCategory, ShoppingList, WatchItem } from "@madplan/domain";
 import { useOffers } from "@/api/queries";
 import { Sheet } from "@/components/ui/Sheet";
 import { notify } from "@/lib/notify";
@@ -19,6 +19,7 @@ import {
   type ShownOffer,
 } from "@/lib/offers-view";
 import { CATEGORY_ORDER } from "@/lib/shopping-view";
+import { toggleProduct, WatchSection } from "./WatchSection";
 
 const SHOWN = 150;
 
@@ -30,6 +31,9 @@ type Props = {
   dishes: readonly Dish[];
   today: string;
   onAdd: (label: string) => void;
+  /** "Tilbudsvagt": items the family watches (settings.offerWatchlist). */
+  watchlist: readonly WatchItem[];
+  onWatchChange: (watchlist: WatchItem[]) => void;
 };
 
 const kroner = (ore: number): string => `${(ore / 100).toFixed(2).replace(".", ",")} kr.`;
@@ -54,7 +58,9 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
   );
 }
 
-function OfferRow({ entry, onAdd }: { entry: ShownOffer; onAdd: (offer: RetailOffer) => void }) {
+type RowProps = { entry: ShownOffer; onAdd: (offer: RetailOffer) => void; watched: boolean; onToggleWatch: (offer: RetailOffer) => void };
+
+function OfferRow({ entry, onAdd, watched, onToggleWatch }: RowProps) {
   const { offer } = entry;
   const saving = offerSavingKr(offer);
   return (
@@ -78,20 +84,31 @@ function OfferRow({ entry, onAdd }: { entry: ShownOffer; onAdd: (offer: RetailOf
           </span>
         ) : null}
       </span>
-      <button
-        type="button"
-        onClick={() => onAdd(offer)}
-        aria-label={`Læg ${offer.name} på indkøbslisten`}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised text-ink-2 hover:text-ink"
-      >
-        <Plus size={18} aria-hidden="true" />
-      </button>
+      <span className="flex shrink-0 flex-col gap-1">
+        <button
+          type="button"
+          onClick={() => onAdd(offer)}
+          aria-label={`Læg ${offer.name} på indkøbslisten`}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-raised text-ink-2 hover:text-ink"
+        >
+          <Plus size={18} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onToggleWatch(offer)}
+          aria-pressed={watched}
+          aria-label={`Hold øje med ${productLabel(offer)}`}
+          className={`flex h-10 w-10 items-center justify-center rounded-full ${watched ? "bg-offer-soft text-offer" : "text-muted hover:text-ink"}`}
+        >
+          {watched ? <BellRing size={17} aria-hidden="true" /> : <Bell size={17} aria-hidden="true" />}
+        </button>
+      </span>
     </li>
   );
 }
 
 /** Every stored offer from the chosen stores: search, sort, filter, add one to the list. Never calls Prej. */
-export function OffersSheet({ open, onClose, list, stores, dishes, today, onAdd }: Props) {
+export function OffersSheet({ open, onClose, list, stores, dishes, today, onAdd, watchlist, onWatchChange }: Props) {
   const offers = useOffers(open);
   const [filters, setFilters] = useState<OfferFilters>(NO_FILTERS);
   const [sort, setSort] = useState<OfferSort>(loadSort);
@@ -105,6 +122,17 @@ export function OffersSheet({ open, onClose, list, stores, dishes, today, onAdd 
   const groups = useMemo(() => capGroups(sortAndGroup(found, sort), SHOWN), [found, sort]);
   const categories = useMemo(() => CATEGORY_ORDER.filter((category) => all.some((entry) => entry.category === category)), [all]);
   const filtered = filters.store !== "alle" || filters.category !== "alle" || filters.fitsDishes || filters.endingSoon || filters.query.trim() !== "";
+  const hits = useMemo(
+    () => (offers.data ? watchlistHits(watchlist, offers.data.offers, stores, today) : undefined),
+    [offers.data, watchlist, stores, today],
+  );
+  const current = useMemo(() => all.map((entry) => entry.offer), [all]);
+  const isWatched = (offer: RetailOffer): boolean => watchlist.some((item) => item.product !== undefined && sameProduct(item.product, offer));
+  const toggleWatch = (offer: RetailOffer): void => {
+    const watched = isWatched(offer);
+    onWatchChange(toggleProduct(watchlist, offer));
+    notify(watched ? `Holder ikke længere øje med «${productLabel(offer)}».` : `Holder øje med «${productLabel(offer)}».`);
+  };
   const onList = list.items.filter((item) => !item.checked && item.priceIsOffer && item.offer);
   const add = (offer: RetailOffer): void => {
     onAdd(offer.name);
@@ -129,6 +157,8 @@ export function OffersSheet({ open, onClose, list, stores, dishes, today, onAdd 
             </ul>
           </section>
         ) : null}
+
+        <WatchSection watchlist={watchlist} hits={hits} offers={current} onChange={onWatchChange} onAdd={add} />
 
         <label className="flex h-12 items-center gap-2 rounded-full bg-surface px-4">
           <Search size={18} aria-hidden="true" className="text-muted" />
@@ -231,7 +261,7 @@ export function OffersSheet({ open, onClose, list, stores, dishes, today, onAdd 
                   ) : null}
                   <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
                     {group.offers.map((entry) => (
-                      <OfferRow key={entry.key} entry={entry} onAdd={add} />
+                      <OfferRow key={entry.key} entry={entry} onAdd={add} watched={isWatched(entry.offer)} onToggleWatch={toggleWatch} />
                     ))}
                   </ul>
                 </section>

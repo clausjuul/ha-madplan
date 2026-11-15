@@ -1,6 +1,6 @@
 /** Publishes Madplan state as Home Assistant sensor entities through the Supervisor's Core API proxy. */
 import { msUntilMidnightInZone } from "../timezone.ts";
-import { addDaysToKey, weekdayName } from "@madplan/domain";
+import { addDaysToKey, offerPriceLabel, STORE_NAMES, watchlistHits, weekdayName } from "@madplan/domain";
 import type { ChangeTopic, Dish } from "@madplan/domain";
 import type { Deps } from "../deps.ts";
 import { currentShoppingList, snapshot } from "../state.ts";
@@ -93,7 +93,26 @@ export function buildEntities(deps: Deps): EntityState[] {
       attribution: "Data fra Prej",
     },
   };
-  return [tonight, shopping, upcoming, offers];
+  const watchlist = state.settings.offerWatchlist ?? [];
+  const hits = watchlistHits(watchlist, state.offers, state.settings.preferredStores, state.today).filter((hit) => hit.offers.length > 0);
+  const watched: EntityState = {
+    entityId: "sensor.madplan_tilbudsvagt",
+    // The number of watched items on offer, so an automation can notify when it goes up.
+    state: String(hits.length),
+    attributes: {
+      friendly_name: "Madplan tilbudsvagt",
+      unit_of_measurement: "varer",
+      icon: "mdi:tag-search-outline",
+      // "Kaffe: Merrild Mellemristet 400 g i Netto 39,95 kr." (the cheapest offer per watched item).
+      items: hits.map((hit) => {
+        const best = hit.offers[0]!;
+        return `${hit.item.name}: ${best.name} i ${STORE_NAMES[best.chain]} ${offerPriceLabel(best)}`;
+      }),
+      watching: watchlist.map((item) => item.name),
+      attribution: "Data fra Prej",
+    },
+  };
+  return [tonight, shopping, upcoming, offers, watched];
 }
 
 export type Publisher = {

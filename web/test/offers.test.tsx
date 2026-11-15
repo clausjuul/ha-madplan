@@ -7,6 +7,8 @@ import { capGroups, decorateOffers, filterShown, NO_FILTERS, sortAndGroup } from
 import { offerLines } from "../src/components/settings/StoresSection";
 import { cheapestLine } from "../src/components/shopping/PriceSummary";
 import { keysForTopics, queryKeys } from "../src/api/queries";
+import { addWatch, productSuggestions, toggleProduct, WatchSection } from "../src/components/shopping/WatchSection";
+import { productLabel } from "@madplan/domain";
 
 const status = (chains: OffersStatus["chains"]): OffersStatus => ({
   configured: true, chains, callsToday: 4, callLimit: 20, remaining: 21, syncing: false,
@@ -80,5 +82,53 @@ describe("offers list", () => {
   it("puts Indstillinger in the phone header", () => {
     render(<PhoneHeader weekStart="2026-11-09" onWeekChange={() => undefined} />, { wrapper: MemoryRouter });
     expect(screen.getByRole("link", { name: "Indstillinger" }).getAttribute("href")).toBe("/indstillinger");
+  });
+});
+
+describe("Tilbudsvagt", () => {
+  const make = (name: string, extra: Partial<RetailOffer> = {}): RetailOffer => ({
+    name, chain: "netto", amountOre: 1995, normalPriceOre: null, quantityLabel: "250 g", validFrom: null, validUntil: "2026-11-20",
+    observed: "2026-11-15", source: "Prej", sourceUrl: "https://prej.dk", confirmed: true, matchMethod: "all-query-tokens", ...extra,
+  });
+  const lurpak = make("Smør", { brand: "Lurpak", productId: 5 });
+
+  it("adds free text once, whatever the case, and toggles an exact product", () => {
+    expect(addWatch([{ name: "Kaffe" }], { name: "  smør " })).toEqual([{ name: "Kaffe" }, { name: "smør" }]);
+    expect(addWatch([{ name: "Kaffe" }], { name: "KAFFE" })).toEqual([{ name: "Kaffe" }]);
+    expect(addWatch([{ name: "Kaffe" }], { name: "  " })).toEqual([{ name: "Kaffe" }]);
+    const watched = toggleProduct([{ name: "Smør" }], lurpak);
+    expect(watched).toEqual([{ name: "Smør" }, { name: "Lurpak Smør", product: { productId: 5, name: "Smør", brand: "Lurpak" } }]);
+    expect(toggleProduct(watched, make("Smør", { brand: "Lurpak", productId: 5, chain: "rema1000" }))).toEqual([{ name: "Smør" }]);
+  });
+
+  it("suggests each matching product once, at its cheapest", () => {
+    const offers = [
+      lurpak,
+      make("Smør", { brand: "Lurpak", productId: 5, chain: "rema1000", amountOre: 1795 }),
+      make("Smørbar", { brand: "Lurpak", productId: 6 }),
+      make("Kaffe"),
+    ];
+    const found = productSuggestions(offers, "lurpak");
+    expect(found.map((offer) => [productLabel(offer), offer.chain])).toEqual([["Lurpak Smør", "rema1000"], ["Lurpak Smørbar", "netto"]]);
+    expect(productSuggestions(offers, "l")).toEqual([]);
+  });
+
+  it("lists watched items on offer first, with their offers", () => {
+    const kaffe = make("Kaffe filtermalet", { chain: "rema1000", amountOre: 3995, normalPriceOre: 5995, quantityLabel: "400 g" });
+    const watchlist = [{ name: "Rugbrød" }, { name: "Kaffe" }];
+    render(
+      <WatchSection
+        watchlist={watchlist}
+        hits={[{ item: watchlist[0]!, offers: [] }, { item: watchlist[1]!, offers: [kaffe] }]}
+        offers={[kaffe]}
+        onChange={() => undefined}
+        onAdd={() => undefined}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: /Tilbudsvagt\s*· 1 på tilbud/u })).toBeTruthy();
+    const items = screen.getAllByRole("button", { name: /^Stop med at holde øje med/u }).map((button) => button.getAttribute("aria-label"));
+    expect(items).toEqual(["Stop med at holde øje med Kaffe", "Stop med at holde øje med Rugbrød"]);
+    expect(screen.getByText("39,95 kr.")).toBeTruthy();
+    expect(screen.getByText("Ikke på tilbud")).toBeTruthy();
   });
 });

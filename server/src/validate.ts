@@ -1,5 +1,5 @@
 /** Validators for the request bodies in the API contract (domain/src/api.ts). */
-import { INSPIRATION_CUISINES, isDateKey } from "@madplan/domain";
+import { INSPIRATION_CUISINES, isDateKey, WATCH_NAME_MAX, WATCHLIST_MAX } from "@madplan/domain";
 import type {
   DiscoverInput,
   DishInput,
@@ -12,6 +12,8 @@ import type {
   MealVariant,
   Profile,
   Settings,
+  WatchedProduct,
+  WatchItem,
 } from "@madplan/domain";
 import { badRequest } from "./errors.ts";
 import {
@@ -140,7 +142,23 @@ export function settings(value: unknown): Settings {
       2,
     ),
     preferredServings: optNum(o.preferredServings, "Portioner", { min: 0.5, max: 30 }),
+    offerWatchlist: o.offerWatchlist === undefined ? undefined : watchlist(o.offerWatchlist),
   });
+}
+
+function watchlist(value: unknown): WatchItem[] {
+  return list(value, "Tilbudsvagt", (entry) => {
+    const o = rec(entry, "Vare");
+    const name = str(o.name, "Vare", { min: 1, max: WATCH_NAME_MAX });
+    if (o.product === undefined) return { name };
+    const p = rec(o.product, "Produkt");
+    const product: WatchedProduct = compact({
+      productId: p.productId === undefined ? undefined : num(p.productId, "Produkt-id", { min: 0, max: Number.MAX_SAFE_INTEGER, int: true }),
+      name: str(p.name, "Produktnavn", { min: 1, max: 200 }),
+      brand: optStr(p.brand, "Mærke", 100),
+    });
+    return { name, product };
+  }, WATCHLIST_MAX);
 }
 
 export function inspirations(value: unknown): InspirationRecipe[] {

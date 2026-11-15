@@ -101,7 +101,15 @@ export type Settings = {
   globalExclusions: string[];
   preferredStores: GroceryStore[];
   preferredServings?: number;
+  /** "Tilbudsvagt": items the family wants to know about when any chosen store has them on offer. */
+  offerWatchlist?: WatchItem[];
 };
+
+/** One exact product picked from an offer: matched by Prej's product id, else by the same name and brand. */
+export type WatchedProduct = { productId?: number; name: string; brand?: string };
+
+/** A watched item: every offer with these words ("kaffe"), or one exact product ("Lurpak Smør"). */
+export type WatchItem = { name: string; product?: WatchedProduct };
 
 export const INSPIRATION_CUISINES = [
   "Thailand",

@@ -7,7 +7,7 @@
  * money; a wrong one ("løg" -> "hvidløgsdressing") costs trust.
  */
 import { normalizeItem, parseIngredient } from "./ingredients.ts";
-import type { Dish, GroceryStore, OfferReference, RetailOffer, RetailOfferResult } from "./types.ts";
+import type { Dish, GroceryStore, OfferReference, RetailOffer, RetailOfferResult, WatchedProduct, WatchItem } from "./types.ts";
 
 export const STORE_NAMES: Record<GroceryStore, OfferReference["store"]> = {
   netto: "Netto",
@@ -206,4 +206,81 @@ export function offerReason(matches: readonly DishOfferMatch[]): string {
   if (!best) return "";
   const name = best.ingredient.charAt(0).toLocaleUpperCase("da-DK") + best.ingredient.slice(1);
   return `${name} er på tilbud i ${STORE_NAMES[best.offer.chain]}.`;
+}
+
+// Watched items ("Tilbudsvagt") -----------------------------------------------------------------
+
+/** Most items one household watches, and the longest name. */
+export const WATCHLIST_MAX = 50;
+export const WATCH_NAME_MAX = 80;
+
+const WATCH_FILLER = new Set(["og", "eller", "af", "med", "til", "på", "en", "et"]);
+
+/** Lower-case words of a watched item, brand words included ("Lurpak smør" -> ["lurpak", "smør"]). */
+export function watchTokens(name: string): string[] {
+  return words(normalizeItem(name)).filter((word) => word.length >= 2 && !WATCH_FILLER.has(word));
+}
+
+/** True when the offer has every word of a free-text watch (word starts, in name or brand). */
+export function watchWordsMatch(name: string, offer: Pick<RetailOffer, "name" | "brand">): boolean {
+  const tokens = watchTokens(name);
+  if (tokens.length === 0) return false;
+  const text = normalizeItem(`${offer.name} ${offer.brand ?? ""}`);
+  return tokens.every((token) => startsWord(text, token));
+}
+
+/** The exact product of an offer, to watch it. */
+export function watchedProduct(offer: Pick<RetailOffer, "productId" | "name" | "brand">): WatchedProduct {
+  return { ...(offer.productId !== undefined ? { productId: offer.productId } : {}), name: offer.name, ...(offer.brand ? { brand: offer.brand } : {}) };
+}
+
+/** "Lurpak Smør": the brand first unless the name already says it. */
+export function productLabel(offer: Pick<RetailOffer, "name" | "brand">): string {
+  const brand = offer.brand?.trim();
+  return brand && !normalizeItem(offer.name).includes(normalizeItem(brand)) ? `${brand} ${offer.name}` : offer.name;
+}
+
+/** True when the offer is the watched product (same Prej id; without ids the same name and brand). */
+export function sameProduct(product: WatchedProduct, offer: Pick<RetailOffer, "productId" | "name" | "brand">): boolean {
+  if (product.productId !== undefined && offer.productId !== undefined) return product.productId === offer.productId;
+  return normalizeItem(product.name) === normalizeItem(offer.name) && normalizeItem(product.brand ?? "") === normalizeItem(offer.brand ?? "");
+}
+
+/** True when two watch items watch the same thing (to avoid duplicates). */
+export function sameWatch(a: WatchItem, b: WatchItem): boolean {
+  if (a.product && b.product) return sameProduct(a.product, b.product);
+  return !a.product && !b.product && normalizeItem(a.name) === normalizeItem(b.name);
+}
+
+/** Does a watch item catch this offer? */
+export function watchCatches(item: WatchItem, offer: Pick<RetailOffer, "productId" | "name" | "brand">): boolean {
+  return item.product ? sameProduct(item.product, offer) : watchWordsMatch(item.name, offer);
+}
+
+/**
+ * Current offers for a watched item, cheapest first. Free text is looser than ingredient matching: the
+ * family asked for exactly this, so brands and non-food ("bleer", "opvasketabs") count. Every word must
+ * still start a word, so "øl" never finds "pølser". A product watch only finds that product.
+ */
+export function watchMatches(
+  item: WatchItem,
+  offers: readonly RetailOffer[],
+  stores: readonly GroceryStore[],
+  asOf: string,
+): RetailOffer[] {
+  return offers
+    .filter((offer) => stores.includes(offer.chain) && offerCurrent(offer, asOf) && watchCatches(item, offer))
+    .sort((a, b) => a.amountOre - b.amountOre || a.name.localeCompare(b.name, "da-DK"));
+}
+
+export type WatchHit = { item: WatchItem; offers: RetailOffer[] };
+
+/** Every watched item with its current offers (an empty list when it is not on offer anywhere). */
+export function watchlistHits(
+  watchlist: readonly WatchItem[],
+  offers: readonly RetailOffer[],
+  stores: readonly GroceryStore[],
+  asOf: string,
+): WatchHit[] {
+  return watchlist.map((item) => ({ item, offers: watchMatches(item, offers, stores, asOf) }));
 }

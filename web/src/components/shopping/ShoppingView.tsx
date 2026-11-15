@@ -2,7 +2,9 @@ import { Link } from "react-router";
 import { useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useShoppingActions } from "@/api/shopping-mutations";
-import { useBootstrap, useShopping } from "@/api/queries";
+import { useBootstrap, useOffers, useShopping } from "@/api/queries";
+import { useHouseholdActions } from "@/api/library-mutations";
+import { watchlistHits } from "@madplan/domain";
 import { useIsWide } from "@/hooks/use-media";
 import { useShoppingRange } from "@/hooks/use-shopping-range";
 import { useToday } from "@/hooks/use-today";
@@ -31,6 +33,18 @@ export function ShoppingView() {
   const [resetOpen, setResetOpen] = useState(false);
   const [offersOpen, setOffersOpen] = useState(false);
   const offersOn = bootstrap.data?.capabilities.offers === true;
+  const household = useHouseholdActions();
+  const settings = bootstrap.data?.settings;
+  const watchlist = settings?.offerWatchlist ?? [];
+  // The stored offers are only loaded here when something is watched (for the count on the button).
+  const offers = useOffers(offersOn && watchlist.length > 0);
+  const watchedOnOffer = useMemo(
+    () =>
+      offers.data && settings
+        ? watchlistHits(watchlist, offers.data.offers, settings.preferredStores, today).filter((hit) => hit.offers.length > 0).length
+        : 0,
+    [offers.data, settings, watchlist, today],
+  );
 
   const list = shopping.data;
   const open = useMemo(() => groupByCategory((list?.items ?? []).filter((item) => !item.checked)), [list]);
@@ -94,7 +108,7 @@ export function ShoppingView() {
         today={today}
         wide={wide}
         onOpenRange={() => setRangeOpen(true)}
-        {...(offersOn ? { onOpenOffers: () => setOffersOpen(true) } : {})}
+        {...(offersOn ? { onOpenOffers: () => setOffersOpen(true), watchedOnOffer } : {})}
         addField={wide ? null : <AddExtraField onAdd={actions.addExtra} />}
       />
       {wide ? (
@@ -132,6 +146,10 @@ export function ShoppingView() {
           dishes={bootstrap.data?.dishes ?? []}
           today={today}
           onAdd={actions.addExtra}
+          watchlist={watchlist}
+          onWatchChange={(next) => {
+            if (settings) void household.saveSettings({ ...settings, offerWatchlist: next });
+          }}
         />
       ) : null}
       <RangeSheet
