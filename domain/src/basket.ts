@@ -38,6 +38,24 @@ function quantity(text: string): Amount | null {
 const offerPack = (offer: RetailOffer): Amount | null =>
   quantity(offer.quantityLabel) ?? quantity(offer.name);
 
+/** Price for `packages` articles: full multi-buy sets at the deal price, the rest one by one. */
+const costOre = (offer: RetailOffer, packages: number): number => {
+  const deal = offer.multiBuy;
+  if (!deal || deal.quantity < 2 || deal.priceOre <= 0) return packages * offer.amountOre;
+  const sets = Math.floor(packages / deal.quantity);
+  return sets * deal.priceOre + (packages - sets * deal.quantity) * offer.amountOre;
+};
+
+/** What to buy of one offer: the packages needed, or up to a full multi-buy set when that is cheaper. */
+function cheapestPurchase(offer: RetailOffer, needed: number): { packages: number; subtotalOre: number } {
+  const exact = { packages: needed, subtotalOre: costOre(offer, needed) };
+  const setSize = offer.multiBuy?.quantity ?? 0;
+  if (setSize < 2 || needed % setSize === 0) return exact;
+  const roundedUp = Math.ceil(needed / setSize) * setSize;
+  const upped = { packages: roundedUp, subtotalOre: costOre(offer, roundedUp) };
+  return upped.subtotalOre < exact.subtotalOre ? upped : exact;
+}
+
 const isDay = (value: string): boolean => /^\d{4}-\d{2}-\d{2}$/u.test(value);
 
 function isConfirmedCurrentOffer(offer: RetailOffer, asOf: string): boolean {
@@ -79,7 +97,8 @@ export type BasketComparison = {
 type BasketItem = Pick<ShoppingListItem, "id" | "label" | "quantityLabel" | "extra">;
 type PricedRow = { packages: number; subtotalOre: number; product: string };
 
-/** Only counts offers when the required amount and the pack amount share a known unit. */
+/** Only counts offers when the required amount and the pack amount share a known unit. Uses a multi-buy for full sets, and
+ * rounds up to a full set when that costs less than buying exactly what is needed. */
 export function compareBaskets(
   items: readonly BasketItem[],
   result: RetailOfferResult,
@@ -111,7 +130,7 @@ export function compareBaskets(
           }
           const packages = Math.ceil(required.amount / pack.amount);
           if (packages < 1 || packages > 200) return [];
-          return [{ packages, subtotalOre: packages * offer.amountOre, product: offer.name }];
+          return [{ ...cheapestPurchase(offer, packages), product: offer.name }];
         })
         .sort((a, b) => a.subtotalOre - b.subtotalOre);
       const best = candidates[0];

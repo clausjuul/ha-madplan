@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { BellPlus, Plus, X } from "lucide-react";
 import {
+  multiBuyLabel,
   offerPriceLabel,
   productLabel,
   sameWatch,
@@ -127,7 +128,10 @@ export function WatchSection({ watchlist, hits, offers, onChange, onAdd }: Props
                             {[STORE_NAMES[offer.chain], offer.quantityLabel, `til og med ${shortDate(offer.validUntil)}`].filter(Boolean).join(" · ")}
                           </span>
                         </span>
-                        <span className="shrink-0 text-[14px] font-semibold text-offer">{offerPriceLabel(offer)}</span>
+                        <span className="flex shrink-0 flex-col items-end font-semibold text-offer">
+                          <span className="text-[14px]">{offerPriceLabel({ amountOre: offer.amountOre })}</span>
+                          {offer.multiBuy ? <span className="text-[12px]">{multiBuyLabel(offer)}</span> : null}
+                        </span>
                         <button
                           type="button"
                           onClick={() => onAdd(offer)}

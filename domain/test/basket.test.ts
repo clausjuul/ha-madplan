@@ -112,6 +112,20 @@ describe("compareBaskets", () => {
     expect(comparison.stores[0]?.lines[0]).toMatchObject({ name: "ris", packages: 1, product: "Ris" });
   });
 
+  it("uses a multi-buy for full sets and rounds up only when a full set is cheaper", () => {
+    const tomatoes = (multiBuy: RetailOffer["multiBuy"]) => ({ ...offer("netto", 1000, "400 g", "Hakkede tomater"), multiBuy });
+    const line = (required: string, multiBuy: RetailOffer["multiBuy"]) =>
+      compareBaskets([item("t", "hakkede tomater", required)], result([{ ingredient: "hakkede tomater", matches: [tomatoes(multiBuy)] }]), ["netto"])
+        .stores[0]?.lines[0];
+    // 3 for 25: 2 cost 20 bought alone, 3 cost 25 -> buy exactly 2.
+    expect(line("800 g", { quantity: 3, priceOre: 2500 })).toMatchObject({ packages: 2, subtotalOre: 2000 });
+    // 3 for 18: a full set is cheaper than 2 bought alone -> buy 3.
+    expect(line("800 g", { quantity: 3, priceOre: 1800 })).toMatchObject({ packages: 3, subtotalOre: 1800 });
+    // 4 needed with 3 for 25: one set plus one alone.
+    expect(line("1600 g", { quantity: 3, priceOre: 2500 })).toMatchObject({ packages: 4, subtotalOre: 3500 });
+    expect(line("800 g", null)).toMatchObject({ packages: 2, subtotalOre: 2000 });
+  });
+
   it("excludes extras from the comparison", () => {
     const comparison = compareBaskets(
       [{ ...item("x", "ris", "1 kg"), extra: true }],

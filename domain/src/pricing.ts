@@ -79,9 +79,10 @@ export function estimateItemPrice(item: {
   return reference?.price ?? CATEGORY_FALLBACK_PRICES[item.category];
 }
 
-/** Reads "2 for 30", "12,95 kr." or a bare number from an offer price label. */
+/** Reads "2 for 30", "12,95 kr." or a bare number from an offer price label. With "12,95 kr. · 3 for 30,00 kr."
+ * the price for one (before the dot) is used; the multi-buy stays in the label. */
 export function parseOfferPrice(value: string): number | undefined {
-  const normalized = value.toLocaleLowerCase("da-DK").replace(",", ".");
+  const normalized = (value.split("·")[0] ?? "").toLocaleLowerCase("da-DK").replace(",", ".");
   const forPrice = /\b\d+\s*(?:stk\.?\s*)?for\s*(\d+(?:\.\d+)?)/u.exec(normalized);
   const currencyPrice = /(\d+(?:\.\d+)?)\s*(?:kr\.?|,-)/u.exec(normalized);
   const match = forPrice ?? currencyPrice ?? /(\d+(?:\.\d+)?)/u.exec(normalized);

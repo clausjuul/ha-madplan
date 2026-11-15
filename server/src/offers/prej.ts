@@ -72,7 +72,11 @@ export function toRetailOffer(raw: PrejOffer, chain: GroceryStore, observed: str
     productId,
     ...(brand ? { brand } : {}),
     normalPriceOre: normal !== null && normal > price ? normal : null,
-    multiBuy: multiQuantity !== null && multiQuantity > 1 && multiPrice !== null && multiPrice > 0 ? { quantity: multiQuantity, priceOre: multiPrice } : null,
+    // `price` is what one costs bought alone; keep the multi-buy only when it actually lowers the price per article.
+    multiBuy:
+      multiQuantity !== null && multiQuantity > 1 && multiPrice !== null && multiPrice > 0 && multiPrice < multiQuantity * price
+        ? { quantity: multiQuantity, priceOre: multiPrice }
+        : null,
   };
 }
 

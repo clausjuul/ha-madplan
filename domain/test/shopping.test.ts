@@ -90,6 +90,7 @@ describe("ingredient parsing", () => {
   it("reads offer prices", () => {
     expect(parseOfferPrice("2 for 30")).toBe(30);
     expect(parseOfferPrice("12,95 kr.")).toBe(12.95);
+    expect(parseOfferPrice("12,95 kr. · 3 for 30,00 kr.")).toBe(12.95);
     expect(parseOfferPrice("gratis")).toBeUndefined();
   });
 });

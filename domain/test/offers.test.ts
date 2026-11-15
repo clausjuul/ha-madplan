@@ -139,7 +139,8 @@ describe("choosing an offer", () => {
       validUntil: "2026-11-20",
       sourceUrl: "https://prej.dk",
     });
-    expect(offerPriceLabel({ amountOre: 1500, multiBuy: { quantity: 2, priceOre: 3000 } })).toBe("2 for 30,00 kr.");
+    expect(offerPriceLabel({ amountOre: 1795, multiBuy: { quantity: 3, priceOre: 3000 } })).toBe("17,95 kr. · 3 for 30,00 kr.");
+    expect(offerPriceLabel({ amountOre: 1795, multiBuy: null })).toBe("17,95 kr.");
     expect(bestOffer("smør", [offer("Smør")], ["netto"], "2026-11-15")?.store).toBe("Netto");
     expect(bestOffer("smør", [offer("Smør")], ["rema1000"], "2026-11-15")).toBeUndefined();
   });

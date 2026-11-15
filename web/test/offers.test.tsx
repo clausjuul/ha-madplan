@@ -114,7 +114,9 @@ describe("Tilbudsvagt", () => {
   });
 
   it("lists watched items on offer first, with their offers", () => {
-    const kaffe = make("Kaffe filtermalet", { chain: "rema1000", amountOre: 3995, normalPriceOre: 5995, quantityLabel: "400 g" });
+    const kaffe = make("Kaffe filtermalet", {
+      chain: "rema1000", amountOre: 3995, normalPriceOre: 5995, quantityLabel: "400 g", multiBuy: { quantity: 3, priceOre: 9900 },
+    });
     const watchlist = [{ name: "Rugbrød" }, { name: "Kaffe" }];
     render(
       <WatchSection
@@ -129,6 +131,7 @@ describe("Tilbudsvagt", () => {
     const items = screen.getAllByRole("button", { name: /^Stop med at holde øje med/u }).map((button) => button.getAttribute("aria-label"));
     expect(items).toEqual(["Stop med at holde øje med Kaffe", "Stop med at holde øje med Rugbrød"]);
     expect(screen.getByText("39,95 kr.")).toBeTruthy();
+    expect(screen.getByText("3 for 99,00 kr.")).toBeTruthy();
     expect(screen.getByText("Ikke på tilbud")).toBeTruthy();
   });
 });

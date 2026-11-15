@@ -122,9 +122,14 @@ export function matchingOffers(
 
 const kroner = (ore: number): string => `${(ore / 100).toFixed(2).replace(".", ",")} kr.`;
 
-/** Short Danish price text: "12,95 kr." or "2 for 30,00 kr.". */
+/** "3 for 30,00 kr." when the offer has a multi-buy, otherwise "". */
+export function multiBuyLabel(offer: Pick<RetailOffer, "multiBuy">): string {
+  return offer.multiBuy ? `${offer.multiBuy.quantity} for ${kroner(offer.multiBuy.priceOre)}` : "";
+}
+
+/** Short Danish price text: "12,95 kr." or, with a multi-buy, "12,95 kr. · 3 for 30,00 kr." (the price is for one). */
 export function offerPriceLabel(offer: Pick<RetailOffer, "amountOre" | "multiBuy">): string {
-  return offer.multiBuy ? `${offer.multiBuy.quantity} for ${kroner(offer.multiBuy.priceOre)}` : kroner(offer.amountOre);
+  return [kroner(offer.amountOre), multiBuyLabel(offer)].filter(Boolean).join(" · ");
 }
 
 /** The reference stored on shopping items, meals and draft days. */

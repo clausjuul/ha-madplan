@@ -176,7 +176,7 @@ export type RetailOffer = {
   brand?: string;
   /** The price before the offer, when known. */
   normalPriceOre?: number | null;
-  /** "2 for 30": quantity and the total price for that many. */
+  /** "3 for 30" on the same article, besides `amountOre` (the price for one): quantity and the total for that many. */
   multiBuy?: { quantity: number; priceOre: number } | null;
 };
 

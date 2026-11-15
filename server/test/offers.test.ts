@@ -159,6 +159,8 @@ describe("Prej offers in the shopping list", () => {
       multiBuy: { quantity: 2, priceOre: 3000 },
       normalPriceOre: null,
     });
+    // A "deal" that costs as much as buying them one by one is no deal.
+    expect(toRetailOffer({ ...base, multi_buy: { quantity: 2, price: 3190 } }, "netto", "2026-11-09")?.multiBuy).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bell, BellRing, Plus, Search, X } from "lucide-react";
-import { offerPriceLabel, offerSavingKr, productLabel, sameProduct, STORE_NAMES, watchlistHits } from "@madplan/domain";
+import { multiBuyLabel, offerSavingKr, productLabel, sameProduct, STORE_NAMES, watchlistHits } from "@madplan/domain";
 import type { Dish, GroceryStore, RetailOffer, ShoppingCategory, ShoppingList, WatchItem } from "@madplan/domain";
 import { useOffers } from "@/api/queries";
 import { Sheet } from "@/components/ui/Sheet";
@@ -76,7 +76,8 @@ function OfferRow({ entry, onAdd, watched, onToggleWatch }: RowProps) {
         </span>
       </span>
       <span className="flex shrink-0 flex-col items-end">
-        <span className="text-[15px] font-semibold text-offer">{offerPriceLabel(offer)}</span>
+        <span className="text-[15px] font-semibold text-offer">{kroner(offer.amountOre)}</span>
+        {offer.multiBuy ? <span className="text-[12px] font-semibold text-offer">{multiBuyLabel(offer)}</span> : null}
         {offer.normalPriceOre ? (
           <span className="text-[12px] text-muted">
             <span className="line-through">{kroner(offer.normalPriceOre)}</span>
