@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.12.1
+
+- test(demo): always have an eaten meal yesterday in the demo week
+- fix(planning): drop the 14-day repeat warning from the plan review
+
 ## 0.12.0
 
 - feat(offers): browse the fetched offers with sorting and filters, and settings on phones
