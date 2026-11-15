@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.13.0
+
+- feat(offers): Tilbudsvagt - watch items and exact products for offers
+
 ## 0.12.1
 
 - test(demo): always have an eaten meal yesterday in the demo week
