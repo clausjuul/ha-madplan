@@ -1,5 +1,4 @@
 /** "Tjekket mod jeres regler": structured, deterministic checks of a proposed plan. */
-import { daysBetween, formatShortDate } from "./dates.ts";
 import { dishConflictReasons } from "./exclusions.ts";
 import { formatPrice } from "./pricing.ts";
 import { createShoppingList } from "./shopping.ts";
@@ -7,13 +6,10 @@ import type { EatenEntry } from "./history.ts";
 import type { PlanningContext } from "./planning.ts";
 import type { Dish, MealMap, PlanDraft } from "./types.ts";
 
-export const REPEAT_WINDOW_DAYS = 14;
-
 export type CheckStatus = "ok" | "warning" | "violation" | "skipped";
 export type PlanCheckId =
   | "coverage"
   | "exclusions"
-  | "repeats"
   | "prepTime"
   | "budget"
   | "required"
@@ -55,7 +51,6 @@ export type PlanReviewInput = {
   rejectedCount?: number;
 };
 
-type Occurrence = { date: string; dishId: string };
 
 export function reviewPlan(input: PlanReviewInput): PlanReview {
   const { draft, context } = input;
@@ -70,7 +65,6 @@ export function reviewPlan(input: PlanReviewInput): PlanReview {
   const checks: PlanCheck[] = [
     coverageCheck(unresolvedDates),
     exclusionsCheck(days, context),
-    repeatsCheck(days, input),
     prepTimeCheck(days, context),
     ...budgetCheck(days, input, dishById),
     requiredCheck(days, context),
@@ -126,42 +120,6 @@ function exclusionsCheck(days: PlannedDay[], context: PlanningContext): PlanChec
         dates: hits.map((hit) => hit.date),
       }
     : { id: "exclusions", label, status: "ok", message: "Ingen retter rammer jeres fravalg.", dates: [] };
-}
-
-function repeatsCheck(days: PlannedDay[], input: PlanReviewInput): PlanCheck {
-  const label = "Gentagelser";
-  const draftDates = new Set(days.map((item) => item.day.date));
-  const occurrences: Occurrence[] = [
-    ...input.eaten,
-    ...Object.entries(input.meals)
-      .filter(([date, meal]) => !meal.skipped && !draftDates.has(date))
-      .map(([date, meal]) => ({ date, dishId: meal.dishId })),
-    ...days.map((item) => ({ date: item.day.date, dishId: item.dishId })),
-  ];
-  const repeats = days.flatMap(({ day, dish, dishId }) => {
-    const previous = occurrences
-      .filter((entry) => entry.dishId === dishId && entry.date < day.date)
-      .map((entry) => entry.date)
-      .sort()
-      .pop();
-    if (!previous || daysBetween(previous, day.date) > REPEAT_WINDOW_DAYS) return [];
-    return [{ date: day.date, text: `${dish.name} (sidst ${formatShortDate(previous)})` }];
-  });
-  return repeats.length
-    ? {
-        id: "repeats",
-        label,
-        status: "warning",
-        message: `Gentages inden for ${REPEAT_WINDOW_DAYS} dage: ${repeats.map((item) => item.text).join("; ")}.`,
-        dates: repeats.map((item) => item.date),
-      }
-    : {
-        id: "repeats",
-        label,
-        status: "ok",
-        message: `Ingen retter gentages inden for ${REPEAT_WINDOW_DAYS} dage.`,
-        dates: [],
-      };
 }
 
 function prepTimeCheck(days: PlannedDay[], context: PlanningContext): PlanCheck {

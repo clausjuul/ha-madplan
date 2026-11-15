@@ -62,25 +62,11 @@ describe("reviewPlan", () => {
     expect(byId(result, "exclusions")?.status).toBe("ok");
   });
 
-  it("warns about repeats within 14 days of eaten meals, but not beyond", () => {
-    const meals: MealMap = { "2026-11-05": meal("pasta"), "2026-10-20": meal("lasagne") };
-    const result = review({ days: [day("2026-11-10", "pasta"), day("2026-11-11", "lasagne")] }, {}, meals);
-    const check = byId(result, "repeats");
-    expect(check?.status).toBe("warning");
-    expect(check?.dates).toEqual(["2026-11-10"]);
-    expect(check?.message).toContain("Tomatpasta");
-    expect(result.passed).toBe(true);
-  });
-
-  it("counts exactly 14 days as a repeat and 15 as fine", () => {
-    const meals: MealMap = { "2026-10-27": meal("pasta"), "2026-10-26": meal("lasagne") };
-    const result = review({ days: [day("2026-11-10", "pasta"), day("2026-11-11", "lasagne")] }, {}, meals);
-    expect(byId(result, "repeats")?.dates).toEqual(["2026-11-10"]);
-  });
-
-  it("warns about repeats inside the plan itself", () => {
-    const result = review({ days: [day("2026-11-10", "pasta"), day("2026-11-12", "pasta")] });
-    expect(byId(result, "repeats")).toMatchObject({ status: "warning", dates: ["2026-11-12"] });
+  it("never warns about a dish that was eaten or planned recently", () => {
+    const meals: MealMap = { "2026-11-05": meal("pasta") };
+    const result = review({ days: [day("2026-11-10", "pasta"), day("2026-11-12", "pasta")] }, {}, meals);
+    expect(result.checks.some((check) => (check.id as string) === "repeats")).toBe(false);
+    expect(result.checks.every((check) => check.status !== "warning" || !check.message.includes("Gentages"))).toBe(true);
   });
 
   it("enforces the prep-time limit; locked dishes only warn", () => {
