@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.15.0
+
+- fix(assist): leave archived dishes out of the prompt
+- feat(assist): edit dishes, several days, shopping, basisvarer, settings and family
+
 ## 0.14.0
 
 - feat(assist): find and add photos to dishes
