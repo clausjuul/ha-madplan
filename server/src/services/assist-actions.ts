@@ -25,15 +25,16 @@ import type {
   ShoppingExtra,
 } from "@madplan/domain";
 import type { Deps } from "../deps.ts";
-import { snapshot } from "../state.ts";
-import { findDish } from "../store-dishes.ts";
-import { getShoppingState } from "../store-household.ts";
+import { currentShoppingList, snapshot } from "../state.ts";
+import { allDishes, findDish } from "../store-dishes.ts";
+import { getProfiles, getShoppingState } from "../store-household.ts";
 import { getMeal } from "../store-meals.ts";
 import { assertPublicHttpsUrl } from "../ai/recipe-import.ts";
 import { dishInput, planRequest } from "../validate.ts";
+import { checkExtraAction, EXTRA_ACTION_TYPES, parseExtraAction } from "./assist-actions-extra.ts";
 import { isRec, oneOf, optStr, str } from "../validate-basic.ts";
 
-export const MAX_ACTIONS = 8;
+export const MAX_ACTIONS = 12;
 export const LOCKED_MESSAGE = "Måltidet er låst. Lås det op, før Assist ændrer det.";
 
 /** Read access to the data an action is checked against. */
@@ -45,6 +46,13 @@ export type ActionEnv = {
   profiles: Profile[];
   fridge: FridgeItem[];
   extras: ShoppingExtra[];
+  pantry: string[];
+  /** Every profile, also those that do not eat along right now. */
+  allProfiles: Profile[];
+  /** Id and name of every dish, archived ones included. */
+  allDishNames: () => { id: string; name: string }[];
+  /** The current shopping list (computed on demand; it is not cheap). */
+  shoppingItems: () => { id: string; label: string; checked: boolean }[];
   aiAvailable: boolean;
 };
 
@@ -59,6 +67,10 @@ export function envFromDb(deps: Deps): ActionEnv {
     profiles: state.profiles,
     fridge: state.fridge,
     extras: getShoppingState(deps.repo.db).extras,
+    pantry: state.pantry,
+    allProfiles: getProfiles(deps.repo.db),
+    allDishNames: () => allDishes(deps.repo.db).map((dish) => ({ id: dish.id, name: dish.name })),
+    shoppingItems: () => currentShoppingList(deps).items.map((item) => ({ id: item.id, label: item.label, checked: item.checked })),
     aiAvailable: deps.openai.configured,
   };
 }
@@ -107,7 +119,7 @@ export function parseAction(input: unknown, env: ActionEnv): AssistAction {
   const type = oneOf(raw.type, "Handlingstype", [
     "setMeal", "removeMeal", "swapMeals", "lockMeal", "addShoppingExtra", "addFridgeItem",
     "removeFridgeItem", "addGlobalExclusion", "updateProfile", "createDish", "startPlanDraft",
-    "removeShoppingExtra", "setMealNote", "skipMeal", "rateMeal", "setMealVariant", "setDishImage",
+    "removeShoppingExtra", "setMealNote", "skipMeal", "rateMeal", "setMealVariant", "setDishImage", ...EXTRA_ACTION_TYPES,
   ] as const);
   switch (type) {
     case "setMeal": {
@@ -262,6 +274,8 @@ export function parseAction(input: unknown, env: ActionEnv): AssistAction {
       });
       return { type, request, label: `Lav et planudkast for ${request.dayCount} dage fra ${dayName(request.from)}` };
     }
+    default:
+      return parseExtraAction(type, raw, env);
   }
 }
 
@@ -356,6 +370,8 @@ export function checkAction(env: ActionEnv, action: AssistAction): string | null
     }
     case "startPlanDraft":
       return action.request.engine === "ai" && !env.aiAvailable ? "AI-planlægning er ikke sat op." : null;
+    default:
+      return checkExtraAction(env, action);
   }
 }
 

@@ -89,6 +89,8 @@ export type SuggestDayInput = { seed: number };
 // POST api/dishes/:id/restore                    -> Dish
 // POST api/dishes/import-url      body ImportUrlInput -> Dish (structured Recipe data from the page; 422 if none)
 export type DishInput = Omit<Dish, "id" | "archivedAt" | "custom">;
+/** The fields Assist may change on an existing dish. */
+export type DishChanges = Partial<Pick<Dish, "name" | "ingredients" | "instructions" | "prepMinutes" | "category" | "servings" | "favorite">>;
 export type ImportUrlInput = { url: string };
 
 // Shopping — ONE current list ("the next shopping trip") ----------------------
@@ -286,6 +288,28 @@ export type AssistAction =
   | { type: "createDish"; dish: DishInput; label: string }
   /** The photo was found by the server on `sourceUrl` (a public recipe page), never invented by the model. */
   | { type: "setDishImage"; dishId: string; imageUrl: string; sourceUrl?: string; label: string }
+  /** Only the given fields change; the rest of the dish stays as it is. */
+  | { type: "updateDish"; dishId: string; changes: DishChanges; label: string }
+  | { type: "archiveDish"; dishId: string; archived: boolean; label: string }
+  /** Removes every unlocked meal from `from` through `to`. */
+  | { type: "clearMeals"; from: string; to: string; label: string }
+  /** Copies `dayCount` days of meals starting at `sourceFrom` onto the days starting at `targetFrom`. */
+  | { type: "copyMeals"; sourceFrom: string; targetFrom: string; dayCount: number; label: string }
+  /** Moves the meals from `from` through `to` by `days` (negative is earlier). */
+  | { type: "moveMeals"; from: string; to: string; days: number; label: string }
+  /** `items` are worked out by the server from the dish (and what is at home, when onlyMissing). */
+  | { type: "addDishToShopping"; dishId: string; items: string[]; label: string }
+  | { type: "checkShoppingItems"; itemIds: string[]; checked: boolean; label: string }
+  | { type: "resetShopping"; label: string }
+  | { type: "addPantryItem"; name: string; label: string }
+  | { type: "removePantryItem"; name: string; label: string }
+  | { type: "setPreferredStores"; stores: GroceryStore[]; label: string }
+  | { type: "setServings"; servings: number | null; label: string }
+  | { type: "watchOffer"; name: string; remove: boolean; label: string }
+  | { type: "addProfile"; name: string; portions?: number; label: string }
+  | { type: "removeProfile"; profileId: string; label: string }
+  | { type: "setProfileActive"; profileId: string; active: boolean; label: string }
+  | { type: "setProfilePortions"; profileId: string; portions: number | null; label: string }
   | { type: "startPlanDraft"; request: PlanRequest; label: string };
 export type AssistActionType = AssistAction["type"];
 export type ProfileTermField = "preferences" | "dislikes" | "exclusions" | "safeFoods";

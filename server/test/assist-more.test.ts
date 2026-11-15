@@ -1,157 +1,186 @@
 import { describe, expect, it } from "vitest";
-import type { AssistApplyResult, AssistResponse, AssistStreamEvent, BootstrapResponse, ShoppingList } from "@madplan/domain";
-import { partialReply } from "../src/ai/assist-ai.ts";
+import type { AssistApplyResult, AssistResponse, BootstrapResponse, ShoppingList } from "@madplan/domain";
 import { fakeAi, setup } from "./helpers.ts";
 
-const ASK = { messages: [{ role: "user", content: "Hjælp" }], context: { view: "uge" } };
-const answer = (reply: string, actions: unknown[]): string => JSON.stringify({ reply, actions });
+const ASK = { messages: [{ role: "user", content: "Gør det" }], context: { view: "uge" } };
+const answer = (actions: unknown[]): string => JSON.stringify({ reply: "Forslag.", actions });
+const person = (id: string, name: string) => ({ id, name, active: true, exclusions: [], preferences: [], dislikes: [], favoriteDishIds: [] });
+type Json = ReturnType<typeof setup>["json"];
 
-describe("assist: richer context and structured output", () => {
-  it("sends history, ratings, notes, shopping list and a strict schema with real ids", async () => {
-    const ai = fakeAi();
-    const { json } = setup({ openai: ai });
-    await json("PUT", "meals/2026-11-02", { dishId: "lasagne", rating: "up", note: "Mormor på besøg" });
-    await json("PUT", "meals/2026-11-10", { dishId: "tacos" });
-    await json("POST", "shopping/extras", { label: "Kaffe" });
-    ai.next(answer("Ok.", []));
-    await json("POST", "assist", ASK);
-    const input = ai.calls[0]?.input ?? "";
-    expect(input).toContain("Spist de sidste 28 dage");
-    expect(input).toMatch(/"date":"2026-11-02"[^}]*"rating":"up"[^}]*"note":"Mormor på besøg"/u);
-    expect(input).toContain("daysSinceEaten");
-    expect(input).toContain("Kaffe");
-    expect(input).toContain("Indkøbslisten");
-    const schema = JSON.stringify(ai.calls[0]?.jsonSchema?.schema);
-    expect(schema).toContain('"tacos"');
-    expect(schema).toContain('"2026-11-09"');
-    expect(schema).toContain("rateMeal");
+async function run(actions: unknown[], prepare?: (json: Json) => Promise<void>) {
+  const ai = fakeAi();
+  const app = setup({ openai: ai });
+  await prepare?.(app.json);
+  ai.next(answer(actions));
+  const response = await app.json<AssistResponse>("POST", "assist", ASK);
+  const apply = (): Promise<AssistApplyResult> => app.json<AssistApplyResult>("POST", `assist/proposals/${response.proposal?.id}/apply`);
+  const boot = (): Promise<BootstrapResponse> => app.json<BootstrapResponse>("GET", "bootstrap");
+  return { ...app, ai, response, apply, boot };
+}
+
+describe("assist: dishes", () => {
+  it("edits only the given fields and archives a dish, undoably", async () => {
+    const t = await run([
+      {
+        type: "updateDish",
+        dishId: "lasagne",
+        changes: { name: null, ingredients: null, instructions: null, prepMinutes: 50, category: null, servings: null, favorite: true },
+      },
+      { type: "archiveDish", dishId: "tacos", archived: true },
+    ]);
+    expect(t.response.proposal?.actions.map((action) => action.label)).toEqual([
+      "«Lasagne»: ret tid, favorit",
+      "Arkivér «Tacos» (kan gendannes)",
+    ]);
+    const before = (await t.boot()).dishes.find((dish) => dish.id === "lasagne");
+    const result = await t.apply();
+    expect(result.applied).toBe(2);
+    const after = await t.boot();
+    expect(after.dishes.find((dish) => dish.id === "lasagne")).toMatchObject({
+      prepMinutes: 50,
+      favorite: true,
+      name: before?.name,
+      ingredients: before?.ingredients,
+    });
+    expect(after.dishes.find((dish) => dish.id === "tacos")?.archivedAt).toBeTruthy();
+    await t.json("POST", `assist/undo/${result.undoId}`);
+    const undone = await t.boot();
+    expect(undone.dishes.find((dish) => dish.id === "lasagne")?.prepMinutes).toBe(before?.prepMinutes);
+    expect(undone.dishes.find((dish) => dish.id === "tacos")?.archivedAt).toBeUndefined();
   });
 
-  it("lets the model correct refused actions once", async () => {
+  it("imports a recipe from a link as a new dish", async () => {
     const ai = fakeAi();
-    const { json } = setup({ openai: ai });
-    ai.next(answer("Jeg sætter en ret på.", [{ type: "setMeal", date: "2026-11-01", dishId: "tacos" }]));
-    ai.next(answer("Jeg foreslår tacos i morgen.", [{ type: "setMeal", date: "2026-11-10", dishId: "tacos" }]));
+    const recipe = {
+      "@type": "Recipe",
+      name: "Boller i karry",
+      image: "https://cdn.example.dk/b.jpg",
+      recipeIngredient: ["500 g hakket svinekød", "karry"],
+      recipeInstructions: ["Lav boller."],
+    };
+    const page = `<script type="application/ld+json">${JSON.stringify(recipe)}</script>`;
+    const fetch = (async () => new Response(page, { headers: { "content-type": "text/html" } })) as typeof globalThis.fetch;
+    const { json } = setup({ openai: ai, fetch });
+    ai.next(answer([{ type: "importDishFromUrl", url: "https://example.dk/boller" }]));
     const response = await json<AssistResponse>("POST", "assist", ASK);
-    expect(ai.calls).toHaveLength(2);
-    expect(ai.calls[1]?.input).toContain("Dagen ligger i fortiden");
-    expect(response.reply).toBe("Jeg foreslår tacos i morgen.");
-    expect(response.proposal?.actions).toHaveLength(1);
-  });
-
-  it("keeps the first answer (with a note) when the correction is no better", async () => {
-    const ai = fakeAi();
-    const { json } = setup({ openai: ai });
-    ai.next(answer("Forslag.", [{ type: "setMeal", date: "2026-11-01", dishId: "tacos" }, { type: "addShoppingExtra", item: "Mælk" }]));
-    const response = await json<AssistResponse>("POST", "assist", ASK);
-    expect(response.reply).toMatch(/^Forslag\.[\s\S]*1 forslag blev fjernet/u);
-    expect(response.proposal?.actions).toHaveLength(1);
+    const action = response.proposal?.actions[0];
+    expect(action?.type).toBe("createDish");
+    expect(action?.type === "createDish" ? action.dish : undefined).toMatchObject({ name: "Boller i karry", imageUrl: "https://cdn.example.dk/b.jpg" });
   });
 });
 
-describe("assist: new actions, partial apply and undo", () => {
-  it("applies only the chosen actions, including note, skip, rating and extra removal", async () => {
-    const ai = fakeAi();
-    const { json } = setup({ openai: ai });
-    await json("PUT", "meals/2026-11-08", { dishId: "lasagne" });
-    await json("PUT", "meals/2026-11-10", { dishId: "tacos" });
-    await json("PUT", "meals/2026-11-11", { dishId: "lasagne" });
-    await json("POST", "shopping/extras", { label: "Kaffe" });
-    ai.next(
-      answer("Forslag.", [
-        { type: "rateMeal", date: "2026-11-08", rating: "up" },
-        { type: "setMealNote", date: "2026-11-10", note: "Gæster" },
-        { type: "skipMeal", date: "2026-11-11", skipped: true },
-        { type: "removeShoppingExtra", item: "kaffe" },
-        { type: "addShoppingExtra", item: "Te", label: null },
-      ]),
-    );
-    const { proposal } = await json<AssistResponse>("POST", "assist", ASK);
-    expect(proposal?.actions.map((action) => action.type)).toEqual(["rateMeal", "setMealNote", "skipMeal", "removeShoppingExtra", "addShoppingExtra"]);
-    const result = await json<AssistApplyResult>("POST", `assist/proposals/${proposal?.id}/apply`, { only: [0, 1, 2, 3] });
-    expect(result.applied).toBe(4);
-    expect(result.results[4]).toMatchObject({ ok: false, message: "Fravalgt." });
-    expect(result.undoId).toBeTruthy();
-    const boot = await json<BootstrapResponse>("GET", "bootstrap");
-    expect(boot.meals["2026-11-08"]?.rating).toBe("up");
-    expect(boot.meals["2026-11-10"]?.note).toBe("Gæster");
-    expect(boot.meals["2026-11-11"]?.skipped).toBe(true);
-    const shopping = await json<ShoppingList>("GET", "shopping");
-    expect(JSON.stringify(shopping)).not.toContain("Kaffe");
-    expect(JSON.stringify(shopping)).not.toContain('"Te"');
-  });
-
-  it("refuses to rate a dish that has not been eaten yet", async () => {
-    const ai = fakeAi();
-    const { json } = setup({ openai: ai });
-    await json("PUT", "meals/2026-11-12", { dishId: "tacos" });
-    ai.next(answer("Ok.", [{ type: "rateMeal", date: "2026-11-12", rating: "down" }]));
-    ai.next(answer("Ok.", []));
-    const response = await json<AssistResponse>("POST", "assist", ASK);
-    expect(response.proposal).toBeUndefined();
-  });
-
-  it("undoes an apply exactly, archives created dishes, and only once", async () => {
-    const ai = fakeAi();
-    const { json, call } = setup({ openai: ai });
+describe("assist: several days", () => {
+  const plan = async (json: Json): Promise<void> => {
     await json("PUT", "meals/2026-11-10", { dishId: "lasagne" });
-    ai.next(
-      answer("Forslag.", [
-        { type: "setMeal", date: "2026-11-10", dishId: "tacos" },
-        { type: "setMeal", date: "2026-11-11", dishId: "tacos" },
-        { type: "addFridgeItem", name: "Skyr", quantity: null, expiresOn: null },
-        { type: "createDish", dish: { name: "Fortryd-gryde", ingredients: ["løg"], prepMinutes: 20, category: "Gryde", servings: null, instructions: null } },
-      ]),
-    );
-    const { proposal } = await json<AssistResponse>("POST", "assist", ASK);
-    expect(proposal?.actions).toHaveLength(4);
-    const result = await json<AssistApplyResult>("POST", `assist/proposals/${proposal?.id}/apply`);
-    expect(result.applied).toBe(4);
-    await json("POST", `assist/undo/${result.undoId}`);
-    const boot = await json<BootstrapResponse>("GET", "bootstrap");
-    expect(boot.meals["2026-11-10"]?.dishId).toBe("lasagne");
-    expect(boot.meals["2026-11-11"]).toBeUndefined();
-    expect(boot.fridge.some((item) => item.name === "Skyr")).toBe(false);
-    expect(boot.dishes.find((dish) => dish.name === "Fortryd-gryde")?.archivedAt).toBeTruthy();
-    expect((await call("POST", `assist/undo/${result.undoId}`)).status).toBe(404);
+    await json("PUT", "meals/2026-11-11", { dishId: "tacos" });
+    await json("PUT", "meals/2026-11-12", { dishId: "lasagne" });
+    await json("PATCH", "meals/2026-11-12", { locked: true });
+  };
+
+  it("clears unlocked days and keeps locked ones", async () => {
+    const t = await run([{ type: "clearMeals", from: "2026-11-10", to: "2026-11-16" }], plan);
+    await t.apply();
+    const meals = (await t.boot()).meals;
+    expect(meals["2026-11-10"]).toBeUndefined();
+    expect(meals["2026-11-11"]).toBeUndefined();
+    expect(meals["2026-11-12"]?.dishId).toBe("lasagne");
   });
 
-  it("refuses to undo when something else changed the data since", async () => {
-    const ai = fakeAi();
-    const { json, call } = setup({ openai: ai });
-    ai.next(answer("Forslag.", [{ type: "setMeal", date: "2026-11-10", dishId: "tacos" }]));
-    const { proposal } = await json<AssistResponse>("POST", "assist", ASK);
-    const result = await json<AssistApplyResult>("POST", `assist/proposals/${proposal?.id}/apply`);
-    await json("PUT", "meals/2026-11-12", { dishId: "lasagne" });
-    expect((await call("POST", `assist/undo/${result.undoId}`)).status).toBe(409);
-    const boot = await json<BootstrapResponse>("GET", "bootstrap");
-    expect(boot.meals["2026-11-10"]?.dishId).toBe("tacos");
+  it("copies and moves meals", async () => {
+    const t = await run(
+      [
+        { type: "copyMeals", sourceFrom: "2026-11-10", targetFrom: "2026-11-17", dayCount: 2 },
+        { type: "moveMeals", from: "2026-11-10", to: "2026-11-11", days: 3 },
+      ],
+      plan,
+    );
+    expect((await t.apply()).applied).toBe(2);
+    const meals = (await t.boot()).meals;
+    expect(meals["2026-11-17"]?.dishId).toBe("lasagne");
+    expect(meals["2026-11-18"]?.dishId).toBe("tacos");
+    expect(meals["2026-11-10"]).toBeUndefined();
+    expect(meals["2026-11-13"]?.dishId).toBe("lasagne");
+    expect(meals["2026-11-14"]?.dishId).toBe("tacos");
+  });
+
+  it("refuses to move onto a locked day", async () => {
+    const t = await run([{ type: "moveMeals", from: "2026-11-10", to: "2026-11-11", days: 1 }], plan);
+    expect(t.response.proposal).toBeUndefined();
   });
 });
 
-describe("assist: streaming", () => {
-  it("streams NDJSON and ends with the full response", async () => {
-    const ai = fakeAi();
-    const { call } = setup({ openai: ai });
-    ai.next(answer("Hej med dig.", []));
-    const response = await call("POST", "assist/stream", ASK);
-    expect(response.headers.get("content-type")).toContain("application/x-ndjson");
-    const events = (await response.text()).trim().split("\n").map((line) => JSON.parse(line) as AssistStreamEvent);
-    expect(events.at(-1)).toMatchObject({ type: "done", response: { reply: "Hej med dig.", engine: "openai" } });
+describe("assist: shopping and basisvarer", () => {
+  it("adds a dish's missing ingredients, ticks items off and resets", async () => {
+    const t = await run([{ type: "addDishToShopping", dishId: "tacos", onlyMissing: true }], async (json) => {
+      await json("PUT", "pantry", ["salt"]);
+    });
+    const action = t.response.proposal?.actions[0];
+    const items = action?.type === "addDishToShopping" ? action.items : [];
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.some((item) => /^salt$/iu.test(item))).toBe(false);
+    await t.apply();
+    const first = (await t.json<ShoppingList>("GET", "shopping")).items.find((item) => item.extra);
+    if (!first) throw new Error("no extra item");
+
+    t.ai.next(answer([{ type: "checkShoppingItems", itemIds: [first.id], checked: true }]));
+    const tick = await t.json<AssistResponse>("POST", "assist", ASK);
+    expect(tick.proposal?.actions[0]?.label).toContain(first.label);
+    await t.json("POST", `assist/proposals/${tick.proposal?.id}/apply`);
+    expect((await t.json<ShoppingList>("GET", "shopping")).items.find((item) => item.id === first.id)?.checked).toBe(true);
+
+    t.ai.next(answer([{ type: "resetShopping" }]));
+    const reset = await t.json<AssistResponse>("POST", "assist", ASK);
+    await t.json("POST", `assist/proposals/${reset.proposal?.id}/apply`);
+    expect((await t.json<ShoppingList>("GET", "shopping")).items.some((item) => item.extra)).toBe(false);
   });
 
-  it("reports errors as a final error event", async () => {
-    const { call } = setup();
-    const response = await call("POST", "assist/stream", ASK);
-    const events = (await response.text()).trim().split("\n").map((line) => JSON.parse(line) as AssistStreamEvent);
-    expect(events.at(-1)).toMatchObject({ type: "error", status: 503 });
+  it("adds and removes basisvarer", async () => {
+    const t = await run([{ type: "addPantryItem", name: "Olivenolie" }, { type: "removePantryItem", name: "salt" }], async (json) => {
+      await json("PUT", "pantry", ["salt", "peber"]);
+    });
+    await t.apply();
+    expect((await t.boot()).pantry).toEqual(["peber", "Olivenolie"]);
+  });
+});
+
+describe("assist: settings and family", () => {
+  it("changes stores, servings and the offer watch", async () => {
+    const t = await run([
+      { type: "setPreferredStores", stores: ["rema1000"] },
+      { type: "setServings", servings: 4 },
+      { type: "watchOffer", name: "kaffe", remove: false },
+    ]);
+    expect((await t.apply()).applied).toBe(3);
+    expect((await t.boot()).settings).toMatchObject({
+      preferredStores: ["rema1000"],
+      preferredServings: 4,
+      offerWatchlist: [{ name: "kaffe" }],
+    });
   });
 
-  it("reads the reply out of an incomplete JSON answer", () => {
-    expect(partialReply('{"rep')).toBe("");
-    expect(partialReply('{"reply":"Hej')).toBe("Hej");
-    expect(partialReply('{"reply":"Linje\\nto \\"citat\\" \\u00e6')).toBe('Linje\nto "citat" æ');
-    expect(partialReply('{"reply":"Hej\\')).toBe("Hej");
-    expect(partialReply('{"reply":"Færdig","actions":[')).toBe("Færdig");
+  it("adds, pauses, sizes and removes people", async () => {
+    const t = await run(
+      [
+        { type: "addProfile", name: "Mormor", portions: null },
+        { type: "setProfileActive", profileId: "a", active: false },
+        { type: "setProfilePortions", profileId: "b", portions: 0.5 },
+        { type: "removeProfile", profileId: "c" },
+      ],
+      async (json) => {
+        await json("PUT", "profiles", [person("a", "Anna"), person("b", "Bo"), person("c", "Carl")]);
+      },
+    );
+    expect((await t.apply()).applied).toBe(4);
+    const profiles = (await t.boot()).profiles;
+    expect(profiles.map((profile) => profile.name)).toEqual(["Anna", "Bo", "Mormor"]);
+    expect(profiles[0]?.active).toBe(false);
+    expect(profiles[1]?.portions).toBe(0.5);
+  });
+
+  it("refuses to remove the last person", async () => {
+    const t = await run([{ type: "removeProfile", profileId: "a" }], async (json) => {
+      await json("PUT", "profiles", [person("a", "Anna")]);
+    });
+    expect(t.response.proposal).toBeUndefined();
   });
 });

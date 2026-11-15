@@ -43,7 +43,7 @@ const RULES = [
   "Tidligere svar fra dig kan slutte med en linje som [Forslag (udført): ...], [Forslag (afvist): ...], [Forslag (afventer): ...] eller [Forslag (udløbet): ...]. Den fortæller, hvad du foreslog, og hvad brugeren gjorde. Foreslå ikke det samme igen, hvis det er udført; brug det, når brugeren henviser til \"det\", \"den anden\" osv. Skriv aldrig selv sådan en linje.",
   "Brug historikken (sidste uger, bedømmelser, dage siden sidst) til spørgsmål om, hvad I har spist, hvad der faldt i god jord, og hvad I ikke har haft længe. Retter med rating never må aldrig foreslås.",
   "Brug ingredienser og køleskabet, når brugeren spørger, hvad man kan lave af noget; varer der snart udløber, er vigtigst.",
-  'Svar med ét JSON-objekt: {"reply":"kort dansk svar","actions":[...]} (actions kan være tom, maks. 8). Felter, der ikke bruges, sættes til null.',
+  'Svar med ét JSON-objekt: {"reply":"kort dansk svar","actions":[...]} (actions kan være tom, maks. 12). Felter, der ikke bruges, sættes til null.',
   "Handlinger:",
   "setMeal(date, dishId) sæt en ret på en dag · removeMeal(date) · swapMeals(a, b) byt to dage · lockMeal(date, locked)",
   "setMealNote(date, note) note på dagen (tom note fjerner den) · skipMeal(date, skipped) marker en dag som \"ikke spist\" (eller fortryd)",
@@ -53,6 +53,13 @@ const RULES = [
   "updateProfile(profileId, field: preferences|dislikes|exclusions|safeFoods, term, remove) når én person kan lide, ikke kan lide, ikke må få noget eller altid spiser noget (dislikes er bløde, exclusions er hårde, safeFoods = alwaysEats).",
   "setMealVariant(date, profileId, replaces, with, remove) én person får én del af dagens ret byttet, fx nuggets i stedet for bøf; resten af retten er den samme. replaces er en af rettens ingredients, with er det, personen skal have i stedet (helst fra alwaysEats). remove=true fjerner byttet.",
   "findDishImage(dishId) find et foto af en ret i kataloget på nettet (serveren søger og viser billedet i forslaget). Brug den, når brugeren beder om et billede til en ret, eller retten mangler et (hasImage: false) og brugeren beder om billeder.",
+  "updateDish(dishId, changes) ret navn, ingredients, instructions, prepMinutes, category, servings eller favorite på en ret; felter der ikke ændres, sættes til null · archiveDish(dishId, archived) arkivér (false = gendan fra \"Arkiverede retter\")",
+  "importDishFromUrl(url) når brugeren giver et link til en opskrift: serveren henter opskriften (med billede) og foreslår den som ny ret. Opfind aldrig links.",
+  "clearMeals(from, to) ryd alle ulåste dage i perioden · copyMeals(sourceFrom, targetFrom, dayCount) kopiér retterne fra én periode til en anden (fx sidste uge til denne uge) · moveMeals(from, to, days) flyt retterne i perioden days dage frem (negativ = tilbage). Brug flere setMeal til \"hver fredag\".",
+  "addDishToShopping(dishId, onlyMissing) læg en rets ingredienser på indkøbslisten (onlyMissing=true springer basisvarer og køleskab over) · checkShoppingItems(itemIds, checked) kryds varer af (eller fjern krydset) med id fra indkøbslisten, fx når brugeren har købt noget · resetShopping() nulstil listen",
+  "addPantryItem(name) · removePantryItem(name) basisvarer, der altid er hjemme og ikke kommer på indkøbslisten",
+  "setPreferredStores(stores: netto|rema1000) hvilke butikker tilbud hentes fra · setServings(servings|null) fast antal portioner (null = ud fra familien) · watchOffer(name, remove) tilbudsvagt på en vare",
+  "addProfile(name, portions) ny person · removeProfile(profileId) · setProfileActive(profileId, active) om personen spiser med · setProfilePortions(profileId, portions|null)",
   "createDish(dish, findImage) ny ret i kataloget; findImage=true finder også et foto til den (brug det, når brugeren beder om et billede) · startPlanDraft(request) planudkast for flere dage (dayCount 1-14, from, request = fritekst-ønske, newDishCount).",
 ].join("\n");
 
@@ -174,11 +181,12 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
       };
     });
   const profiles = state.profiles
-    .filter((profile) => profile.active)
     .slice(0, 30)
     .map((profile) => ({
       id: profile.id,
       name: clip(profile.name, 60),
+      eatsAlong: profile.active,
+      portions: profile.portions ?? 1,
       restrictions: profile.exclusions.slice(0, 20),
       likes: profile.preferences.slice(0, 20),
       dislikes: profile.dislikes.slice(0, 20),
@@ -190,12 +198,13 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
         from: shopping.from,
         to: shopping.to,
         missing: shopping.items.filter((item) => !item.checked).slice(0, 120).map((item) => ({
+          id: item.id,
           item: clip(item.label, 80),
           ...(item.quantityLabel ? { quantity: clip(item.quantityLabel, 40) } : {}),
           ...(item.priceIsOffer && item.offer ? { offer: clip(`${item.offer.store} ${item.offer.price ?? ""}`.trim(), 60) } : {}),
           ...(item.extra ? { extra: true } : { for: item.dishNames.slice(0, 3).map((name) => clip(name, 60)) }),
         })),
-        boughtCount: shopping.checkedCount,
+        bought: shopping.items.filter((item) => item.checked).slice(0, 60).map((item) => ({ id: item.id, item: clip(item.label, 80) })),
       }
     : { extras: env.extras.slice(0, 60).map((extra) => clip(extra.label, 80)) };
 
@@ -213,6 +222,12 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
     block("Tilbud i jeres butikker, der passer til retter i kataloget (højst 60):", offerData(state)),
     block("Basisvarer, der altid er hjemme:", state.pantry.slice(0, 100).map((item) => clip(item, 60))),
     block("Indkøbslisten:", shoppingData),
+    block("Arkiverede retter (kan gendannes med archiveDish):", state.dishes.filter((dish) => dish.archivedAt).slice(0, 100).map((dish) => ({ id: dish.id, name: clip(dish.name, 130) }))),
+    block("Indstillinger:", {
+      stores: state.settings.preferredStores,
+      servings: state.settings.preferredServings ?? null,
+      offerWatch: (state.settings.offerWatchlist ?? []).slice(0, 60).map((item) => clip(item.name, 60)),
+    }),
     block("Fælles fravalg (hårde):", state.settings.globalExclusions.slice(0, 100).map((term) => clip(term, 80))),
     block("Familieprofiler:", profiles),
     block("Samtalen (nyeste sidst):", history),
@@ -251,7 +266,8 @@ const action = (type: string, properties: Record<string, unknown>) => ({
 export function assistSchema(state: Snapshot): { name: string; schema: Record<string, unknown> } {
   const dates = Array.from({ length: SCHEMA_PAST + SCHEMA_AHEAD + 1 }, (_, index) => addDaysToKey(state.today, index - SCHEMA_PAST));
   const dishIds = state.dishes.filter((dish) => !dish.archivedAt).map((dish) => dish.id);
-  const profileIds = state.profiles.filter((profile) => profile.active).map((profile) => profile.id);
+  const profileIds = state.profiles.map((profile) => profile.id);
+  const allDishIds = state.dishes.map((dish) => dish.id);
   const enumOrString = (values: string[]): Record<string, unknown> =>
     values.length > 0 && values.length <= 400 && values.join("").length <= MAX_ENUM_CHARS ? { type: "string", enum: values } : { type: "string" };
   const date = { $ref: "#/$defs/date" };
@@ -296,6 +312,40 @@ export function assistSchema(state: Snapshot): { name: string; schema: Record<st
                 remove: { type: "boolean" },
               }),
               action("findDishImage", { dishId: dish }),
+              action("updateDish", {
+                dishId: dish,
+                changes: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["name", "ingredients", "instructions", "prepMinutes", "category", "servings", "favorite"],
+                  properties: {
+                    name: NULLABLE_STRING,
+                    ingredients: { type: ["array", "null"], items: text },
+                    instructions: { type: ["array", "null"], items: text },
+                    prepMinutes: { type: ["integer", "null"] },
+                    category: NULLABLE_STRING,
+                    servings: { type: ["number", "null"] },
+                    favorite: { type: ["boolean", "null"] },
+                  },
+                },
+              }),
+              action("archiveDish", { dishId: enumOrString(allDishIds), archived: { type: "boolean" } }),
+              action("importDishFromUrl", { url: text }),
+              action("clearMeals", { from: date, to: date }),
+              action("copyMeals", { sourceFrom: date, targetFrom: date, dayCount: { type: "integer" } }),
+              action("moveMeals", { from: date, to: date, days: { type: "integer" } }),
+              action("addDishToShopping", { dishId: dish, onlyMissing: { type: "boolean" } }),
+              action("checkShoppingItems", { itemIds: { type: "array", items: text }, checked: { type: "boolean" } }),
+              action("resetShopping", {}),
+              action("addPantryItem", { name: text }),
+              action("removePantryItem", { name: text }),
+              action("setPreferredStores", { stores: { type: "array", items: { type: "string", enum: ["netto", "rema1000"] } } }),
+              action("setServings", { servings: { type: ["number", "null"] } }),
+              action("watchOffer", { name: text, remove: { type: "boolean" } }),
+              action("addProfile", { name: text, portions: { type: ["number", "null"] } }),
+              action("removeProfile", { profileId: enumOrString(profileIds) }),
+              action("setProfileActive", { profileId: enumOrString(profileIds), active: { type: "boolean" } }),
+              action("setProfilePortions", { profileId: enumOrString(profileIds), portions: { type: ["number", "null"] } }),
               action("createDish", {
                 findImage: { type: "boolean" },
                 dish: {

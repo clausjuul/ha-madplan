@@ -148,6 +148,23 @@ const KIND: Record<AssistActionType, PreviewKind> = {
   rateMeal: "meal",
   setMealVariant: "meal",
   setDishImage: "dish",
+  updateDish: "dish",
+  archiveDish: "dish",
+  clearMeals: "meal",
+  copyMeals: "meal",
+  moveMeals: "meal",
+  addDishToShopping: "shopping",
+  checkShoppingItems: "shopping",
+  resetShopping: "shopping",
+  addPantryItem: "household",
+  removePantryItem: "household",
+  setPreferredStores: "household",
+  setServings: "household",
+  watchOffer: "shopping",
+  addProfile: "household",
+  removeProfile: "household",
+  setProfileActive: "household",
+  setProfilePortions: "household",
 };
 
 export type PreviewLine = { label: string; kind: PreviewKind; imageUrl?: string; result?: AssistActionResult };

@@ -8,6 +8,7 @@ import type {
 } from "@madplan/domain";
 import { AiError } from "../ai/openai.ts";
 import { findDishImage } from "../ai/dish-image.ts";
+import { importRecipeFromUrl } from "../ai/recipe-import.ts";
 import { askAssistModel, assistPrompt, assistSchema, correctionPrompt } from "../ai/assist-ai.ts";
 import type { AssistModelAnswer } from "../ai/assist-ai.ts";
 import type { Deps } from "../deps.ts";
@@ -95,6 +96,16 @@ export async function resolveImageRequests(
   const resolved = await Promise.all(
     rawActions.slice(0, MAX_ACTIONS).map(async (raw): Promise<unknown> => {
       if (!isRecord(raw)) return raw;
+      if (raw.type === "importDishFromUrl") {
+        if (typeof raw.url !== "string") return null;
+        try {
+          const recipe = await importRecipeFromUrl(raw.url, deps.fetch, signal);
+          return { type: "createDish", dish: recipe };
+        } catch (error) {
+          notes.push(`Opskriften kunne ikke hentes: ${error instanceof Error ? error.message : "ukendt fejl"}`);
+          return null;
+        }
+      }
       if (raw.type === "findDishImage") {
         const dish = typeof raw.dishId === "string" ? env.dish(raw.dishId) : undefined;
         if (!dish) return null;
@@ -120,7 +131,7 @@ export async function resolveImageRequests(
 }
 
 const wantsImages = (rawActions: readonly unknown[]): boolean =>
-  rawActions.some((raw) => isRecord(raw) && (raw.type === "findDishImage" || (raw.type === "createDish" && raw.findImage === true)));
+  rawActions.some((raw) => isRecord(raw) && (raw.type === "findDishImage" || raw.type === "importDishFromUrl" || (raw.type === "createDish" && raw.findImage === true)));
 
 async function answerWithOpenAi(
   deps: Deps,
@@ -143,7 +154,7 @@ async function answerWithOpenAi(
   const notes: string[] = [];
   const withImages = async (rawActions: unknown[]): Promise<unknown[]> => {
     if (!wantsImages(rawActions)) return rawActions;
-    onReply?.(`${answer.reply}\n\nFinder billeder…`);
+    onReply?.(`${answer.reply}\n\nHenter fra nettet…`);
     const result = await resolveImageRequests(deps, env, rawActions, AbortSignal.timeout(60_000));
     notes.splice(0, notes.length, ...result.notes);
     return result.rawActions;

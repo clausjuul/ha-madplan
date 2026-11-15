@@ -22,6 +22,7 @@ import {
   getSettings,
   getShoppingState,
   setFridge,
+  setPantry,
   setProfiles,
   setSettings,
   setShoppingState,
@@ -29,6 +30,7 @@ import {
 import { deleteMeal, getMeal, putMeal } from "../store-meals.ts";
 import { createDraft } from "./drafts.ts";
 import { checkAction, envFromDb } from "./assist-actions.ts";
+import { EXTRA_TOPICS, rememberExtra, writeExtra } from "./assist-exec-extra.ts";
 
 const TOPICS: Record<AssistAction["type"], ChangeTopic[]> = {
   setMeal: ["meals", "shopping"],
@@ -48,6 +50,7 @@ const TOPICS: Record<AssistAction["type"], ChangeTopic[]> = {
   rateMeal: ["meals"],
   setMealVariant: ["meals", "shopping"],
   setDishImage: ["dishes"],
+  ...EXTRA_TOPICS,
 };
 
 /** What the data looked like before an apply, for exactly the parts the actions can touch. */
@@ -59,6 +62,7 @@ type Before = {
   shopping?: ShoppingListState;
   /** Dishes as they were before a change to an existing dish (e.g. its photo). */
   dishes?: Record<string, Dish>;
+  pantry?: string[];
   createdDishIds: string[];
 };
 
@@ -104,6 +108,8 @@ function remember(deps: Deps, before: Before, action: AssistAction): void {
     case "createDish":
     case "startPlanDraft":
       return;
+    default:
+      rememberExtra(db, before, action);
   }
 }
 
@@ -230,6 +236,8 @@ function write(deps: Deps, action: AssistAction, before: Before): void {
     }
     case "startPlanDraft":
       return;
+    default:
+      writeExtra(db, action, deps.now().toISOString());
   }
 }
 
@@ -314,7 +322,7 @@ export function undoApply(deps: Deps, id: string): void {
     throw new HttpError(409, "changed", "Der er ændret noget siden, så Assist kan ikke fortryde sikkert. Ret det selv.");
   }
   const topics: ChangeTopic[] = ["meals", "shopping"];
-  if (before.fridge || before.profiles) topics.push("household");
+  if (before.fridge || before.profiles || before.pantry) topics.push("household");
   if (before.settings) topics.push("settings");
   if (before.createdDishIds.length > 0 || before.dishes) topics.push("dishes");
   deps.repo.mutate(topics, () => {
@@ -323,6 +331,7 @@ export function undoApply(deps: Deps, id: string): void {
       else deleteMeal(db, date);
     }
     if (before.fridge) setFridge(db, before.fridge);
+    if (before.pantry) setPantry(db, before.pantry);
     if (before.settings) setSettings(db, before.settings);
     if (before.profiles) setProfiles(db, before.profiles);
     if (before.shopping) setShoppingState(db, before.shopping);
