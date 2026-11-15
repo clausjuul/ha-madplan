@@ -53,7 +53,7 @@ const RULES = [
   "updateProfile(profileId, field: preferences|dislikes|exclusions|safeFoods, term, remove) når én person kan lide, ikke kan lide, ikke må få noget eller altid spiser noget (dislikes er bløde, exclusions er hårde, safeFoods = alwaysEats).",
   "setMealVariant(date, profileId, replaces, with, remove) én person får én del af dagens ret byttet, fx nuggets i stedet for bøf; resten af retten er den samme. replaces er en af rettens ingredients, with er det, personen skal have i stedet (helst fra alwaysEats). remove=true fjerner byttet.",
   "findDishImage(dishId) find et foto af en ret i kataloget på nettet (serveren søger og viser billedet i forslaget). Brug den, når brugeren beder om et billede til en ret, eller retten mangler et (hasImage: false) og brugeren beder om billeder.",
-  "updateDish(dishId, changes) ret navn, ingredients, instructions, prepMinutes, category, servings eller favorite på en ret; felter der ikke ændres, sættes til null · archiveDish(dishId, archived) arkivér (false = gendan fra \"Arkiverede retter\")",
+  "updateDish(dishId, changes) ret navn, ingredients, instructions, prepMinutes, category, servings eller favorite på en ret; felter der ikke ændres, sættes til null · archiveDish(dishId, archived=true) arkivér en ret (den skjules, men kan gendannes under Retter)",
   "importDishFromUrl(url) når brugeren giver et link til en opskrift: serveren henter opskriften (med billede) og foreslår den som ny ret. Opfind aldrig links.",
   "clearMeals(from, to) ryd alle ulåste dage i perioden · copyMeals(sourceFrom, targetFrom, dayCount) kopiér retterne fra én periode til en anden (fx sidste uge til denne uge) · moveMeals(from, to, days) flyt retterne i perioden days dage frem (negativ = tilbage). Brug flere setMeal til \"hver fredag\".",
   "addDishToShopping(dishId, onlyMissing) læg en rets ingredienser på indkøbslisten (onlyMissing=true springer basisvarer og køleskab over) · checkShoppingItems(itemIds, checked) kryds varer af (eller fjern krydset) med id fra indkøbslisten, fx når brugeren har købt noget · resetShopping() nulstil listen",
@@ -222,7 +222,6 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
     block("Tilbud i jeres butikker, der passer til retter i kataloget (højst 60):", offerData(state)),
     block("Basisvarer, der altid er hjemme:", state.pantry.slice(0, 100).map((item) => clip(item, 60))),
     block("Indkøbslisten:", shoppingData),
-    block("Arkiverede retter (kan gendannes med archiveDish):", state.dishes.filter((dish) => dish.archivedAt).slice(0, 100).map((dish) => ({ id: dish.id, name: clip(dish.name, 130) }))),
     block("Indstillinger:", {
       stores: state.settings.preferredStores,
       servings: state.settings.preferredServings ?? null,
@@ -267,7 +266,6 @@ export function assistSchema(state: Snapshot): { name: string; schema: Record<st
   const dates = Array.from({ length: SCHEMA_PAST + SCHEMA_AHEAD + 1 }, (_, index) => addDaysToKey(state.today, index - SCHEMA_PAST));
   const dishIds = state.dishes.filter((dish) => !dish.archivedAt).map((dish) => dish.id);
   const profileIds = state.profiles.map((profile) => profile.id);
-  const allDishIds = state.dishes.map((dish) => dish.id);
   const enumOrString = (values: string[]): Record<string, unknown> =>
     values.length > 0 && values.length <= 400 && values.join("").length <= MAX_ENUM_CHARS ? { type: "string", enum: values } : { type: "string" };
   const date = { $ref: "#/$defs/date" };
@@ -329,7 +327,7 @@ export function assistSchema(state: Snapshot): { name: string; schema: Record<st
                   },
                 },
               }),
-              action("archiveDish", { dishId: enumOrString(allDishIds), archived: { type: "boolean" } }),
+              action("archiveDish", { dishId: dish, archived: { type: "boolean" } }),
               action("importDishFromUrl", { url: text }),
               action("clearMeals", { from: date, to: date }),
               action("copyMeals", { sourceFrom: date, targetFrom: date, dayCount: { type: "integer" } }),
