@@ -7,6 +7,7 @@ import type {
   AssistResponse,
 } from "@madplan/domain";
 import { AiError } from "../ai/openai.ts";
+import { findDishImage } from "../ai/dish-image.ts";
 import { askAssistModel, assistPrompt, assistSchema, correctionPrompt } from "../ai/assist-ai.ts";
 import type { AssistModelAnswer } from "../ai/assist-ai.ts";
 import type { Deps } from "../deps.ts";
@@ -14,7 +15,8 @@ import { HttpError, notFound, unavailable } from "../errors.ts";
 import { askHomeAssistantAgent, haAgentAvailable } from "../ha/agent.ts";
 import { one, run, text, toJson } from "../repo.ts";
 import { currentShoppingList, snapshot } from "../state.ts";
-import { envFromDb, parseAssistActions } from "./assist-actions.ts";
+import { envFromDb, MAX_ACTIONS, parseAssistActions } from "./assist-actions.ts";
+import type { ActionEnv } from "./assist-actions.ts";
 import { applyActions, undoApply } from "./assist-exec.ts";
 
 export const PROPOSAL_TTL_MS = 30 * 60 * 1000;
@@ -74,6 +76,52 @@ const lastUserText = (request: AssistRequest): string =>
 
 export type AssistProgress = (replySoFar: string) => void;
 
+const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
+
+/**
+ * Turns the model's photo requests into concrete actions: findDishImage becomes setDishImage, and
+ * createDish with findImage gets an imageUrl. The photos are looked up here, in parallel, so the user sees
+ * them in the proposal. Requests that find nothing are left out and reported in `notes`.
+ */
+export async function resolveImageRequests(
+  deps: Deps,
+  env: ActionEnv,
+  rawActions: readonly unknown[],
+  signal: AbortSignal,
+): Promise<{ rawActions: unknown[]; notes: string[] }> {
+  const notes: string[] = [];
+  const lookup = (name: string) =>
+    findDishImage(deps.openai, deps.config.planModel, deps.fetch, name, signal).catch(() => null);
+  const resolved = await Promise.all(
+    rawActions.slice(0, MAX_ACTIONS).map(async (raw): Promise<unknown> => {
+      if (!isRecord(raw)) return raw;
+      if (raw.type === "findDishImage") {
+        const dish = typeof raw.dishId === "string" ? env.dish(raw.dishId) : undefined;
+        if (!dish) return null;
+        const found = await lookup(dish.name);
+        if (!found) {
+          notes.push(`Jeg fandt ikke et brugbart billede af ${dish.name}.`);
+          return null;
+        }
+        return { type: "setDishImage", dishId: dish.id, imageUrl: found.imageUrl, sourceUrl: found.sourceUrl };
+      }
+      if (raw.type === "createDish" && raw.findImage === true && isRecord(raw.dish) && typeof raw.dish.name === "string") {
+        const found = await lookup(raw.dish.name);
+        if (!found) {
+          notes.push(`Jeg fandt ikke et brugbart billede af ${raw.dish.name}.`);
+          return raw;
+        }
+        return { ...raw, dish: { ...raw.dish, imageUrl: found.imageUrl, sourceUrl: found.sourceUrl } };
+      }
+      return raw;
+    }),
+  );
+  return { rawActions: resolved.filter((entry) => entry !== null), notes };
+}
+
+const wantsImages = (rawActions: readonly unknown[]): boolean =>
+  rawActions.some((raw) => isRecord(raw) && (raw.type === "findDishImage" || (raw.type === "createDish" && raw.findImage === true)));
+
 async function answerWithOpenAi(
   deps: Deps,
   store: ProposalStore,
@@ -92,12 +140,20 @@ async function answerWithOpenAi(
     if (error instanceof AiError) throw new HttpError(502, "ai_failed", error.message);
     throw error;
   }
-  let parsed = parseAssistActions(answer.rawActions, env);
+  const notes: string[] = [];
+  const withImages = async (rawActions: unknown[]): Promise<unknown[]> => {
+    if (!wantsImages(rawActions)) return rawActions;
+    onReply?.(`${answer.reply}\n\nFinder billeder…`);
+    const result = await resolveImageRequests(deps, env, rawActions, AbortSignal.timeout(60_000));
+    notes.splice(0, notes.length, ...result.notes);
+    return result.rawActions;
+  };
+  let parsed = parseAssistActions(await withImages(answer.rawActions), env);
   if (parsed.dropped.length > 0) {
     // One self-correction round: the model sees why actions were refused and may fix them.
     try {
       const retry = await askAssistModel(deps.openai, deps.config.planModel, correctionPrompt(prompt, answer.raw, parsed.dropped), { schema, signal });
-      const retried = parseAssistActions(retry.rawActions, env);
+      const retried = parseAssistActions(await withImages(retry.rawActions), env);
       if (retried.dropped.length < parsed.dropped.length || retried.actions.length > parsed.actions.length) {
         answer = retry;
         parsed = retried;
@@ -107,7 +163,8 @@ async function answerWithOpenAi(
     }
   }
   const { actions, dropped } = parsed;
-  const note = dropped.length > 0 ? `\n\n(${dropped.length} forslag blev fjernet, fordi de ikke overholdt jeres regler.)` : "";
+  const ruleNote = dropped.length > 0 ? `\n\n(${dropped.length} forslag blev fjernet, fordi de ikke overholdt jeres regler.)` : "";
+  const note = ruleNote + (notes.length > 0 ? `\n\n${notes.join("\n")}` : "");
   if (actions.length === 0) return { reply: answer.reply + note, engine: "openai" };
   const proposal = store.create(deps, answer.reply.slice(0, 200), actions);
   return { reply: answer.reply + note, engine: "openai", proposal };

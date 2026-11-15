@@ -284,6 +284,8 @@ export type AssistAction =
       label: string;
     }
   | { type: "createDish"; dish: DishInput; label: string }
+  /** The photo was found by the server on `sourceUrl` (a public recipe page), never invented by the model. */
+  | { type: "setDishImage"; dishId: string; imageUrl: string; sourceUrl?: string; label: string }
   | { type: "startPlanDraft"; request: PlanRequest; label: string };
 export type AssistActionType = AssistAction["type"];
 export type ProfileTermField = "preferences" | "dislikes" | "exclusions" | "safeFoods";

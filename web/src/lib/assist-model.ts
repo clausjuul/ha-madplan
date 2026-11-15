@@ -147,15 +147,20 @@ const KIND: Record<AssistActionType, PreviewKind> = {
   skipMeal: "meal",
   rateMeal: "meal",
   setMealVariant: "meal",
+  setDishImage: "dish",
 };
 
-export type PreviewLine = { label: string; kind: PreviewKind; result?: AssistActionResult };
+export type PreviewLine = { label: string; kind: PreviewKind; imageUrl?: string; result?: AssistActionResult };
+
+const imageOf = (action: AssistProposal["actions"][number]): string | undefined =>
+  action.type === "setDishImage" ? action.imageUrl : action.type === "createDish" ? action.dish.imageUrl : undefined;
 
 /** One line per action, with its outcome once the proposal has been applied. */
 export function previewLines(proposal: AssistProposal, results?: readonly AssistActionResult[]): PreviewLine[] {
   return proposal.actions.map((action, index) => {
     const result = results?.[index];
-    return { label: action.label, kind: KIND[action.type], ...(result ? { result } : {}) };
+    const imageUrl = imageOf(action);
+    return { label: action.label, kind: KIND[action.type], ...(imageUrl ? { imageUrl } : {}), ...(result ? { result } : {}) };
   });
 }
 

@@ -52,7 +52,8 @@ const RULES = [
   "addFridgeItem(name, quantity?, expiresOn?) · removeFridgeItem(name) · addGlobalExclusion(term) kun for hele familien",
   "updateProfile(profileId, field: preferences|dislikes|exclusions|safeFoods, term, remove) når én person kan lide, ikke kan lide, ikke må få noget eller altid spiser noget (dislikes er bløde, exclusions er hårde, safeFoods = alwaysEats).",
   "setMealVariant(date, profileId, replaces, with, remove) én person får én del af dagens ret byttet, fx nuggets i stedet for bøf; resten af retten er den samme. replaces er en af rettens ingredients, with er det, personen skal have i stedet (helst fra alwaysEats). remove=true fjerner byttet.",
-  "createDish(dish) ny ret i kataloget · startPlanDraft(request) planudkast for flere dage (dayCount 1-14, from, request = fritekst-ønske, newDishCount).",
+  "findDishImage(dishId) find et foto af en ret i kataloget på nettet (serveren søger og viser billedet i forslaget). Brug den, når brugeren beder om et billede til en ret, eller retten mangler et (hasImage: false) og brugeren beder om billeder.",
+  "createDish(dish, findImage) ny ret i kataloget; findImage=true finder også et foto til den (brug det, når brugeren beder om et billede) · startPlanDraft(request) planudkast for flere dage (dayCount 1-14, from, request = fritekst-ønske, newDishCount).",
 ].join("\n");
 
 export type AssistPromptInput = {
@@ -162,6 +163,7 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
         name: clip(dish.name, 130),
         category: clip(dish.category, 60),
         prepMinutes: dish.prepMinutes,
+        hasImage: Boolean(dish.imageUrl || dish.imageKey),
         ...(dish.favorite ? { favorite: true } : {}),
         daysSinceEaten: lastDate ? daysBetween(lastDate, state.today) : null,
         ...(rating ? { ratings: rating } : {}),
@@ -293,7 +295,9 @@ export function assistSchema(state: Snapshot): { name: string; schema: Record<st
                 with: text,
                 remove: { type: "boolean" },
               }),
+              action("findDishImage", { dishId: dish }),
               action("createDish", {
+                findImage: { type: "boolean" },
                 dish: {
                   type: "object",
                   additionalProperties: false,

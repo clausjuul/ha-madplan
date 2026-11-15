@@ -63,6 +63,15 @@ export function ProposalCard({ entry, onApply, onDismiss, onToggle, onUndo }: Pr
               <span className={`mt-0.5 shrink-0 ${off ? "text-muted opacity-50" : "text-muted"}`}>{ICONS[line.kind]}</span>
               <span className={`min-w-0 flex-1 ${off ? "text-muted line-through" : ""}`}>
                 {line.label}
+                {line.imageUrl ? (
+                  <img
+                    src={line.imageUrl}
+                    alt=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className={`mt-2 block aspect-[4/3] w-full max-w-[260px] rounded-xl bg-raised object-cover ${off ? "opacity-50" : ""}`}
+                  />
+                ) : null}
                 {line.result ? (
                   <span className={`mt-0.5 flex items-center gap-1 text-[13px] no-underline ${line.result.ok ? "text-ok" : "text-danger"}`}>
                     {line.result.ok ? <Check size={14} aria-hidden="true" /> : <X size={14} aria-hidden="true" />}

@@ -29,6 +29,7 @@ import { snapshot } from "../state.ts";
 import { findDish } from "../store-dishes.ts";
 import { getShoppingState } from "../store-household.ts";
 import { getMeal } from "../store-meals.ts";
+import { assertPublicHttpsUrl } from "../ai/recipe-import.ts";
 import { dishInput, planRequest } from "../validate.ts";
 import { isRec, oneOf, optStr, str } from "../validate-basic.ts";
 
@@ -70,6 +71,15 @@ function dateField(value: unknown, what: string): string {
   return value;
 }
 
+function publicUrl(value: unknown, what: string): string {
+  const raw = str(value, what, { min: 9, max: 1000 });
+  try {
+    return assertPublicHttpsUrl(raw).href;
+  } catch {
+    throw new Error(`${what} er ikke et offentligt https-link.`);
+  }
+}
+
 function mealName(env: ActionEnv, date: string): string {
   const meal = env.meal(date);
   return meal ? `«${env.dish(meal.dishId)?.name ?? "ukendt ret"}»` : "ingen ret";
@@ -97,7 +107,7 @@ export function parseAction(input: unknown, env: ActionEnv): AssistAction {
   const type = oneOf(raw.type, "Handlingstype", [
     "setMeal", "removeMeal", "swapMeals", "lockMeal", "addShoppingExtra", "addFridgeItem",
     "removeFridgeItem", "addGlobalExclusion", "updateProfile", "createDish", "startPlanDraft",
-    "removeShoppingExtra", "setMealNote", "skipMeal", "rateMeal", "setMealVariant",
+    "removeShoppingExtra", "setMealNote", "skipMeal", "rateMeal", "setMealVariant", "setDishImage",
   ] as const);
   switch (type) {
     case "setMeal": {
@@ -223,6 +233,16 @@ export function parseAction(input: unknown, env: ActionEnv): AssistAction {
         label: `${dayName(date)}: ${describeVariant(variant, env.profiles)}`,
       };
     }
+    case "setDishImage": {
+      const dishId = str(raw.dishId, "Ret", { min: 1, max: 200 });
+      const dish = env.dish(dishId);
+      if (!dish) throw new Error("Retten findes ikke.");
+      const imageUrl = publicUrl(raw.imageUrl, "Billedet");
+      const sourceUrl = raw.sourceUrl === undefined ? undefined : publicUrl(raw.sourceUrl, "Kilden");
+      const replaces = dish.imageUrl || dish.imageKey ? " (erstatter det nuværende)" : "";
+      const from = sourceUrl ? ` fra ${new URL(sourceUrl).hostname.replace(/^www\./u, "")}` : "";
+      return { type, dishId, imageUrl, ...(sourceUrl ? { sourceUrl } : {}), label: `Sæt billede${from} på «${dish.name}»${replaces}` };
+    }
     case "createDish": {
       const dish = dishInput(raw.dish);
       return { type, dish, label: `Opret ny ret: «${dish.name}»` };
@@ -328,6 +348,11 @@ export function checkAction(env: ActionEnv, action: AssistAction): string | null
         return `Retten indeholder fravalgte ting (${dishConflictReasons(action.dish, global, env.profiles).join(", ")}).`;
       }
       return null;
+    }
+    case "setDishImage": {
+      const dish = env.dish(action.dishId);
+      if (!dish || dish.archivedAt) return "Retten findes ikke eller er arkiveret.";
+      return dish.imageUrl === action.imageUrl ? "Retten har allerede det billede." : null;
     }
     case "startPlanDraft":
       return action.request.engine === "ai" && !env.aiAvailable ? "AI-planlægning er ikke sat op." : null;

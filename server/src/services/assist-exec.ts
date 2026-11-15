@@ -47,6 +47,7 @@ const TOPICS: Record<AssistAction["type"], ChangeTopic[]> = {
   skipMeal: ["meals", "shopping"],
   rateMeal: ["meals"],
   setMealVariant: ["meals", "shopping"],
+  setDishImage: ["dishes"],
 };
 
 /** What the data looked like before an apply, for exactly the parts the actions can touch. */
@@ -56,6 +57,8 @@ type Before = {
   settings?: Settings;
   profiles?: Profile[];
   shopping?: ShoppingListState;
+  /** Dishes as they were before a change to an existing dish (e.g. its photo). */
+  dishes?: Record<string, Dish>;
   createdDishIds: string[];
 };
 
@@ -92,6 +95,12 @@ function remember(deps: Deps, before: Before, action: AssistAction): void {
     case "updateProfile":
       before.profiles ??= getProfiles(db);
       return;
+    case "setDishImage": {
+      const dish = findDish(db, action.dishId);
+      before.dishes ??= {};
+      if (dish && !(action.dishId in before.dishes)) before.dishes[action.dishId] = dish;
+      return;
+    }
     case "createDish":
     case "startPlanDraft":
       return;
@@ -180,6 +189,13 @@ function write(deps: Deps, action: AssistAction, before: Before): void {
       const dish: Dish = { ...action.dish, id: `custom-${randomUUID()}`, custom: true, generated: true };
       saveDish(db, dish);
       before.createdDishIds.push(dish.id);
+      return;
+    }
+    case "setDishImage": {
+      const dish = findDish(db, action.dishId);
+      if (!dish) return;
+      const { imageKey: _bundled, ...rest } = dish;
+      saveDish(db, { ...rest, imageUrl: action.imageUrl });
       return;
     }
     case "setMealNote": {
@@ -300,7 +316,7 @@ export function undoApply(deps: Deps, id: string): void {
   const topics: ChangeTopic[] = ["meals", "shopping"];
   if (before.fridge || before.profiles) topics.push("household");
   if (before.settings) topics.push("settings");
-  if (before.createdDishIds.length > 0) topics.push("dishes");
+  if (before.createdDishIds.length > 0 || before.dishes) topics.push("dishes");
   deps.repo.mutate(topics, () => {
     for (const [date, meal] of Object.entries(before.meals)) {
       if (meal) putMeal(db, date, meal);
@@ -310,6 +326,7 @@ export function undoApply(deps: Deps, id: string): void {
     if (before.settings) setSettings(db, before.settings);
     if (before.profiles) setProfiles(db, before.profiles);
     if (before.shopping) setShoppingState(db, before.shopping);
+    for (const dish of Object.values(before.dishes ?? {})) saveDish(db, dish);
     for (const dishId of before.createdDishIds) {
       const dish = findDish(db, dishId);
       if (dish && !dish.archivedAt) saveDish(db, { ...dish, archivedAt: deps.now().toISOString() });
