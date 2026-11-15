@@ -104,6 +104,10 @@ export function seedFakeState(today: string): FakeState {
     [at(8)]: meal(HOME_DISH.id),
     [at(9)]: meal("kyllingewraps"),
   };
+  // The week view asks "Hvordan var ... i går?": keep an eaten meal yesterday whatever weekday the demo
+  // opens on (Saturday has no dish and the Sunday before is skipped, so Sundays and Mondays had none).
+  const yesterday = addDaysToKey(today, -1);
+  if (!meals[yesterday] || meals[yesterday]?.skipped) meals[yesterday] = meal("frikadeller");
 
   const fridge: FridgeItem[] = [
     { name: "Spinat", quantity: "1 pose", expiresOn: addDaysToKey(today, 1), useFirst: true },
