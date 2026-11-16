@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.16.0
+
+- feat(web): follow the Home Assistant theme
+
 ## 0.15.0
 
 - fix(assist): leave archived dishes out of the prompt
