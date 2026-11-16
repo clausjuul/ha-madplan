@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { DraftDay, PlanDraftRecord, PlanDraftStatus, PlanEngine, PlanRequest, PlanReview } from "@madplan/domain";
-import { one, optText, parseJson, run, text, toJson } from "./repo.ts";
+import { SWAP_OUT_DAYS } from "@madplan/domain";
+import type { DraftDay, PlanDraftRecord, PlanDraftStatus, PlanEngine, PlanRequest, PlanReview, SwapOut } from "@madplan/domain";
+import { all, one, optText, parseJson, run, text, toJson } from "./repo.ts";
 import type { Row } from "./repo.ts";
 
 function toRecord(row: Row): PlanDraftRecord {
@@ -61,4 +62,17 @@ export function failGeneratingDrafts(db: DatabaseSync, error: string): number {
 
 export function deleteDraft(db: DatabaseSync, id: string): void {
   run(db, "DELETE FROM plan_drafts WHERE id = ?", id);
+}
+
+/** Dishes swapped out of a draft ("Lav om") within the last SWAP_OUT_DAYS. */
+export function getSwapOuts(db: DatabaseSync, today: string): SwapOut[] {
+  return all(db, "SELECT dish_id, date FROM swap_outs WHERE date > date(?, ?) ORDER BY id", today, `-${SWAP_OUT_DAYS} days`).map(
+    (row) => ({ dishId: text(row, "dish_id"), date: text(row, "date") }),
+  );
+}
+
+/** Records swap-outs and forgets the ones too old to matter. */
+export function addSwapOuts(db: DatabaseSync, swaps: readonly SwapOut[], today: string): void {
+  for (const swap of swaps) run(db, "INSERT INTO swap_outs (dish_id, date) VALUES (?, ?)", swap.dishId, swap.date);
+  run(db, "DELETE FROM swap_outs WHERE date <= date(?, ?)", today, `-${SWAP_OUT_DAYS} days`);
 }

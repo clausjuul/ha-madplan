@@ -136,6 +136,13 @@ const MIGRATIONS: readonly string[] = [
     remaining INTEGER
   );
   `,
+  `
+  CREATE TABLE swap_outs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dish_id TEXT NOT NULL,
+    date TEXT NOT NULL
+  );
+  `,
 ];
 
 export function migrate(db: DatabaseSync): void {

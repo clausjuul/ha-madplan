@@ -16,6 +16,7 @@ import type {
   PlanningContext,
   PlanRequest,
   PlanReview,
+  SwapOut,
 } from "@madplan/domain";
 import { eatenOf } from "../state.ts";
 import type { Snapshot } from "../state.ts";
@@ -44,6 +45,7 @@ export function prepare(
   request: PlanRequest,
   dates: readonly string[],
   pinned: readonly DraftDay[] = [],
+  swapOuts: readonly SwapOut[] = [],
 ): PlanPrep {
   const meals: MealMap = { ...state.meals };
   const extraDishes: Dish[] = [];
@@ -79,6 +81,9 @@ export function prepare(
     offers: state.offers,
     stores: state.settings.preferredStores,
     offersAsOf: state.today,
+    today: state.today,
+    eaten: eatenOf(state),
+    swapOuts,
   });
   return { context, meals, dishes };
 }
@@ -102,6 +107,8 @@ export function localItems(state: Snapshot, request: PlanRequest, prep: PlanPrep
     offerScores: new Map([...context.dishOffers.keys()].map((id) => [id, dishOfferScore(context, id)])),
     maxPrepMinutes: context.maxPrepMinutes,
     relaxedDates: context.relaxedDates,
+    neighbours: context.neighbours,
+    rhythm: context.rhythm,
   });
   return suggestions.flatMap((day) =>
     day.dishId !== undefined && context.dates.includes(day.date)

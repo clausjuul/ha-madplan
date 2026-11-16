@@ -5,6 +5,9 @@ import { participatingProfiles, preferenceScore } from "./profiles.ts";
 import { fridgeMatchScore, matchingFridgeItems, relaxedDayScore } from "./suggest.ts";
 import { maxVariantDays, normalizeVariants, suggestVariants } from "./variants.ts";
 import { NEVER_SCORE, ratingScores } from "./history.ts";
+import type { EatenEntry } from "./history.ts";
+import { adjacentSameCategory, neighbourDays, rhythmScore, swapOutScores, weekdayRhythm } from "./plan-signals.ts";
+import type { NeighbourDay, SwapOut, WeekdayRhythm } from "./plan-signals.ts";
 import { dishOfferMatches, offerReason, offerScore, toOfferReference } from "./offers.ts";
 import type { DishOfferMatch } from "./offers.ts";
 import {
@@ -137,6 +140,12 @@ export type PlanningContextInput = {
   fridge?: readonly FridgeItem[];
   globalExclusions?: readonly string[];
   profiles?: readonly Profile[];
+  /** Today's date key: needed for the weekday rhythm and the fading of swap-outs. */
+  today?: string;
+  /** Derived history (see eatenHistory), for the weekday rhythm. */
+  eaten?: readonly EatenEntry[];
+  /** Dishes the family swapped out of a draft ("Lav om"); a soft, fading minus. */
+  swapOuts?: readonly SwapOut[];
 };
 
 export type PlanningContext = {
@@ -153,8 +162,14 @@ export type PlanningContext = {
   skippedDates: string[];
   eatenDishIds: Set<string>;
   lastEaten: ReadonlyMap<string, string>;
-  /** dishId -> adjustment from the family's ratings (see ratingScores). */
+  /** dishId -> adjustment from the family's ratings (see ratingScores), swap-outs included. */
   ratingScores: ReadonlyMap<string, number>;
+  /** dishId -> the part of ratingScores that comes from recent swap-outs (see swapOutScores). */
+  swapOutScores: ReadonlyMap<string, number>;
+  /** Days around the open dates that already have a dish (see neighbourDays). */
+  neighbours: NeighbourDay[];
+  /** The family's fixed patterns per weekday (see weekdayRhythm). */
+  rhythm: WeekdayRhythm[];
   requiredDishIds: string[];
   newDishCount: number;
   budgetDkk: number | null;
@@ -205,6 +220,8 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
   const profiles = participatingProfiles(input.profiles ?? []);
   const globalExclusions = [...(input.globalExclusions ?? [])];
   const ratings = ratingScores(meals);
+  const swaps = input.today ? swapOutScores(input.swapOuts ?? [], input.today) : new Map<string, number>();
+  for (const [id, score] of swaps) ratings.set(id, (ratings.get(id) ?? 0) + score);
   const recipes = input.dishes.filter(
     (dish) =>
       !dish.archivedAt &&
@@ -221,6 +238,9 @@ export function buildPlanningContext(input: PlanningContextInput): PlanningConte
     eatenDishIds: new Set(input.eatenDishIds ?? []),
     lastEaten: input.lastEaten ?? new Map(),
     ratingScores: ratings,
+    swapOutScores: swaps,
+    neighbours: neighbourDays(meals, input.dishes, dates, new Set(lockedDays.keys())),
+    rhythm: input.today && input.eaten ? weekdayRhythm(input.eaten, input.dishes, input.today) : [],
     requiredDishIds: (input.requiredDishIds ?? []).filter((id) =>
       recipes.some((dish) => dish.id === id),
     ),
@@ -280,6 +300,8 @@ export type PlanItem = {
 export type ValidatedPlan = {
   plan: PlanItem[];
   rejectedCount: number;
+  /** Why each rejected proposal was refused (Danish, for a correction round). */
+  rejections: string[];
   missingDates: string[];
   requiredMissing: string[];
   newDishCount: number;
@@ -302,28 +324,34 @@ export function validateProposal(raw: unknown, context: PlanningContext): Valida
   const plan: PlanItem[] = [];
   const variantLimit = maxVariantDays(context.dates.length);
   let variantDays = 0;
-  let rejectedCount = 0;
+  const rejections: string[] = [];
   for (const item of proposals.slice(0, 30)) {
-    const date = isRecord(item) ? item.date : undefined;
-    const dishId = isRecord(item) ? item.dishId : undefined;
-    if (
-      !isRecord(item) ||
-      typeof date !== "string" ||
-      typeof dishId !== "string" ||
-      !validDates.has(date) ||
-      !recipeById.has(dishId) ||
-      !fitsDay(recipeById.get(dishId)!, date, context) ||
-      seenDates.has(date) ||
-      seenDishes.has(dishId)
-    ) {
-      rejectedCount += 1;
+    if (!isRecord(item) || typeof item.date !== "string" || typeof item.dishId !== "string") {
+      rejections.push("Forslaget mangler date eller dishId.");
+      continue;
+    }
+    const { date, dishId } = item;
+    const dish = recipeById.get(dishId);
+    const problem = !validDates.has(date)
+      ? `${date} er ikke en åben dag i planen.`
+      : !dish
+        ? `${dishId} (${date}) findes ikke i catalog.`
+        : !fitsDay(dish, date, context)
+          ? `${dish.name} (${date}) tager længere end maxPrepMinutes, og dagen er ikke i relaxedDates.`
+          : seenDates.has(date)
+            ? `${date} fik mere end én ret.`
+            : seenDishes.has(dishId)
+              ? `${dish.name} (${date}) er allerede brugt i planen eller på en låst dag.`
+              : undefined;
+    if (problem !== undefined || !dish) {
+      rejections.push(problem ?? `${dishId} (${date}) findes ikke i catalog.`);
       continue;
     }
     seenDates.add(date);
     seenDishes.add(dishId);
     const variants =
       variantDays < variantLimit
-        ? normalizeVariants(item.variants, recipeById.get(dishId)!, context.profiles, context.globalExclusions)
+        ? normalizeVariants(item.variants, dish, context.profiles, context.globalExclusions)
         : [];
     if (variants.length) variantDays += 1;
     plan.push({
@@ -338,14 +366,15 @@ export function validateProposal(raw: unknown, context: PlanningContext): Valida
     });
   }
   plan.sort((a, b) => a.date.localeCompare(b.date));
-  return summarize(plan, context, rejectedCount);
+  return summarize(plan, context, rejections);
 }
 
-function summarize(plan: PlanItem[], context: PlanningContext, rejectedCount: number): ValidatedPlan {
+function summarize(plan: PlanItem[], context: PlanningContext, rejections: string[]): ValidatedPlan {
   const lockedIds = new Set(context.lockedDays.values());
   return {
     plan,
-    rejectedCount,
+    rejectedCount: rejections.length,
+    rejections,
     missingDates: context.dates.filter((date) => !plan.some((item) => item.date === date)),
     requiredMissing: context.requiredDishIds.filter(
       (id) => !plan.some((item) => item.dishId === id) && !lockedIds.has(id),
@@ -388,6 +417,12 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
     categories.set(category, (categories.get(category) ?? 0) + 1);
   }
   const wanted = context.requiredDishIds.filter((id) => !used.has(id));
+  // date -> category of every known day, so a filled day does not repeat its neighbour's category.
+  const known = new Map(context.neighbours.map((day) => [day.date, day.category]));
+  for (const item of plan) {
+    const category = context.recipes.find((dish) => dish.id === item.dishId)?.category;
+    if (category) known.set(item.date, category);
+  }
 
   for (const date of validated.missingDates) {
     let dish = context.recipes.find(
@@ -407,6 +442,7 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
           (needsNovel && novel ? 100 : 0) +
           pantry -
           (categories.get(candidate.category) ?? 0) * 12 -
+          adjacentSameCategory(date, candidate.category, known) * 20 -
           (context.economical || context.budgetDkk
             ? relativeRecipeCost(candidate, context.fridge) * (relaxed ? 4 : 12)
             : 0) +
@@ -414,7 +450,8 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
           dayWishScore(candidate, context.dayRequests[date]) +
           preferenceScore(candidate, context.profiles) +
           (context.ratingScores.get(candidate.id) ?? 0) +
-          dishOfferScore(context, candidate.id)
+          dishOfferScore(context, candidate.id) +
+          rhythmScore(candidate, date, context.rhythm)
         );
       };
       dish = context.recipes
@@ -426,6 +463,7 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
     const index = wanted.indexOf(dish.id);
     if (index >= 0) wanted.splice(index, 1);
     categories.set(dish.category, (categories.get(dish.category) ?? 0) + 1);
+    known.set(date, dish.category);
     plan.push({
       date,
       dishId: dish.id,
@@ -434,7 +472,7 @@ export function completePlan(validated: ValidatedPlan, context: PlanningContext)
     });
   }
   plan.sort((a, b) => a.date.localeCompare(b.date));
-  return summarize(plan, context, validated.rejectedCount);
+  return summarize(plan, context, validated.rejections);
 }
 
 /**

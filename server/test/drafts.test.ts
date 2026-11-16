@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DISHES } from "@madplan/domain";
 import type { ApiError, BootstrapResponse, PlanDraftRecord, PlanRequest } from "@madplan/domain";
 import { AiError } from "../src/ai/openai.ts";
+import { addSwapOuts, getSwapOuts } from "../src/store-drafts.ts";
 import { fakeAi, setup, TODAY } from "./helpers.ts";
 
 const request = (overrides: Partial<PlanRequest> = {}): PlanRequest => ({
@@ -97,6 +98,37 @@ describe("local plan drafts", () => {
     expect((await call("POST", `plan-drafts/${draft.id}/apply`)).status).toBe(404);
   });
 
+  it("remembers dishes swapped out with \"Lav om\" or by hand, but not the family's own choices", async () => {
+    const { json, deps } = setup();
+    const swaps = () => getSwapOuts(deps.repo.db, TODAY).map((swap) => swap.dishId);
+    const draft = await json<PlanDraftRecord>("POST", "plan-drafts", request());
+    const [day0, day1, day2] = draft.days;
+    if (!day0 || !day1 || !day2) throw new Error("tom plan");
+
+    await json("POST", `plan-drafts/${draft.id}/regenerate`, {});
+    expect(swaps()).toEqual([]);
+
+    const current = await json<PlanDraftRecord>("GET", "plan-drafts/current");
+    await json("POST", `plan-drafts/${draft.id}/regenerate`, { dates: [day0.date] });
+    expect(swaps()).toEqual([current.days[0]?.dishId]);
+
+    const picked = DISHES.find((dish) => !current.days.some((day) => day.dishId === dish.id))!;
+    await json("PATCH", `plan-drafts/${draft.id}/days/${day1.date}`, { dishId: picked.id });
+    expect(swaps()).toEqual([current.days[0]?.dishId, current.days[1]?.dishId]);
+
+    // Swapping out a dish the family picked by hand says nothing about the planner.
+    await json("PATCH", `plan-drafts/${draft.id}/days/${day1.date}`, { dishId: current.days[1]!.dishId });
+    await json("POST", `plan-drafts/${draft.id}/regenerate`, { dates: [day1.date] });
+    expect(swaps()).toHaveLength(2);
+  });
+
+  it("forgets swap-outs once they are too old to matter", () => {
+    const { deps } = setup();
+    addSwapOuts(deps.repo.db, [{ dishId: "gammel", date: "2026-09-01" }, { dishId: "ny", date: TODAY }], TODAY);
+    expect(getSwapOuts(deps.repo.db, TODAY)).toEqual([{ dishId: "ny", date: TODAY }]);
+    expect(deps.repo.db.prepare("SELECT COUNT(*) AS n FROM swap_outs").get()).toEqual({ n: 1 });
+  });
+
   it("saves new dishes proposed by a draft as custom dishes on apply, and never overwrites locked meals", async () => {
     const { json, repo } = setup();
     const draft = await json<PlanDraftRecord>("POST", "plan-drafts", request({ dayCount: 2 }));
@@ -171,9 +203,11 @@ describe("AI plan drafts", () => {
   it("fails with a Danish message on invalid JSON and never falls back to local", async () => {
     const ai = fakeAi();
     ai.next("Jeg kan ikke finde på noget i dag");
+    ai.next("Heller ikke nu");
     const { json, deps } = setup({ openai: ai });
     await json("POST", "plan-drafts", request({ engine: "ai" }));
     await deps.jobs.settled();
+    expect(ai.calls).toHaveLength(2);
     const failed = await json<PlanDraftRecord>("GET", "plan-drafts/current");
     expect(failed.status).toBe("failed");
     expect(failed.engine).toBe("ai");
@@ -211,7 +245,13 @@ describe("AI plan drafts", () => {
     const done = await json<PlanDraftRecord>("GET", "plan-drafts/current");
     expect(done.status).toBe("ready");
     expect(done.days.map((d) => d.dishId)).toEqual(["tacos", "frikadeller", "burgere", "laks"]);
-    expect(ai.calls[1]?.input).not.toContain('"2026-11-09"');
+    // Lasagne and carbonara (both Pasta) back to back made the first plan ask for a correction.
+    const data = JSON.parse(ai.calls.at(-1)?.input.split("\n")[2] ?? "{}") as {
+      dates: { date: string }[];
+      neighbourDays: { date: string; name: string; locked: boolean }[];
+    };
+    expect(data.dates.map((day) => day.date)).not.toContain("2026-11-09");
+    expect(data.neighbourDays).toContainEqual(expect.objectContaining({ date: "2026-11-09", locked: true }));
   });
 
   it("keeps the previous days when an AI regeneration fails", async () => {

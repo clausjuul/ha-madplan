@@ -12,6 +12,7 @@ export * from "./basket.ts";
 export * from "./planning-rules.ts";
 export * from "./planning.ts";
 export * from "./plan-review.ts";
+export * from "./plan-signals.ts";
 export * from "./suggest.ts";
 export * from "./variants.ts";
 export * from "./migrate-v1.ts";

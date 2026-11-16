@@ -1,6 +1,7 @@
 /** "Tjekket mod jeres regler": structured, deterministic checks of a proposed plan. */
 import { dishConflictReasons } from "./exclusions.ts";
 import { formatPrice } from "./pricing.ts";
+import { categoryRepeats, describeRepeat } from "./plan-signals.ts";
 import { createShoppingList } from "./shopping.ts";
 import type { EatenEntry } from "./history.ts";
 import type { PlanningContext } from "./planning.ts";
@@ -13,7 +14,8 @@ export type PlanCheckId =
   | "prepTime"
   | "budget"
   | "required"
-  | "newDishes";
+  | "newDishes"
+  | "variety";
 
 export type PlanCheck = {
   id: PlanCheckId;
@@ -69,6 +71,7 @@ export function reviewPlan(input: PlanReviewInput): PlanReview {
     ...budgetCheck(days, input, dishById),
     requiredCheck(days, context),
     newDishesCheck(days, context),
+    varietyCheck(days, context),
   ];
   const budget = checks.find((check) => check.id === "budget");
   return {
@@ -245,5 +248,25 @@ function newDishesCheck(days: PlannedDay[], context: PlanningContext): PlanCheck
     status: "warning",
     message: `${noun(count)}, men I bad om ${target}.`,
     dates: [],
+  };
+}
+/** Same category on consecutive days, counting the days just before and after the plan. Only warns. */
+export function varietyCheck(days: PlannedDay[], context: PlanningContext): PlanCheck {
+  const label = "Variation";
+  const own = new Set(days.map(({ day }) => day.date));
+  const open = new Set(days.filter(({ day }) => !day.locked).map(({ day }) => day.date));
+  const repeats = categoryRepeats([
+    ...context.neighbours.filter((day) => !own.has(day.date)),
+    ...days.map(({ day, dish }) => ({ date: day.date, category: dish.category })),
+  ]).filter((repeat) => repeat.dates.some((date) => open.has(date)));
+  if (!repeats.length) {
+    return { id: "variety", label, status: "ok", message: "Ingen kategori to dage i træk.", dates: [] };
+  }
+  return {
+    id: "variety",
+    label,
+    status: "warning",
+    message: `${repeats.map(describeRepeat).join("; ")}.`,
+    dates: repeats.flatMap((repeat) => repeat.dates.filter((date) => own.has(date))),
   };
 }

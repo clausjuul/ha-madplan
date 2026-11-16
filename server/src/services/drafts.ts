@@ -14,7 +14,16 @@ import type { Deps } from "../deps.ts";
 import { conflict, notFound, unavailable, unprocessable } from "../errors.ts";
 import { snapshot } from "../state.ts";
 import { findDish, saveDish } from "../store-dishes.ts";
-import { currentDraft, deleteDraft, failGeneratingDrafts, getDraft, replaceDraft, saveDraft } from "../store-drafts.ts";
+import {
+  addSwapOuts,
+  currentDraft,
+  deleteDraft,
+  failGeneratingDrafts,
+  getDraft,
+  getSwapOuts,
+  replaceDraft,
+  saveDraft,
+} from "../store-drafts.ts";
 import { getMeals, putMeal } from "../store-meals.ts";
 import { assemble, dayDishId, localItems, prepare, review, windowDates } from "./draft-plan.ts";
 
@@ -35,7 +44,7 @@ type Job = {
 /** Plans synchronously with the local engine. */
 function produceLocal(deps: Deps, job: Job): PlanDraftRecord {
   const state = snapshot(deps);
-  const prep = prepare(state, job.request, job.dates, job.pinned);
+  const prep = prepare(state, job.request, job.dates, job.pinned, getSwapOuts(deps.repo.db, state.today));
   const days = assemble(localItems(state, job.request, prep), prep, job.pinned);
   return {
     id: job.id,
@@ -54,7 +63,7 @@ async function produceAi(deps: Deps, job: Job): Promise<void> {
   let outcome: PlanDraftRecord;
   try {
     const state = snapshot(deps);
-    const prep = prepare(state, job.request, job.dates, job.pinned);
+    const prep = prepare(state, job.request, job.dates, job.pinned, getSwapOuts(repo.db, state.today));
     const result = await generateAiPlan(
       deps.openai,
       deps.config.planModel,
@@ -143,6 +152,17 @@ export function failInterruptedDrafts(repo: Deps["repo"]): number {
   return repo.mutate(["drafts"], () => failGeneratingDrafts(repo.db, INTERRUPTED_MESSAGE));
 }
 
+/**
+ * "Lav om" on chosen days, or picking another dish by hand, says the planner's dish was not wanted:
+ * remembered as a soft, fading minus (see swapOutScores). The family's own choices are not counted.
+ */
+function rememberSwapOuts(deps: Deps, days: readonly DraftDay[], today: string): void {
+  const swaps = days.flatMap((day) =>
+    day.dishId && !day.newDish && !day.locked && day.source !== "manual" ? [{ dishId: day.dishId, date: today }] : [],
+  );
+  if (swaps.length) deps.repo.mutate([], () => addSwapOuts(deps.repo.db, swaps, today));
+}
+
 export const getCurrentDraft = (deps: Deps): PlanDraftRecord | null => currentDraft(deps.repo.db);
 
 export function regenerateDraft(deps: Deps, id: string, only?: string[]): PlanDraftRecord {
@@ -155,6 +175,10 @@ export function regenerateDraft(deps: Deps, id: string, only?: string[]): PlanDr
     return !day?.locked && (only === undefined || only.includes(date));
   });
   if (targets.length === 0) throw conflict("Alle de valgte dage er låst, så der er intet at lave om.");
+  if (draft.request.engine === "ai" && !deps.openai.configured) throw unavailable(NO_AI);
+  // Only "Lav om" on single days is a signal; redoing the whole plan says nothing about one dish.
+  // Recorded first, so the new suggestion for the day already leans away from the old dish.
+  if (only !== undefined) rememberSwapOuts(deps, draft.days.filter((day) => targets.includes(day.date)), state.today);
   const pinned = draft.days.filter((day) => !targets.includes(day.date));
   return start(deps, {
     id: draft.id,
@@ -177,6 +201,7 @@ export function patchDraftDay(deps: Deps, id: string, date: string, patch: Draft
     const dish = findDish(deps.repo.db, patch.dishId);
     if (!dish || dish.archivedAt) throw unprocessable("Retten findes ikke eller er arkiveret.");
     next = { date, dishId: dish.id, reason: "Valgt manuelt.", locked: day.locked, source: "manual" };
+    rememberSwapOuts(deps, [day], snapshot(deps).today);
   }
   if (patch.locked !== undefined) next = { ...next, locked: patch.locked };
   if (patch.variants !== undefined) {
@@ -193,7 +218,7 @@ export function patchDraftDay(deps: Deps, id: string, date: string, patch: Draft
   const state = snapshot(deps);
   const pinned = days.filter((candidate) => candidate.locked);
   const dates = [...new Set([...windowDates(draft.request, state.today), ...days.map((d) => d.date)])];
-  const prep = prepare(state, draft.request, dates, pinned);
+  const prep = prepare(state, draft.request, dates, pinned, getSwapOuts(deps.repo.db, state.today));
   const updated: PlanDraftRecord = {
     ...draft,
     days,

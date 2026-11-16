@@ -6,12 +6,10 @@ Idéer, vi kan tage op senere. Hvert punkt siger, hvad der mangler i dag, og hvo
 
 Nuværende kode: `server/src/ai/plan-ai.ts` (prompt og schema), `server/src/services/draft-plan.ts` (kontekst), `domain/src/planning.ts` (validering og udfyldning af huller).
 
-Anbefalet rækkefølge: 1, 7, 9 og 2 først. De bruger kun data, vi allerede har. Derefter 3 og så 8.
+Punkt 1, 2, 7 og 9 er lavet (nabodage, rytme, selvkorrektion og "Lav om"). Næste anbefaling: 3 og så 8.
 
 ### Mere kontekst
 
-1. **Nabodagene med navn og kategori.** Låste og beholdte dage sendes kun som datoer/id'er (`lockedDays`, `preservedDates`), og den seneste uges måltider er ikke med. Modellen kan derfor ikke overholde "ikke samme kategori to dage i træk" over ugeskiftet eller omkring låste dage. Send fx de 7 dage før planen plus de låste dage med `name` og `category`.
-2. **Familiens rytme.** Regn faste mønstre ud fra historikken (fx "fredag er ofte pizza/takeaway", "søndag tager gerne længere tid") og send dem som bløde ønsker pr. ugedag. Kan regnes lokalt i domain ud fra `eatenHistory`.
 3. **Kalenderen i Home Assistant.** Læs de valgte kalendere via Supervisor (`/core/api/calendars/<entity>`):
    - optaget aften: hurtig ret (lav `maxPrepMinutes` for dagen)
    - gæster: flere portioner
@@ -24,9 +22,7 @@ Anbefalet rækkefølge: 1, 7, 9 og 2 først. De bruger kun data, vi allerede har
 
 ### Bedre proces
 
-7. **Selvkorrektion.** I dag kasseres ugyldige forslag (`validateProposal`), og hullerne fyldes lokalt (`completePlan`). Giv modellen én chance til at rette sig med de afviste forslag og advarslerne fra `reviewPlan` (fx "kylling tre dage i træk"). Det er samme mønster som `correctionPrompt` i `server/src/ai/assist-ai.ts`.
 8. **Rigtige nye retter.** "Antal nye retter" betyder i dag kun retter fra kataloget, I ikke har prøvet. Lad planlæggeren også vælge blandt gemte opskrifter (`savedInspirations`), den indbyggede inspiration (`domain/src/catalog/inspiration*.ts`) og ugens madplaner fra danske madsider (`server/src/weekly/`). De lægges i kataloget som `newDish`, når planen gemmes.
-9. **Lær af "Lav om".** Når en ret byttes ud i et udkast, går signalet tabt. Gem det som et blødt minus (ligesom bedømmelserne i `ratingScores`), der falder væk med tiden.
 10. **Modelvalg i indstillingerne.** Standarden er `gpt-4.1-mini` (`MADPLAN_PLAN_MODEL`). Gør det til en add-on-indstilling, så man kan vælge en stærkere model til ugeplanen.
 
 ### Familien

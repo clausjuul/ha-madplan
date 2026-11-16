@@ -3,6 +3,8 @@ import { DISHES } from "./catalog/dishes.ts";
 import { daysBetween, isDateKey, parseDateKey } from "./dates.ts";
 import { dishContent, parseExclusionTerms } from "./exclusions.ts";
 import { participatingProfiles, preferenceScore } from "./profiles.ts";
+import { adjacentSameCategory, rhythmScore } from "./plan-signals.ts";
+import type { WeekdayRhythm } from "./plan-signals.ts";
 import type { DraftDay, Dish, FridgeItem, MealMap, Profile } from "./types.ts";
 
 /**
@@ -37,6 +39,10 @@ export type SuggestionInput = {
   maxPrepMinutes?: number | null;
   /** Days with plenty of time: no prep-time limit, and slower or favourite dishes are welcome. */
   relaxedDates?: readonly string[];
+  /** Days around the plan that already have a dish: a day should not repeat its neighbour's category. */
+  neighbours?: readonly { date: string; category: string }[];
+  /** The family's fixed patterns per weekday (see weekdayRhythm). */
+  rhythm?: readonly WeekdayRhythm[];
 };
 
 const FRIDAY = 5;
@@ -50,6 +56,8 @@ function createRanker(input: SuggestionInput) {
   const dishById = new Map(dishes.map((dish) => [dish.id, dish]));
   const usedDishIds = new Set<string>();
   const usedCategories = new Map<string, number>();
+  const categoryByDate = new Map((input.neighbours ?? []).map((day) => [day.date, day.category]));
+  const rhythm = input.rhythm ?? [];
   const request = normalize(input.userRequest ?? "");
   const requestTerms = requestTermsOf(request);
   const exclusionTerms = parseExclusionTerms([
@@ -68,8 +76,9 @@ function createRanker(input: SuggestionInput) {
     const content = dishContent(dish);
     return exclusionTerms.some((term) => content.includes(term));
   };
-  const count = (category: string): void => {
+  const count = (category: string, day?: string): void => {
     usedCategories.set(category, (usedCategories.get(category) ?? 0) + 1);
+    if (day) categoryByDate.set(day, category);
   };
 
   const rank = (day: string): RankedDish[] => {
@@ -108,7 +117,9 @@ function createRanker(input: SuggestionInput) {
           (dish.leftoverFriendly ? 3 : 0) +
           (hash(`${dish.id}:${day}:${seed}`) % 13) -
           (usedDishIds.has(dish.id) ? 1_000 : 0) -
-          (usedCategories.get(dish.category) ?? 0) * 14 +
+          (usedCategories.get(dish.category) ?? 0) * 14 -
+          adjacentSameCategory(day, dish.category, categoryByDate) * 18 +
+          rhythmScore(dish, day, rhythm) +
           requestScore +
           preferenceScore(dish, profiles) +
           (ratings.get(dish.id) ?? 0) +
@@ -151,7 +162,7 @@ export function rankAlternatives(
     if (other.date === input.day) continue;
     ranker.usedDishIds.add(other.dishId);
     const category = ranker.dishById.get(other.dishId)?.category;
-    if (category) ranker.count(category);
+    if (category) ranker.count(category, other.date);
   }
   const excluded = new Set(input.excludeDishIds ?? []);
   return ranker
@@ -169,7 +180,7 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
     if (!existing?.locked) continue;
     usedDishIds.add(existing.dishId);
     const category = dishById.get(existing.dishId)?.category;
-    if (category) count(category);
+    if (category) count(category, day);
   }
 
   const requiredQueue = requiredDishIds.filter(
@@ -188,7 +199,7 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
     if (requiredId && required) {
       requiredQueue.splice(requiredQueue.indexOf(requiredId), 1);
       usedDishIds.add(required.id);
-      count(required.category);
+      count(required.category, day);
       return [
         {
           date: day,
@@ -204,7 +215,7 @@ export function createLocalSuggestions(input: SuggestionInput): DraftDay[] {
     const winner = ranked[0];
     if (!winner) return [];
     usedDishIds.add(winner.dish.id);
-    count(winner.dish.category);
+    count(winner.dish.category, day);
     return [
       {
         date: day,
