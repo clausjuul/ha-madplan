@@ -34,7 +34,7 @@ export function IngredientList({ lines, servings, onServings, large, hideTitle }
       </div>
       <ul className={`m-0 flex list-none flex-col overflow-y-auto p-0 ${large ? "text-xl" : "text-base"}`}>
         {lines.map((line, index) => (
-          <li key={`${line.name}-${index}`} className="flex gap-3 border-b border-white/[0.06] py-[7px]">
+          <li key={`${line.name}-${index}`} className="flex gap-3 border-b border-hairline py-[7px]">
             <span className="w-[78px] shrink-0 text-muted">{line.amount}</span>
             <span>{line.name}</span>
           </li>

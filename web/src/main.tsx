@@ -4,12 +4,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter } from "react-router";
 import { App } from "./App";
 import { ApiProvider, createDefaultClient } from "./api/provider";
+import { followHaTheme } from "./lib/ha-theme";
 import "./index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: true } },
 });
 const client = createDefaultClient();
+
+followHaTheme();
 
 const container = document.getElementById("root");
 if (!container) throw new Error("#root mangler");

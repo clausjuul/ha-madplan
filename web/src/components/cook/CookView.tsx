@@ -135,7 +135,7 @@ export function CookView({ dishId }: { dishId: string }) {
               {steps.map((_, index) => (
                 <span
                   key={index}
-                  className={`h-1.5 rounded-full ${index < step ? "bg-[#4FA9B8]" : index === step ? "bg-accent" : "bg-[#23262D]"}`}
+                  className={`h-1.5 rounded-full ${index < step ? "bg-accent/60" : index === step ? "bg-accent" : "bg-raised"}`}
                 />
               ))}
             </div>

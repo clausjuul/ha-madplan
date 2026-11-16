@@ -61,7 +61,7 @@ export function CommitInput({ label, value, onCommit, placeholder, inputMode, hi
 export function SectionCard({ title, description, children, id }: { title: string; description?: string; children: ReactNode; id?: string }) {
   const headingId = useId();
   return (
-    <section id={id} aria-labelledby={headingId} className="flex flex-col gap-4 rounded-[28px] bg-surface p-5 md:p-6">
+    <section id={id} aria-labelledby={headingId} className="flex flex-col gap-4 rounded-4xl bg-surface p-5 md:p-6">
       <header>
         <h2 id={headingId} className="font-display m-0 text-[22px] font-bold">
           {title}

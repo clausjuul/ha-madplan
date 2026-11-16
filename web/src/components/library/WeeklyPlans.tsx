@@ -55,7 +55,7 @@ export function WeeklyPlans({ data }: { data: BootstrapResponse }) {
       <div className="flex flex-col gap-3" aria-busy="true" aria-label="Henter ugens madplaner">
         <p className="m-0 text-[15px] text-ink-2">Henter ugens madplaner fra danske madsider…</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((key) => <div key={key} className="skeleton h-80 rounded-[28px]" />)}
+          {[0, 1, 2].map((key) => <div key={key} className="skeleton h-80 rounded-4xl" />)}
         </div>
       </div>
     );

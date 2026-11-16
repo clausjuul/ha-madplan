@@ -39,7 +39,7 @@ function EmptyTonight({ day, handlers }: { day: DayModel; handlers: DayHandlers 
   return (
     <section
       aria-label="I aften"
-      className="flex flex-col justify-center gap-3 rounded-[28px] border-[1.5px] border-dashed border-line p-7 lg:h-[292px]"
+      className="flex flex-col justify-center gap-3 rounded-4xl border-[1.5px] border-dashed border-line p-7 lg:h-[292px]"
     >
       <span className="text-sm font-semibold uppercase tracking-wider text-accent">I aften</span>
       <h1 className="font-display text-4xl font-bold leading-none">Ingen ret i aften</h1>
@@ -114,7 +114,7 @@ export function TonightHero({ day, servings, handlers, wide }: Props) {
   return (
     <section
       aria-label="I aften"
-      className="relative grid min-h-[292px] grid-cols-[50%_minmax(0,1fr)] overflow-hidden rounded-[28px] bg-surface lg:h-[292px]"
+      className="relative grid min-h-[292px] grid-cols-[50%_minmax(0,1fr)] overflow-hidden rounded-4xl bg-surface lg:h-[292px]"
     >
       <button
         type="button"

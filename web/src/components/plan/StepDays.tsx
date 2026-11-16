@@ -38,7 +38,7 @@ export function StepDays({ form, onChange, data, today }: Props) {
         <p className="mb-0 mt-1 text-[15px] text-muted">Tryk på en dato for at springe den over, fx hvis I spiser ude.</p>
       </div>
 
-      <div className="flex flex-col gap-5 rounded-[28px] bg-surface p-5 md:flex-row md:items-end md:gap-8 md:p-6">
+      <div className="flex flex-col gap-5 rounded-4xl bg-surface p-5 md:flex-row md:items-end md:gap-8 md:p-6">
         <div className="flex flex-col gap-2">
           <span className="text-sm font-semibold text-ink-2">Start</span>
           <div className="flex flex-wrap items-center gap-2">

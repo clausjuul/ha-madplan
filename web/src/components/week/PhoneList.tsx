@@ -12,7 +12,7 @@ function PhoneRow({ day, handlers }: { day: DayModel; handlers: DayHandlers }) {
   return (
     <li
       data-day={day.date}
-      className={`flex items-center gap-3 rounded-[18px] bg-surface p-2 ${
+      className={`flex items-center gap-3 rounded-row bg-surface p-2 ${
         day.isPast ? "opacity-60" : ""
       }`}
       {...longPress}

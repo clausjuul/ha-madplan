@@ -25,7 +25,7 @@ export function TopBar({ route, weekStart, onWeekChange }: Props) {
   return (
     <header className="flex h-[72px] shrink-0 items-center gap-4 border-b border-hairline px-6 lg:gap-6 lg:px-8">
       <Link to={routePath({ name: "uge" })} className="flex items-center gap-2.5 text-ink no-underline">
-        <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-accent text-on-accent">
+        <span className="flex h-[34px] w-[34px] items-center justify-center rounded-lg bg-accent text-on-accent">
           <Utensils size={20} aria-hidden="true" />
         </span>
         <strong className="font-display hidden text-[22px] font-bold tracking-tight lg:inline">Madplan</strong>
@@ -37,7 +37,7 @@ export function TopBar({ route, weekStart, onWeekChange }: Props) {
             to={routePath({ name: item.name } as Route)}
             aria-current={active === item.name ? "page" : undefined}
             className={`flex h-11 items-center rounded-full px-[18px] text-[15px] no-underline ${
-              active === item.name ? "bg-ink font-semibold text-on-accent" : "font-medium text-ink-2 hover:text-ink"
+              active === item.name ? "bg-ink font-semibold text-ground" : "font-medium text-ink-2 hover:text-ink"
             }`}
           >
             {item.label}

@@ -12,7 +12,7 @@ export function AddExtraField({ onAdd }: { onAdd: (label: string) => void }) {
     setValue("");
   };
   return (
-    <form onSubmit={submit} className="flex h-12 items-center gap-2.5 rounded-[14px] bg-surface pl-3.5 pr-1.5">
+    <form onSubmit={submit} className="flex h-12 items-center gap-2.5 rounded-tile bg-surface pl-3.5 pr-1.5">
       <Plus size={18} className="shrink-0 text-muted" aria-hidden="true" />
       <label className="flex-1">
         <span className="sr-only">Tilføj vare</span>

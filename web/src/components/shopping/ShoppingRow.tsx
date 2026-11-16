@@ -22,7 +22,7 @@ export function OpenRow({ item, onToggle, onRemove }: Props) {
         onClick={() => onToggle(item.id)}
         className="flex min-h-[60px] min-w-0 flex-1 items-center gap-3.5 rounded-2xl bg-transparent px-3.5 py-2 text-left text-ink"
       >
-        <span aria-hidden="true" className="h-[26px] w-[26px] shrink-0 rounded-lg border-2 border-white/30" />
+        <span aria-hidden="true" className="h-[26px] w-[26px] shrink-0 rounded-lg border-2 border-muted/60" />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-[17px] font-medium first-letter:uppercase">{item.label}</span>
           <span className="truncate text-[13px] text-muted">{forDish(item)}</span>

@@ -18,7 +18,7 @@ type Props = {
 export function InspirationCard({ recipe, saved, isNew, badge, busy, onToggleSave, onAdd }: Props) {
   const imageUrl = inspirationImageSrc(recipe);
   return (
-    <article className="flex flex-col overflow-hidden rounded-[28px] bg-surface">
+    <article className="flex flex-col overflow-hidden rounded-4xl bg-surface">
       <div className="relative">
         <DishImage
           dish={{ name: recipe.name, category: recipe.cuisine, ...(imageUrl ? { imageUrl } : {}) }}

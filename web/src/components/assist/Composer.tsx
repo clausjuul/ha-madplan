@@ -39,7 +39,7 @@ export function Composer({ disabled, onSend }: Props) {
       onClick={(event) => {
         if (event.target === event.currentTarget) input.current?.focus();
       }}
-      className="flex shrink-0 cursor-text items-end gap-1 rounded-[24px] border border-line bg-surface p-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.18)] transition-[border-color,box-shadow] focus-within:border-accent"
+      className="flex shrink-0 cursor-text items-end gap-1 rounded-3xl border border-line bg-surface p-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.18)] transition-[border-color,box-shadow] focus-within:border-accent"
     >
       {speech.supported ? (
         <button

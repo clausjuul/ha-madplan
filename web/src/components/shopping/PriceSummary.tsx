@@ -20,7 +20,7 @@ export function PriceSummary({ list, footer }: { list: ShoppingList; footer?: bo
   return (
     <div
       className={`flex items-center gap-3 ${
-        footer ? "shrink-0 border-t border-hairline bg-[#111317] px-4 pb-[18px] pt-3.5" : "rounded-3xl bg-surface p-5"
+        footer ? "shrink-0 border-t border-hairline bg-surface px-4 pb-[18px] pt-3.5" : "rounded-3xl bg-surface p-5"
       }`}
     >
       <div className="flex-1">

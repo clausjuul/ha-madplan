@@ -62,7 +62,7 @@ export function RateRecent({ meals, dishes, today, onRate }: Props) {
   };
 
   return (
-    <section aria-label="Bedøm måltid" className="flex flex-col gap-3 rounded-[22px] bg-surface p-4">
+    <section aria-label="Bedøm måltid" className="flex flex-col gap-3 rounded-3xl bg-surface p-4">
       <div className="flex items-start gap-2">
         <p className="m-0 flex-1 text-base font-semibold">
           Hvordan var {dish.name} {when(date, today)}?

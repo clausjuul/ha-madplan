@@ -46,7 +46,7 @@ export function RecipeDetail({ dish, data, today, onEdit }: Props) {
       </Link>
 
       {/* Split card on tablets (photo capped at 520px so small bundled photos stay sharp), full-width photo on phones. */}
-      <header className="overflow-hidden rounded-[28px] bg-surface md:grid md:grid-cols-[minmax(0,520px)_minmax(0,1fr)] md:grid-rows-[1fr_auto]">
+      <header className="overflow-hidden rounded-4xl bg-surface md:grid md:grid-cols-[minmax(0,520px)_minmax(0,1fr)] md:grid-rows-[1fr_auto]">
         <DishImage dish={dish} width={520} height={300} eager decorative className="h-[220px] w-full md:row-span-2 md:h-[300px]" />
         <div className="flex flex-col gap-3 p-5 md:p-7 md:pb-0">
           <h1 className="font-display text-[30px] font-bold leading-tight md:text-[40px]">{dish.name}</h1>

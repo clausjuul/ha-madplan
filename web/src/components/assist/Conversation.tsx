@@ -47,7 +47,7 @@ function Message({ entry, group, chat }: { entry: ChatEntry; group: Group; chat:
     return (
       <li className={`flex justify-end ${startsGroup ? "pt-2" : ""}`}>
         <p
-          className={`m-0 max-w-[max(80%,280px)] whitespace-pre-wrap break-words rounded-[20px] bg-raised px-4 py-3 text-[15px] leading-snug text-ink ${userCorners[group]}`}
+          className={`m-0 max-w-[max(80%,280px)] whitespace-pre-wrap break-words rounded-card bg-raised px-4 py-3 text-[15px] leading-snug text-ink ${userCorners[group]}`}
         >
           {entry.content}
         </p>

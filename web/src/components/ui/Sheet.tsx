@@ -53,7 +53,7 @@ export function Sheet({ open, onClose, title, subtitle, children, tall }: Props)
         }}
       >
         <div
-          className={`sheet-panel pointer-events-auto flex w-full flex-col overflow-hidden rounded-t-[28px] bg-surface text-ink shadow-2xl md:max-w-[560px] md:rounded-[28px] ${
+          className={`sheet-panel pointer-events-auto flex w-full flex-col overflow-hidden rounded-t-4xl bg-surface text-ink shadow-2xl md:max-w-[560px] md:rounded-4xl ${
             tall ? "h-[88dvh] md:h-[min(720px,88dvh)]" : "max-h-[88dvh]"
           }`}
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}

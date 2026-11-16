@@ -34,7 +34,7 @@ function EmptyDayCard({ day, handlers, drag }: Props) {
     <article
       data-day={day.date}
       aria-label={`${day.longLabel}, ingen ret`}
-      className={`flex min-h-[250px] flex-col gap-1.5 rounded-[20px] border-[1.5px] border-dashed p-3.5 ${
+      className={`flex min-h-[250px] flex-col gap-1.5 rounded-card border-[1.5px] border-dashed p-3.5 ${
         isTarget ? "border-ok bg-raised" : "border-line"
       } ${day.isToday ? "ring-2 ring-accent" : ""} ${day.isPast ? "opacity-60" : ""}`}
     >
@@ -47,14 +47,14 @@ function EmptyDayCard({ day, handlers, drag }: Props) {
       <button
         type="button"
         onClick={() => handlers.openPicker(day.date)}
-        className="h-11 rounded-[14px] bg-raised text-sm font-semibold text-ink"
+        className="h-11 rounded-tile bg-raised text-sm font-semibold text-ink"
       >
         Vælg ret
       </button>
       <button
         type="button"
         onClick={() => handlers.suggest(day.date)}
-        className="h-11 rounded-[14px] bg-accent-soft text-sm font-semibold text-accent"
+        className="h-11 rounded-tile bg-accent-soft text-sm font-semibold text-accent"
       >
         Foreslå
       </button>
@@ -105,7 +105,7 @@ export function DayCard(props: Props) {
         handlers.openActions(day.date);
       }}
       {...longPress}
-      className={`relative flex min-h-[250px] flex-col overflow-hidden rounded-[20px] bg-surface ${ring} ${
+      className={`relative flex min-h-[250px] flex-col overflow-hidden rounded-card bg-surface ${ring} ${
         day.isPast && !day.isToday ? "opacity-60" : ""
       }`}
       style={{ touchAction: "none" }}

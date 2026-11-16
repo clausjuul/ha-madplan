@@ -28,8 +28,8 @@ export function ReviewRow({ day, dish, badge, relaxed, variantLines = [], onDrop
   return (
     <article
       aria-label={`${weekday} ${date.getDate()}.`}
-      className={`flex flex-wrap items-center gap-3 rounded-[18px] bg-surface py-3 pl-3 pr-3 md:gap-4 md:py-2 md:pl-[18px] md:pr-3 ${
-        day.locked ? "shadow-[inset_0_0_0_1.5px_rgb(124_236_255/0.45)]" : ""
+      className={`flex flex-wrap items-center gap-3 rounded-row bg-surface py-3 pl-3 pr-3 md:gap-4 md:py-2 md:pl-[18px] md:pr-3 ${
+        day.locked ? "shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--c-accent)_45%,transparent)]" : ""
       }`}
     >
       <div className="w-12 shrink-0 md:w-[74px]">
@@ -37,9 +37,9 @@ export function ReviewRow({ day, dish, badge, relaxed, variantLines = [], onDrop
         <div className="font-display text-xl font-bold md:text-[22px]">{date.getDate()}.</div>
       </div>
       {dish ? (
-        <DishImage dish={dish} width={64} height={64} decorative className="h-14 w-14 shrink-0 rounded-[14px] md:h-16 md:w-16" />
+        <DishImage dish={dish} width={64} height={64} decorative className="h-14 w-14 shrink-0 rounded-tile md:h-16 md:w-16" />
       ) : (
-        <span className="h-14 w-14 shrink-0 rounded-[14px] bg-raised md:h-16 md:w-16" aria-hidden="true" />
+        <span className="h-14 w-14 shrink-0 rounded-tile bg-raised md:h-16 md:w-16" aria-hidden="true" />
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

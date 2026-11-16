@@ -16,7 +16,7 @@ type Props = {
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 rounded-[24px] bg-surface p-5">
+    <section className="flex flex-col gap-3 rounded-3xl bg-surface p-5">
       <header>
         <h2 className="m-0 text-base font-semibold">{title}</h2>
         {hint ? <p className="mb-0 mt-0.5 text-[13px] leading-snug text-muted">{hint}</p> : null}
@@ -96,7 +96,7 @@ export function StepWishes({ form, onChange, data, today }: Props) {
             />
           </Card>
           ) : (
-            <p className="m-0 rounded-[24px] bg-surface p-5 text-[15px] leading-snug text-ink-2">
+            <p className="m-0 rounded-3xl bg-surface p-5 text-[15px] leading-snug text-ink-2">
               Hurtigt forslag bruger kun jeres egne retter. Vælg Assist for at få nye retter.
             </p>
           )}

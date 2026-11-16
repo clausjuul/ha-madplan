@@ -2,7 +2,8 @@
 @import "@fontsource-variable/bricolage-grotesque";
 @import "tailwindcss";
 
-/* Colours are CSS variables so a light theme can override them under [data-theme="light"]. */
+/* Design tokens. These defaults are the app's own dark look; inside Home Assistant
+   lib/ha-theme.ts overwrites them on <html> from the active HA theme. */
 :root {
   --c-ground: #0b0c0e;
   --c-surface: #15171b;
@@ -23,7 +24,18 @@
   --c-ok: #8be0a4;
   --c-danger: #ff9b9b;
   --c-scrim: rgb(11 12 14 / 0.72);
+
+  /* Shape: every radius scales from one base (the large card corner, 24px by default). */
+  --c-radius: 24px;
+  --c-card-border-width: 0px;
+  --c-card-border-color: var(--c-line);
+  --c-card-shadow: none;
+  --c-space: 0.25rem;
+  --c-font: "Inter Variable", Inter, system-ui, sans-serif;
   color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 @theme {
@@ -33,7 +45,20 @@
   --breakpoint-xl: 1600px;
 
   --font-display: "Bricolage Grotesque Variable", Inter, system-ui, sans-serif;
-  --font-sans: "Inter Variable", Inter, system-ui, sans-serif;
+  --font-sans: var(--c-font);
+
+  --spacing: var(--c-space);
+
+  /* Multiples of --c-radius / 24, so the defaults are 6, 8, 12, 14, 16, 18, 20, 24 and 28px. */
+  --radius-md: calc(var(--c-radius) * 0.25);
+  --radius-lg: calc(var(--c-radius) / 3);
+  --radius-xl: calc(var(--c-radius) * 0.5);
+  --radius-tile: calc(var(--c-radius) * 7 / 12);
+  --radius-2xl: calc(var(--c-radius) * 2 / 3);
+  --radius-row: calc(var(--c-radius) * 0.75);
+  --radius-card: calc(var(--c-radius) * 5 / 6);
+  --radius-3xl: var(--c-radius);
+  --radius-4xl: calc(var(--c-radius) * 7 / 6);
 
   --color-ground: var(--c-ground);
   --color-surface: var(--c-surface);
@@ -81,6 +106,14 @@ a {
 :focus-visible {
   outline: 2px solid var(--c-accent);
   outline-offset: 2px;
+}
+
+/* Cards pick up the HA card border and shadow (none outside HA). Utilities still win. */
+@layer components {
+  :where(.bg-surface):where(.rounded-2xl, .rounded-row, .rounded-card, .rounded-3xl, .rounded-4xl):not(.border, .shadow-2xl) {
+    border: var(--c-card-border-width) solid var(--c-card-border-color);
+    box-shadow: var(--c-card-shadow);
+  }
 }
 
 .font-display {
