@@ -11,3 +11,7 @@ configuration:
     name: Stemmekommandoer
     description: >-
       Opretter automationer, så Home Assistants Assist kan svare på "Hvad skal vi have i aften/i morgen?" og "Hvad mangler vi at købe?", og kan tilføje og fjerne varer på indkøbslisten ("Tilføj mælk til indkøbslisten"). Slå fra for at fjerne dem igen.
+  ha_integration:
+    name: Home Assistant-integration
+    description: >-
+      Installerer Madplans integration i custom_components, så indkøbslisten bliver en rigtig to-do-liste og madplanen en kalender i Home Assistant. Kræver én genstart af Home Assistant. Slå fra, hvis du selv vil styre integrationen.

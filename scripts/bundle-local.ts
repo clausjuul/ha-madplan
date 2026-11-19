@@ -30,6 +30,7 @@ RUN npm ci --omit=dev --workspace=domain --workspace=server --ignore-scripts && 
 COPY domain/src domain/src
 COPY server/src server/src
 COPY server/assets server/assets
+COPY integration/custom_components integration/custom_components
 COPY web/dist web/dist
 
 ENV NODE_ENV=production \\
@@ -51,7 +52,7 @@ export function localConfig(yaml: string): string {
 function copy(from: string, to: string): void {
   cpSync(join(root, from), join(out, to), {
     recursive: true,
-    filter: (source) => !source.includes("node_modules"),
+    filter: (source) => !source.includes("node_modules") && !source.includes("__pycache__"),
   });
 }
 
@@ -70,6 +71,7 @@ function main(): void {
   copy("server/package.json", "server/package.json");
   copy("server/src", "server/src");
   copy("server/assets", "server/assets");
+  copy("integration/custom_components", "integration/custom_components");
   copy("web/package.json", "web/package.json");
 
   const webDist = join(root, "web", "dist");

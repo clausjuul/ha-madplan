@@ -24,6 +24,10 @@ export type Config = {
   discoveryModel: string;
   /** Create Home Assistant voice-command automations ("hvad skal vi have i aften?"). Default on. */
   voiceCommands: boolean;
+  /** Port of the internal API the Home Assistant integration talks to (Supervisor network only). */
+  internalPort: number;
+  /** Install the bundled Home Assistant integration into custom_components and announce it. Default on. */
+  haIntegration: boolean;
 };
 
 /** Single source of truth: server/package.json (kept equal to madplan/config.yaml by test/version.test.ts). */
@@ -52,6 +56,7 @@ const clean = (value: unknown): string => (typeof value === "string" ? value.tri
 export function loadConfig(env: Env = process.env, optionsPath = "/data/options.json"): Config {
   const options = readOptions(optionsPath);
   const port = Number(env.PORT ?? 8099);
+  const internalPort = Number(env.MADPLAN_INTERNAL_PORT ?? 8100);
   return {
     dbPath: env.MADPLAN_DB?.trim() || "/data/madplan.sqlite",
     port: Number.isInteger(port) && port > 0 ? port : 8099,
@@ -69,5 +74,7 @@ export function loadConfig(env: Env = process.env, optionsPath = "/data/options.
     planModel: env.MADPLAN_PLAN_MODEL?.trim() || "gpt-4.1-mini",
     discoveryModel: env.MADPLAN_DISCOVERY_MODEL?.trim() || "gpt-4.1",
     voiceCommands: env.MADPLAN_VOICE_COMMANDS !== undefined ? env.MADPLAN_VOICE_COMMANDS === "1" : options.voice_commands !== false,
+    internalPort: Number.isInteger(internalPort) && internalPort > 0 ? internalPort : 8100,
+    haIntegration: env.MADPLAN_HA_INTEGRATION !== undefined ? env.MADPLAN_HA_INTEGRATION === "1" : options.ha_integration !== false,
   };
 }

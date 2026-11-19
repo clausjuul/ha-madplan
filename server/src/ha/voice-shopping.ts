@@ -5,10 +5,9 @@
  * Home Assistant's websocket through the Supervisor proxy, changes the list and fires `madplan_stemme_svar`
  * with the sentence Assist should say. Nothing has to be configured in YAML and no port is opened.
  */
-import { extraItemId, normalizeItem } from "@madplan/domain";
+import { normalizeItem } from "@madplan/domain";
 import type { Deps } from "../deps.ts";
-import { currentShoppingList } from "../state.ts";
-import { getShoppingState, setShoppingState } from "../store-household.ts";
+import { addItems, removeItemsByLabel } from "../services/shopping-edit.ts";
 
 export const VOICE_EVENT = "madplan_stemme";
 export const VOICE_REPLY_EVENT = "madplan_stemme_svar";
@@ -46,31 +45,9 @@ const sentence = (text: string): string => text.charAt(0).toLocaleUpperCase("da-
 export function addSpokenItems(deps: Deps, text: string): string {
   const items = splitSpokenItems(text);
   if (items.length === 0) return "Jeg hørte ikke, hvad der skulle på indkøbslisten.";
-  const list = currentShoppingList(deps);
-  const added: string[] = [];
-  const already: string[] = [];
-  deps.repo.mutate(["shopping"], () => {
-    const state = getShoppingState(deps.repo.db);
-    const extras = [...state.extras];
-    let checked = [...state.checked];
-    for (const item of items) {
-      const key = normalizeItem(item);
-      const existing = list.items.find((candidate) => normalizeItem(candidate.label) === key);
-      if (existing && !existing.checked) {
-        already.push(item);
-      } else if (existing) {
-        checked = checked.filter((id) => id !== existing.id);
-        added.push(item);
-      } else if (extras.some((extra) => extraItemId(extra.label) === extraItemId(item))) {
-        checked = checked.filter((id) => id !== extraItemId(item));
-        added.push(item);
-      } else {
-        extras.push({ label: item });
-        added.push(item);
-      }
-    }
-    setShoppingState(deps.repo.db, { checked, extras });
-  });
+  const outcomes = addItems(deps, items);
+  const added = items.filter((_, index) => outcomes[index] === "added");
+  const already = items.filter((_, index) => outcomes[index] === "already");
   const parts: string[] = [];
   if (added.length > 0) parts.push(`Jeg har sat ${joinDanish(added)} på indkøbslisten.`);
   if (already.length > 0) parts.push(`${sentence(joinDanish(already))} står der allerede.`);
@@ -81,29 +58,9 @@ export function addSpokenItems(deps: Deps, text: string): string {
 export function removeSpokenItems(deps: Deps, text: string): string {
   const items = splitSpokenItems(text);
   if (items.length === 0) return "Jeg hørte ikke, hvad der skulle fjernes fra indkøbslisten.";
-  const list = currentShoppingList(deps);
-  const removed: string[] = [];
-  const missing: string[] = [];
-  deps.repo.mutate(["shopping"], () => {
-    const state = getShoppingState(deps.repo.db);
-    let extras = [...state.extras];
-    let checked = [...state.checked];
-    for (const item of items) {
-      const key = normalizeItem(item);
-      const existing = list.items.find((candidate) => normalizeItem(candidate.label) === key && !candidate.checked);
-      if (!existing) {
-        missing.push(item);
-      } else if (existing.extra) {
-        extras = extras.filter((extra) => extraItemId(extra.label) !== existing.id);
-        checked = checked.filter((id) => id !== existing.id);
-        removed.push(existing.label);
-      } else {
-        if (!checked.includes(existing.id)) checked.push(existing.id);
-        removed.push(existing.label);
-      }
-    }
-    setShoppingState(deps.repo.db, { checked, extras });
-  });
+  const outcomes = removeItemsByLabel(deps, items);
+  const removed = outcomes.filter((entry) => entry.outcome !== "missing").map((entry) => entry.label);
+  const missing = outcomes.filter((entry) => entry.outcome === "missing").map((entry) => entry.label);
   const parts: string[] = [];
   if (removed.length > 0) parts.push(`Jeg har fjernet ${joinDanish(removed)} fra indkøbslisten.`);
   if (missing.length > 0) parts.push(`${sentence(joinDanish(missing))} stod ikke på listen.`);

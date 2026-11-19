@@ -1,6 +1,8 @@
 # Plan: Madplan-integration til Home Assistant (indkøbsliste som todo og madplan som kalender)
 
-Status: planlagt, intet bygget. Skrevet 2026-11-19. Afløser stemme-automationerne "Tilføj/Fjern fra indkøbslisten" fra commit `84d3202`, når den er færdig.
+Status: bygget 2026-11-19 (fase 0–5, undtagen test på den rigtige Home Assistant efter release). Entiteterne hedder `todo.madplan_shopping_list` og `calendar.madplan` (entity-id'er dannes ud fra de engelske navne).
+
+**Afvigelse fra planen:** stemme-automationerne "Tilføj/Fjern fra indkøbslisten" bliver. Husstanden har også Home Assistants egen "Indkøbsliste" (`todo.indkobsliste`), så uden automationerne ville "tilføj mælk til indkøbslisten" ramme den liste i stedet for Madplans. Fase 0 viste, at stemme-løsningen virker fra ende til anden, og at Supervisor discovery ikke begrænser servicenavne (custom integrationer kan modtage den).
 
 ## Mål
 

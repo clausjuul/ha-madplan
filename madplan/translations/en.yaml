@@ -11,3 +11,7 @@ configuration:
     name: Voice commands
     description: >-
       Creates automations so Home Assistant's Assist can answer "Hvad skal vi have i aften/i morgen?" and "Hvad mangler vi at købe?", and add or remove shopping-list items ("Tilføj mælk til indkøbslisten"). Turn off to remove them again.
+  ha_integration:
+    name: Home Assistant integration
+    description: >-
+      Installs Madplan's integration into custom_components, so the shopping list becomes a real to-do list and the meal plan a calendar in Home Assistant. Needs one Home Assistant restart. Turn off to manage the integration yourself.

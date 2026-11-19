@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "hassio_confirm": {
+        "title": "Madplan",
+        "description": "Vil du tilføje Madplan til Home Assistant? Indkøbslisten bliver en to-do-liste, og madplanen bliver en kalender."
+      },
+      "user": {
+        "title": "Madplan",
+        "description": "Normalt bliver Madplan fundet af sig selv. Udfyld kun dette, hvis den ikke blev.",
+        "data": {
+          "host": "Værtsnavn",
+          "port": "Port",
+          "token": "Nøgle"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke kontakte Madplan-appen. Tjek, at den kører.",
+      "invalid_auth": "Madplan afviste nøglen. Genstart Madplan-appen, så den melder sig igen."
+    },
+    "abort": {
+      "already_configured": "Madplan er allerede sat op.",
+      "single_instance_allowed": "Madplan er allerede sat op."
+    }
+  },
+  "entity": {
+    "todo": {
+      "shopping": {
+        "name": "Indkøbsliste"
+      }
+    }
+  },
+  "issues": {
+    "restart_required": {
+      "title": "Genstart Home Assistant for Madplan",
+      "description": "Madplan-appen er opdateret til {version}, men Home Assistant kører stadig den ældre integration. Genstart Home Assistant for at tage den nye udgave i brug."
+    }
+  }
+}

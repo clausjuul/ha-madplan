@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "hassio_confirm": {
+        "title": "Madplan",
+        "description": "Add Madplan to Home Assistant? The shopping list becomes a to-do list and the meal plan a calendar."
+      },
+      "user": {
+        "title": "Madplan",
+        "description": "Normally Madplan is found automatically. Only fill this in if it was not.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the Madplan app. Check that it is running.",
+      "invalid_auth": "Madplan refused the token. Restart the Madplan app so it announces itself again."
+    },
+    "abort": {
+      "already_configured": "Madplan is already set up.",
+      "single_instance_allowed": "Madplan is already set up."
+    }
+  },
+  "entity": {
+    "todo": {
+      "shopping": {
+        "name": "Shopping list"
+      }
+    }
+  },
+  "issues": {
+    "restart_required": {
+      "title": "Restart Home Assistant for Madplan",
+      "description": "The Madplan app was updated to {version}, but Home Assistant still runs the older integration. Restart Home Assistant to use the new version."
+    }
+  }
+}

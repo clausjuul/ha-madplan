@@ -36,6 +36,7 @@ Indstillingerne findes under appens fane **Konfiguration**. Begge er valgfri, og
 | --- | --- |
 | `openai_api_key` | Slår AI til: Assist-samtalen, "Assist"-motoren i Planlæg og at finde nye opskrifter i Opdag. Du skal selv oprette en nøgle hos OpenAI. **Brug af OpenAI koster penge** og afregnes direkte mellem dig og OpenAI efter forbrug. Appen bruger kun nøglen, når du aktivt beder om et AI-svar. |
 | `voice_commands` | Til som standard. Opretter stemmekommandoer til Home Assistants Assist (se "Spørg med stemmen"). |
+| `ha_integration` | Til som standard. Installerer Madplans integration, så indkøbslisten bliver en to-do-liste og madplanen en kalender i Home Assistant (se "Indkøbsliste og kalender i Home Assistant"). |
 | `prej_api_key` | Valgfri. Henter ugens tilbud fra Netto og REMA 1000 via [Prej](https://prej.dk/api). Den gratis nøgle (25 kald i døgnet) er nok: se "Tilbud" nedenfor. |
 
 Efter ændring af konfigurationen skal appen genstartes.
@@ -103,6 +104,29 @@ De hedder "Madplan: ..." og opdateres automatisk, når Madplan opdateres. Vil du
 **Indkøbslisten med stemmen:** flere varer kan siges i én sætning, adskilt med "og" eller komma. Varer, der allerede står på listen, tilføjes ikke igen. "Fjern" sletter dine egne varer og sætter hak ved varer, der kommer fra madplanen. Assist svarer med, hvad der blev ændret. Det virker gennem Home Assistants egne events, så Madplan-appen skal køre. Bruger du en AI-samtaleagent, så slå **Foretræk at håndtere kommandoer lokalt** til i stemmeassistenten, så sætningerne går til Madplan i stedet for Home Assistants egen indkøbsliste.
 
 Andre ændringer (retter, planen, familien) laver du i Madplans egen Assist, hvor du altid selv trykker **Udfør**.
+
+## Indkøbsliste og kalender i Home Assistant
+
+Madplan følger med en lille integration, som appen selv installerer i `custom_components/madplan`. Den giver to rigtige entiteter under enheden **Madplan**:
+
+| Entitet | Hvad den er |
+| --- | --- |
+| `todo.madplan_shopping_list` ("Madplan Indkøbsliste") | Indkøbslisten som to-do-liste. Tilføj, sæt hak og slet fra To-do-kortet, Home Assistant-appen på telefonen, automationer (`todo.add_item`) og AI-samtaleagenter. Mængde og ret står i varens beskrivelse. |
+| `calendar.madplan` ("Madplan") | Madplanen som kalender: én heldagsbegivenhed pr. aftensmad med tilberedningstid og note. Dage markeret "ikke spist" vises ikke. |
+
+**Sådan slår du den til:**
+
+1. Start eller opdatér Madplan-appen. Den lægger integrationen på plads og viser en besked i Home Assistant.
+2. **Genstart Home Assistant** under **Indstillinger → System**.
+3. Under **Indstillinger → Enheder og tjenester** står **Madplan** som fundet. Tryk **Tilføj**. Madplan melder selv adresse og nøgle, så der skal ikke udfyldes noget.
+
+Ændringer slår igennem med det samme begge veje: sætter du hak i Home Assistant-appen i butikken, er varen afkrydset i Madplan og omvendt.
+
+**Varer fra madplanen** kommer fra opskrifterne. Dem kan du sætte hak ved, men ikke omdøbe. Sletter du en, bliver den afkrydset i stedet ("Ryd fuldførte" sletter derfor kun dine egne varer). Dine egne varer opfører sig som på enhver to-do-liste.
+
+**Har du også Home Assistants egen indkøbsliste?** Så siger du stadig "tilføj mælk til indkøbslisten" for at få det på Madplans liste: stemmekommandoerne fra "Spørg med stemmen" sender den sætning til Madplan. En AI-samtaleagent kan bruge `todo.madplan_shopping_list`, når den er vist for Assist under **Indstillinger → Stemmeassistenter → Vis**.
+
+Når Madplan-appen opdateres, opdaterer den også integrationen og beder om en genstart. Vil du selv styre integrationen (f.eks. en ændret udgave), så slet filen `.installed-by-madplan` i mappen; så lader appen den være. Slå `ha_integration` fra, hvis appen hverken skal installere eller melde integrationen. Den interne forbindelse bruger port 8100 på Home Assistants interne netværk og kan ikke nås udefra.
 
 ## Madplan-kort til dashboards
 
@@ -205,6 +229,7 @@ Skift `notify.notify` til jeres egen notify-tjeneste, fx `notify.mobile_app_...`
 - **Appen starter ikke / panelet er tomt:** åbn appens fane **Log**. Genstart appen, og kontrollér, at din Home Assistant er opdateret.
 - **"Assist er ikke tilgængelig":** tilføj en `openai_api_key` i konfigurationen og genstart appen.
 - **AI svarer fejl:** tjek, at nøglen er gyldig, har penge på kontoen, og at modellen er tilgængelig for din konto. Log viser fejlen.
+- **Madplan dukker ikke op under Enheder og tjenester:** genstart Home Assistant efter at appen er startet, og tjek appens **Log** for "Home Assistant-integrationen er installeret". Genstart derefter Madplan-appen, så den melder sig igen. Står der "Madplan afviste nøglen", så genstart også appen: den sender sin nøgle med, og opsætningen opdateres af sig selv.
 - **Sensorerne mangler:** de oprettes, når appen kører med adgang til Home Assistant. Genstart appen og tjek **Udviklerværktøjer → Tilstande** for `sensor.madplan_`.
 - **Forkert dato omkring midnat:** Madplan bruger Home Assistants tidszone. Tjek den under **Indstillinger → System → Generelt**.
 - **Importen afvises:** databasen skal være tom. Hent først en JSON-eksport af jeres nuværende data, hvis I vil gemme dem.

@@ -40,11 +40,22 @@ jobs:
             web/test-results
             web/playwright-report
           if-no-files-found: ignore
-  # Every push to main that passes verify becomes a release: bump the add-on version,
+  # The Home Assistant integration the app installs (integration/custom_components/madplan).
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install -r integration/requirements_test.txt
+      - run: python -m pytest -q
+        working-directory: integration
+  # Every push to main that passes verify and integration becomes a release: bump the add-on version,
   # add a changelog entry from the commit subjects, commit, tag and publish images.
   # Pushes made with GITHUB_TOKEN do not start new workflow runs, so this cannot loop.
   release:
-    needs: verify
+    needs: [verify, integration]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency: release
@@ -78,8 +89,8 @@ jobs:
           fi
           version="${major}.${minor}.${patch}"
           sed -i -E "s/^version: \".*\"/version: \"${version}\"/" madplan/config.yaml
-          # Keep every package.json (and the lockfile) on the add-on version; version.test.ts checks this.
-          VERSION="${version}" node -e 'const fs=require("fs");for(const f of ["package.json","domain/package.json","server/package.json","web/package.json"]){const j=JSON.parse(fs.readFileSync(f,"utf8"));j.version=process.env.VERSION;fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n");}'
+          # Keep every package.json, the lockfile and the integration manifest on the add-on version; version.test.ts checks this.
+          VERSION="${version}" node -e 'const fs=require("fs");for(const f of ["package.json","domain/package.json","server/package.json","web/package.json","integration/custom_components/madplan/manifest.json"]){const j=JSON.parse(fs.readFileSync(f,"utf8"));j.version=process.env.VERSION;fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n");}'
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           {
             echo "# Ændringer"
@@ -97,10 +108,10 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
   publish:
-    needs: [verify, release]
+    needs: [verify, integration, release]
     # Runs after an automatic release, or for a tag pushed by hand.
     if: >-
-      always() && needs.verify.result == 'success' &&
+      always() && needs.verify.result == 'success' && needs.integration.result == 'success' &&
       (needs.release.outputs.version != '' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     permissions:

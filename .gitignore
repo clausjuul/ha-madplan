@@ -5,3 +5,7 @@ coverage
 dist-local
 test-results
 playwright-report
+
+# Python (integration tests)
+__pycache__/
+.pytest_cache/

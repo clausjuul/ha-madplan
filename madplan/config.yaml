@@ -13,6 +13,9 @@ init: false
 ingress: true
 ingress_port: 8099
 homeassistant_api: true
+# Announces the internal API (port 8100, Supervisor network only) to the bundled integration.
+discovery:
+  - madplan
 # www/madplan in the HA config folder receives the dashboard cards and dish photos.
 map:
   - type: homeassistant_config
@@ -24,7 +27,9 @@ options:
   openai_api_key: ""
   prej_api_key: ""
   voice_commands: true
+  ha_integration: true
 schema:
   openai_api_key: "password?"
   prej_api_key: "password?"
   voice_commands: bool
+  ha_integration: bool

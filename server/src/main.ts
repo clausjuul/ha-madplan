@@ -9,6 +9,9 @@ import type { Deps } from "./deps.ts";
 import { setupCards } from "./ha/cards.ts";
 import { setupVoice } from "./ha/voice.ts";
 import { startVoiceShopping } from "./ha/voice-shopping.ts";
+import { setupIntegration } from "./ha/integration.ts";
+import { createInternalApp, loadInternalToken } from "./internal/api.ts";
+import { dirname, join } from "node:path";
 import { createPublisher } from "./ha/publisher.ts";
 import { offerSyncFor } from "./offers/sync.ts";
 import { Repo } from "./repo.ts";
@@ -44,6 +47,12 @@ const server = serve({ fetch: app.fetch, port: config.port, hostname: "0.0.0.0" 
   console.log(`Madplan ${config.version} lytter på port ${info.port} (database: ${config.dbPath})`);
 });
 
+// The Home Assistant integration's API: own port on the Supervisor network, guarded by the app's token.
+const internalToken = loadInternalToken(join(dirname(config.dbPath), "internal-token"));
+const internalServer = serve({ fetch: createInternalApp(deps, internalToken).fetch, port: config.internalPort, hostname: "0.0.0.0" });
+// Not awaited, like the voice commands: installs custom_components/madplan and announces the API.
+void setupIntegration(config, internalToken);
+
 const backup = (): void => {
   try {
     const result = createDailyBackup(db, config.dbPath, deps.now(), 7, config.timeZone);
@@ -67,6 +76,7 @@ function shutdown(): void {
   offers.stop();
   voiceShopping.stop();
   clearInterval(backupTimer);
+  internalServer.close();
   server.close(() => {
     db.close();
     process.exit(0);

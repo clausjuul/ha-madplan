@@ -39,6 +39,8 @@ RUN npm ci --omit=dev --workspace=domain --workspace=server --ignore-scripts && 
 COPY domain/src domain/src
 COPY server/src server/src
 COPY server/assets server/assets
+# The Home Assistant integration the app installs into custom_components (see server/src/ha/integration.ts).
+COPY integration/custom_components integration/custom_components
 COPY --from=build /app/web/dist web/dist
 
 ENV NODE_ENV=production \
