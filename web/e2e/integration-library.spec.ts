@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
  */
 test("@integration importerer v1, opretter, arkiverer og gendanner en ret", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto("/#/indstillinger");
+  await page.goto("/#/indstillinger/data");
 
   // 1. Import the v1 fixture through the settings UI.
   await page.getByLabel("Vælg v1-fil").setInputFiles(resolve(process.cwd(), "e2e/fixtures/v1.json"));

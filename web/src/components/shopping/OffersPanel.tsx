@@ -225,7 +225,7 @@ export function OffersPanel({ list, stores, dishes, today, onAdd, watchlist, onW
         <div className="skeleton h-40 rounded-2xl" aria-label="Henter tilbud" />
       ) : all.length === 0 ? (
         <p className="m-0 rounded-2xl bg-surface px-4 py-5 text-[15px] leading-relaxed text-ink-2">
-          Der er ingen tilbud endnu. Vælg jeres butikker under Indstillinger → Butikker og tilbud. Tilbuddene hentes hver
+          Der er ingen tilbud endnu. Vælg jeres butikker under Indstillinger → Butikker. Tilbuddene hentes hver
           morgen, og første gang lige efter opstart.
         </p>
       ) : (

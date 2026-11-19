@@ -5,12 +5,17 @@ export type Route =
   | { name: "indkob"; tab?: ShoppingTab }
   | { name: "retter"; dishId?: string; tab?: LibraryTab }
   | { name: "planlaeg" }
-  | { name: "indstillinger" }
+  | { name: "indstillinger"; tab?: SettingsTab }
   | { name: "lav-mad"; dishId: string };
 
 export type LibraryTab = "opdag" | "ugens" | "gemt";
 
 export type ShoppingTab = "tilbud";
+
+/** Settings tabs; undefined is "Familien". */
+export type SettingsTab = "mad" | "butikker" | "data";
+
+const SETTINGS_TABS: readonly string[] = ["mad", "butikker", "data"];
 
 export type NavName = "uge" | "indkob" | "retter" | "planlaeg";
 
@@ -23,8 +28,9 @@ export function parsePath(path: string): Route {
     case "indkob":
       return second === "tilbud" ? { name: "indkob", tab: second } : { name: "indkob" };
     case "planlaeg":
-    case "indstillinger":
       return { name: first };
+    case "indstillinger":
+      return SETTINGS_TABS.includes(second) ? { name: "indstillinger", tab: second as SettingsTab } : { name: "indstillinger" };
     case "retter":
       if (second === "opdag" || second === "ugens" || second === "gemt") return { name: "retter", tab: second };
       return second ? { name: "retter", dishId: decodeURIComponent(second) } : { name: "retter" };
@@ -49,6 +55,8 @@ export function routePath(route: Route): string {
       return route.tab ? `/retter/${route.tab}` : "/retter";
     case "indkob":
       return route.tab ? `/indkob/${route.tab}` : "/indkob";
+    case "indstillinger":
+      return route.tab ? `/indstillinger/${route.tab}` : "/indstillinger";
     default:
       return `/${route.name}`;
   }

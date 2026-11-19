@@ -79,7 +79,7 @@ test("indstillinger på telefon", async ({ page }) => {
 });
 
 test("forhåndsvisning af import", async ({ page }) => {
-  await open(page, "#/indstillinger", TABLET, "?empty");
+  await open(page, "#/indstillinger/data", TABLET, "?empty");
   await page.getByLabel("Vælg v1-fil").setInputFiles(FIXTURE);
   await page.getByText("Gemte idéer").waitFor();
   await page.getByRole("heading", { name: "Importér fra den gamle Meal Planner" }).scrollIntoViewIfNeeded();
@@ -102,4 +102,26 @@ test("opret og arkivér en ret i demotilstand", async ({ page }) => {
   await expect(page.getByRole("status").getByText(/Historikken er bevaret/u)).toBeVisible();
   await page.getByRole("button", { name: "Fortryd" }).click();
   await page.goto("/#/retter/opdag");
+});
+
+test("indstillinger: faner og personer der foldes ud", async ({ page }) => {
+  await open(page, "#/indstillinger", PHONE);
+  const people = page.locator("li > button[aria-expanded]");
+  await expect(people.first()).toBeVisible();
+  await expect(page.getByLabel("Navn")).toHaveCount(0);
+  await people.first().click();
+  await expect(people.first()).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByLabel("Navn")).toHaveCount(1);
+  await page.screenshot({ path: `${SHOTS}\\settings-person-390x844.png`, fullPage: true });
+  await people.first().click();
+  await expect(page.getByLabel("Navn")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Tilføj person" }).click();
+  await expect(page.getByLabel("Navn")).toHaveValue("Ny person");
+
+  await page.getByRole("tab", { name: "Butikker" }).click();
+  await expect(page.getByRole("heading", { name: "Butikker og tilbud" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Familien" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Mad" }).click();
+  await expect(page.getByRole("heading", { name: "Køleskab og basisvarer" })).toBeVisible();
 });

@@ -97,7 +97,7 @@ export function App() {
               ) : route.name === "retter" ? (
                 <LibraryView {...(route.dishId ? { dishId: route.dishId } : {})} {...(route.tab ? { tab: route.tab } : {})} />
               ) : (
-                <SettingsView />
+                <SettingsView {...(route.name === "indstillinger" && route.tab ? { tab: route.tab } : {})} />
               )}
             </Suspense>
           )}

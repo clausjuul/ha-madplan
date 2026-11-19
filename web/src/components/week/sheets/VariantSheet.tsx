@@ -28,7 +28,7 @@ function VariantForm({ day, profiles, onSave }: { day: DayModel; profiles: reado
   if (!swappers.length) {
     return (
       <p className="mx-3 mb-3 rounded-2xl bg-raised px-4 py-3 text-[15px] leading-snug text-ink-2">
-        Skriv under Indstillinger → Familie, hvad en person altid spiser (fx nuggets). Så kan du her bytte én del af retten for dem.
+        Skriv under Indstillinger → Familien, hvad en person altid spiser (fx nuggets). Så kan du her bytte én del af retten for dem.
       </p>
     );
   }

@@ -14,7 +14,7 @@ Madplan er familiens madplan i Home Assistant: planlæg aftensmaden dag for dag,
 - **Assist:** en samtale, der kan svare og foreslå ændringer ("byt torsdag ud med noget vegetarisk"). Assist ændrer aldrig noget af sig selv: du skal selv trykke **Udfør**.
 - **Familie:** kostønsker, fravalg og præferencer pr. person tages med i alle forslag.
 - **Dage med god tid:** marker en dag som *God tid* i Planlæg (under "Ønsker til bestemte dage"). Den dag gælder tidsgrænsen ikke, og retten må koste lidt mere, så planlæggeren gerne vælger noget lidt mere spændende.
-- **Byt en del for én:** skriv under **Indstillinger → Familie**, hvad en person altid spiser (f.eks. nuggets). Så må planlæggeren nogle gange bytte én del af retten for den person, f.eks. nuggets i stedet for bøf, mens resten af retten er den samme. Det er en mulighed, ikke en regel, og det sker højst på hver tredje dag. Du kan også selv gøre det under en dags handlinger (**Byt en del for én**) eller bede Assist om det ("giv Oliver nuggets i stedet på lørdag"). Indkøbslisten køber én portion mindre af det, der byttes, og tilføjer erstatningen.
+- **Byt en del for én:** skriv under **Indstillinger → Familien** (tryk på personen for at folde den ud), hvad en person altid spiser (f.eks. nuggets). Så må planlæggeren nogle gange bytte én del af retten for den person, f.eks. nuggets i stedet for bøf, mens resten af retten er den samme. Det er en mulighed, ikke en regel, og det sker højst på hver tredje dag. Du kan også selv gøre det under en dags handlinger (**Byt en del for én**) eller bede Assist om det ("giv Oliver nuggets i stedet på lørdag"). Indkøbslisten køber én portion mindre af det, der byttes, og tilføjer erstatningen.
 - **Bedømmelser:** dagen efter spørger ugen "Hvordan var ...?". *Godt* og *Mindre godt* påvirker fremtidige forslag, og *Ikke igen* får retten til ikke at blive foreslået igen.
 - **Assist husker personer:** skriv f.eks. "Emma kan ikke lide svampe", så foreslår Assist at gemme det på Emmas profil.
 - **Assist kender jeres historik:** den ser de sidste fire ugers måltider, jeres bedømmelser, noter, indkøbslisten og hvor længe siden I har spist hver ret. Skriv "vi elskede lasagnen i går", så foreslår den at gemme bedømmelsen. Den kan også skrive noter på en dag, markere en dag som "ikke spist" og fjerne ekstra varer fra indkøbslisten.
@@ -73,7 +73,7 @@ Madplan opretter fire sensorer, som holdes opdateret automatisk (også ved midna
 
 ## Tilbud
 
-Med en Prej API-nøgle (`prej_api_key`) henter Madplan ugens tilbud fra de butikker, I har valgt under **Indstillinger → Butikker og tilbud**. Opret en gratis nøgle på [prej.dk/api](https://prej.dk/api). Den gratis nøgle må kun bruges privat, hvilket passer til Madplan derhjemme.
+Med en Prej API-nøgle (`prej_api_key`) henter Madplan ugens tilbud fra de butikker, I har valgt under **Indstillinger → Butikker**. Opret en gratis nøgle på [prej.dk/api](https://prej.dk/api). Den gratis nøgle må kun bruges privat, hvilket passer til Madplan derhjemme.
 
 - **Indkøbslisten** viser tilbudspris og butik på varer, der er på tilbud, og hvilken butik der er billigst på de varer, begge butikker har.
 - **Indkøb → Tilbud** er en fane ved siden af listen (`#/indkob/tilbud`) med alle tilbud fra jeres butikker: søg, sortér, filtrér og læg en vare på listen.

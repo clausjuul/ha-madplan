@@ -43,6 +43,9 @@ for (const size of SIZES) {
       ["ugeplaner", "#/retter/ugens", (p) => p.getByRole("heading", { name: /Demo-blog/ }).waitFor()],
       ["gemt", "#/retter/gemt", (p) => p.getByText("Du har ikke gemt nogen retter endnu.").waitFor()],
       ["indstillinger", "#/indstillinger", (p) => p.getByRole("heading", { name: "Familien" }).waitFor()],
+      ["indstillinger mad", "#/indstillinger/mad", (p) => p.getByRole("heading", { name: "Undgå altid" }).waitFor()],
+      ["indstillinger butikker", "#/indstillinger/butikker", (p) => p.getByRole("heading", { name: "Butikker og tilbud" }).waitFor()],
+      ["indstillinger data", "#/indstillinger/data", (p) => p.getByRole("heading", { name: "Om appen" }).waitFor()],
       ["kogetilstand", "#/lav-mad/lasagne", (p) => p.getByRole("button").first().waitFor()],
     ];
     for (const [name, hash, ready] of routes) {
