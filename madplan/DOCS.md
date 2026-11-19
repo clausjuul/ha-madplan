@@ -89,16 +89,20 @@ Sensorerne kan bruges af Home Assistants egen stemmeassistent, så "Hvad skal vi
 
 **Med en AI-samtaleagent i Home Assistant** (f.eks. OpenAI- eller Google-integrationen): vis de tre Madplan-sensorer for Assist under **Indstillinger → Stemmeassistenter → Vis**. Så kan agenten selv læse aftenens ret, de kommende dage og indkøbslisten.
 
-**Med den indbyggede agent** (uden AI) virker det af sig selv: Madplan opretter ved opstart fire automationer under **Indstillinger → Automationer**, der svarer på:
+**Med den indbyggede agent** (uden AI) virker det af sig selv: Madplan opretter ved opstart seks automationer under **Indstillinger → Automationer**, der svarer på:
 
 - "Hvad skal vi have i aften?" / "Hvad er der til aftensmad?"
 - "Hvad skal vi have i morgen?"
 - "Hvad mangler vi at købe?" / "Hvad står der på indkøbslisten?"
 - "Hvad er på tilbud?" (kræver en Prej-nøgle)
+- "Tilføj mælk og æg til indkøbslisten" / "Sæt kaffe på indkøbslisten"
+- "Fjern bananer fra indkøbslisten" / "Sæt hak ved mælk"
 
 De hedder "Madplan: ..." og opdateres automatisk, når Madplan opdateres. Vil du selv rette i én, så slet linjen "Oprettet af Madplan" i dens beskrivelse; så lader Madplan den være. Slå **Stemmekommandoer** (`voice_commands`) fra i konfigurationen, så fjerner Madplan dem igen. Det kræver, at `automations.yaml` er inkluderet i `configuration.yaml`, hvilket er standard.
 
-Stemmen kan kun læse. Ændringer laver du i Madplans egen Assist, hvor du altid selv trykker **Udfør**.
+**Indkøbslisten med stemmen:** flere varer kan siges i én sætning, adskilt med "og" eller komma. Varer, der allerede står på listen, tilføjes ikke igen. "Fjern" sletter dine egne varer og sætter hak ved varer, der kommer fra madplanen. Assist svarer med, hvad der blev ændret. Det virker gennem Home Assistants egne events, så Madplan-appen skal køre. Bruger du en AI-samtaleagent, så slå **Foretræk at håndtere kommandoer lokalt** til i stemmeassistenten, så sætningerne går til Madplan i stedet for Home Assistants egen indkøbsliste.
+
+Andre ændringer (retter, planen, familien) laver du i Madplans egen Assist, hvor du altid selv trykker **Udfør**.
 
 ## Madplan-kort til dashboards
 

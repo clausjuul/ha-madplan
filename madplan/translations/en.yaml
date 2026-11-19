@@ -10,4 +10,4 @@ configuration:
   voice_commands:
     name: Voice commands
     description: >-
-      Creates automations so Home Assistant's Assist can answer "Hvad skal vi have i aften/i morgen?" and "Hvad mangler vi at købe?". Turn off to remove them again.
+      Creates automations so Home Assistant's Assist can answer "Hvad skal vi have i aften/i morgen?" and "Hvad mangler vi at købe?", and add or remove shopping-list items ("Tilføj mælk til indkøbslisten"). Turn off to remove them again.

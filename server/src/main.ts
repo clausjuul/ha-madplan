@@ -8,6 +8,7 @@ import { Jobs } from "./deps.ts";
 import type { Deps } from "./deps.ts";
 import { setupCards } from "./ha/cards.ts";
 import { setupVoice } from "./ha/voice.ts";
+import { startVoiceShopping } from "./ha/voice-shopping.ts";
 import { createPublisher } from "./ha/publisher.ts";
 import { offerSyncFor } from "./offers/sync.ts";
 import { Repo } from "./repo.ts";
@@ -59,10 +60,12 @@ const publisher = createPublisher(deps);
 publisher.start();
 const offers = offerSyncFor(deps);
 offers.start();
+const voiceShopping = startVoiceShopping(deps);
 
 function shutdown(): void {
   publisher.stop();
   offers.stop();
+  voiceShopping.stop();
   clearInterval(backupTimer);
   server.close(() => {
     db.close();

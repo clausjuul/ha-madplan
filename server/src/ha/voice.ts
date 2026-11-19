@@ -1,15 +1,18 @@
 /**
- * Voice commands for Home Assistant's own Assist: at startup the app creates three automations with a
- * sentence trigger ("hvad skal vi have i aften?") that answer from the Madplan sensors. They go through
+ * Voice commands for Home Assistant's own Assist: at startup the app creates automations with a
+ * sentence trigger. Questions ("hvad skal vi have i aften?") are answered from the Madplan sensors;
+ * shopping-list changes ("tilføj mælk til indkøbslisten") go to the app as an event (see voice-shopping.ts). They go through
  * Home Assistant's automation config API, so nothing has to be pasted into YAML and no restart is needed.
  *
  * Only automations carrying our marker are ever touched: a user who edits one and removes the marker
  * keeps their version, and the `voice_commands` option switches the whole thing off (and removes ours).
  */
+import { VOICE_EVENT, VOICE_REPLY_EVENT } from "./voice-shopping.ts";
+
 const API = "http://supervisor/core/api/config/automation/config/";
 const MARKER = "Oprettet af Madplan";
 /** Bump when the automations below change, so existing installs are updated. */
-export const VOICE_VERSION = 1;
+export const VOICE_VERSION = 2;
 
 export type VoiceAutomation = {
   id: string;
@@ -18,17 +21,42 @@ export type VoiceAutomation = {
   mode: "single";
   trigger: { platform: "conversation"; command: string[] }[];
   condition: never[];
-  action: { set_conversation_response: string }[];
+  action: Record<string, unknown>[];
 };
+
+const describe = (): string =>
+  `${MARKER} (stemme v${VOICE_VERSION}). Slå "voice_commands" fra i Madplans konfiguration for at fjerne den, eller slet denne linje for at beholde din egen udgave.`;
 
 const automation = (id: string, alias: string, command: string[], response: string): VoiceAutomation => ({
   id,
   alias,
-  description: `${MARKER} (stemme v${VOICE_VERSION}). Slå "voice_commands" fra i Madplans konfiguration for at fjerne den, eller slet denne linje for at beholde din egen udgave.`,
+  description: describe(),
   mode: "single",
   trigger: [{ platform: "conversation", command }],
   condition: [],
   action: [{ set_conversation_response: response }],
+});
+
+const LIST = "(indkøbslisten|indkøbssedlen|indkøbsliste)";
+
+/** Sends what was said to the app and speaks its answer (or a hint when the app is not running). */
+const change = (id: string, alias: string, handling: "tilfoj" | "fjern", command: string[]): VoiceAutomation => ({
+  id,
+  alias,
+  description: describe(),
+  mode: "single",
+  trigger: [{ platform: "conversation", command }],
+  condition: [],
+  action: [
+    { variables: { madplan_id: "{{ now().timestamp() }}" } },
+    { event: VOICE_EVENT, event_data: { handling, tekst: "{{ trigger.slots.vare }}", id: "{{ madplan_id }}" } },
+    { wait_for_trigger: [{ platform: "event", event_type: VOICE_REPLY_EVENT }], timeout: 5, continue_on_timeout: true },
+    {
+      set_conversation_response:
+        "{% if wait.trigger %}{{ wait.trigger.event.data.svar }}" +
+        "{% else %}Madplan svarede ikke. Tjek at Madplan-appen kører.{% endif %}",
+    },
+  ],
 });
 
 export const VOICE_AUTOMATIONS: readonly VoiceAutomation[] = [
@@ -66,6 +94,14 @@ export const VOICE_AUTOMATIONS: readonly VoiceAutomation[] = [
       "{% elif varer | count <= 5 %}På tilbud: {{ varer | join('; ') }}." +
       "{% else %}På tilbud: {{ varer[:5] | join('; ') }} og {{ varer | count - 5 }} andre varer.{% endif %}",
   ),
+  change("madplan_stemme_tilfoj", "Madplan: Tilføj til indkøbslisten", "tilfoj", [
+    `(tilføj|tilføje) {vare} (til|på) ${LIST}`,
+    `(sæt|skriv) {vare} på ${LIST}`,
+  ]),
+  change("madplan_stemme_fjern", "Madplan: Fjern fra indkøbslisten", "fjern", [
+    `(fjern|slet) {vare} fra ${LIST}`,
+    `(sæt|sætte) hak ved {vare} [på ${LIST}]`,
+  ]),
 ];
 
 export type VoiceOutcome = "created" | "updated" | "unchanged" | "kept" | "removed" | "absent";
