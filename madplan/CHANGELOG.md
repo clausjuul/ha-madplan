@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.20.0
+
+- feat(ha): shopping list as a to-do list and meal plan as a calendar in Home Assistant
+- docs(plans): Home Assistant integration with todo shopping list and meal calendar
+
 ## 0.19.0
 
 - feat(settings): tabs and folded person cards
