@@ -11,7 +11,7 @@ export function DishCard({ dish, lastLabel, tried }: Props) {
   return (
     <Link
       to={routePath({ name: "retter", dishId: dish.id })}
-      className="group flex flex-col overflow-hidden rounded-3xl bg-surface text-ink no-underline transition-colors hover:bg-raised"
+      className="group flex w-full min-w-0 flex-col overflow-hidden rounded-3xl bg-surface text-ink no-underline transition-colors hover:bg-raised"
     >
       <div className="relative">
         <DishImage
