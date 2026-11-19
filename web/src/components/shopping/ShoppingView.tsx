@@ -8,12 +8,13 @@ import { watchlistHits } from "@madplan/domain";
 import { useIsWide } from "@/hooks/use-media";
 import { useShoppingRange } from "@/hooks/use-shopping-range";
 import { useToday } from "@/hooks/use-today";
+import type { ShoppingTab } from "@/lib/route";
 import { groupByCategory } from "@/lib/shopping-view";
 import { ErrorState } from "@/components/ui/StatusViews";
 import { AddExtraField } from "./AddExtraField";
 import { PantryChips } from "./PantryChips";
 import { PriceSummary } from "./PriceSummary";
-import { OffersSheet } from "./OffersSheet";
+import { OffersPanel } from "./OffersPanel";
 import { RangeSheet } from "./RangeSheet";
 import { ResetSheet } from "./ResetSheet";
 import { DoneRow, OpenRow } from "./ShoppingRow";
@@ -21,8 +22,8 @@ import { ShoppingHeader } from "./ShoppingHeader";
 
 const heading = "mx-0.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-muted";
 
-/** `#/indkob` – the one current shopping list ("butikstilstand"). */
-export function ShoppingView() {
+/** `#/indkob` – the one current shopping list ("butikstilstand"); `#/indkob/tilbud` – the offers tab. */
+export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
   const today = useToday();
   const wide = useIsWide();
   const { query, setEnd } = useShoppingRange(today);
@@ -31,12 +32,11 @@ export function ShoppingView() {
   const actions = useShoppingActions();
   const [rangeOpen, setRangeOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
-  const [offersOpen, setOffersOpen] = useState(false);
   const offersOn = bootstrap.data?.capabilities.offers === true;
   const household = useHouseholdActions();
   const settings = bootstrap.data?.settings;
   const watchlist = settings?.offerWatchlist ?? [];
-  // The stored offers are only loaded here when something is watched (for the count on the button).
+  // The stored offers are only loaded on the list tab when something is watched (for the count on the tab).
   const offers = useOffers(offersOn && watchlist.length > 0);
   const watchedOnOffer = useMemo(
     () =>
@@ -53,6 +53,7 @@ export function ShoppingView() {
   if (shopping.isError && !list) return <ErrorState error={shopping.error} onRetry={() => void shopping.refetch()} />;
   if (!list) return <div className="skeleton m-4 h-64 rounded-3xl" aria-label="Henter indkøbslisten" />;
 
+  const showOffers = offersOn && tab === "tilbud";
   const isEmpty = list.items.length === 0;
   const openGroups = (
     <div className="flex flex-col gap-[18px]">
@@ -108,10 +109,28 @@ export function ShoppingView() {
         today={today}
         wide={wide}
         onOpenRange={() => setRangeOpen(true)}
-        {...(offersOn ? { onOpenOffers: () => setOffersOpen(true), watchedOnOffer } : {})}
+        tab={showOffers ? "tilbud" : undefined}
+        offersOn={offersOn}
+        watchedOnOffer={watchedOnOffer}
         addField={wide ? null : <AddExtraField onAdd={actions.addExtra} />}
       />
-      {wide ? (
+      {showOffers ? (
+        <div className={`min-h-0 flex-1 overflow-y-auto ${wide ? "px-8 pb-8" : "px-4 pb-4"}`}>
+          <div className="max-w-[720px]">
+            <OffersPanel
+              list={list}
+              stores={settings?.preferredStores ?? []}
+              dishes={bootstrap.data?.dishes ?? []}
+              today={today}
+              onAdd={actions.addExtra}
+              watchlist={watchlist}
+              onWatchChange={(next) => {
+                if (settings) void household.saveSettings({ ...settings, offerWatchlist: next });
+              }}
+            />
+          </div>
+        </div>
+      ) : wide ? (
         <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-8 overflow-y-auto px-8 pb-8">
           <div className="flex flex-col gap-[18px]">
             {openGroups}
@@ -137,21 +156,6 @@ export function ShoppingView() {
           <PriceSummary list={list} footer />
         </>
       )}
-      {offersOn ? (
-        <OffersSheet
-          open={offersOpen}
-          onClose={() => setOffersOpen(false)}
-          list={list}
-          stores={bootstrap.data?.settings.preferredStores ?? []}
-          dishes={bootstrap.data?.dishes ?? []}
-          today={today}
-          onAdd={actions.addExtra}
-          watchlist={watchlist}
-          onWatchChange={(next) => {
-            if (settings) void household.saveSettings({ ...settings, offerWatchlist: next });
-          }}
-        />
-      ) : null}
       <RangeSheet
         open={rangeOpen}
         onClose={() => setRangeOpen(false)}

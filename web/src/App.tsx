@@ -93,7 +93,7 @@ export function App() {
           ) : (
             <Suspense fallback={<RouteSkeleton />}>
               {route.name === "indkob" ? (
-                <ShoppingView />
+                <ShoppingView {...(route.tab ? { tab: route.tab } : {})} />
               ) : route.name === "retter" ? (
                 <LibraryView {...(route.dishId ? { dishId: route.dishId } : {})} {...(route.tab ? { tab: route.tab } : {})} />
               ) : (

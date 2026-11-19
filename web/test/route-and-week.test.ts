@@ -11,10 +11,11 @@ describe("hash routing", () => {
     expect(parseHash("#/uge")).toEqual({ name: "uge" });
     expect(parseHash("#/uge/2026-11-11")).toEqual({ name: "uge", week: "2026-11-09" });
     expect(parseHash("#/indkob")).toEqual({ name: "indkob" });
+    expect(parseHash("#/indkob/tilbud")).toEqual({ name: "indkob", tab: "tilbud" });
     expect(parseHash("#/lav-mad/tacos")).toEqual({ name: "lav-mad", dishId: "tacos" });
   });
   it("round-trips", () => {
-    for (const hash of ["#/uge", "#/uge/2026-11-16", "#/retter", "#/planlaeg", "#/indstillinger", "#/lav-mad/tacos"]) {
+    for (const hash of ["#/uge", "#/uge/2026-11-16", "#/retter", "#/indkob", "#/indkob/tilbud", "#/planlaeg", "#/indstillinger", "#/lav-mad/tacos"]) {
       expect(routeHref(parseHash(hash))).toBe(hash);
     }
   });
