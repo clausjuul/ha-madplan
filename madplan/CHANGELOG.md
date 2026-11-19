@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.19.0
+
+- feat(settings): tabs and folded person cards
+- feat(voice): add and remove shopping-list items from Home Assistant Assist
+
 ## 0.18.0
 
 - feat(shopping): phone-first shopping list with "Hold skærmen tændt"
