@@ -5,7 +5,7 @@ Madplan er familiens madplan i Home Assistant: planlæg aftensmaden dag for dag,
 ## Det kan appen
 
 - **Uge:** overblik over ugens aftensmad, "I aften" øverst, byt dage, lås dage, skriv noter, og spring dage over.
-- **Indkøb:** indkøbslisten bygges automatisk ud fra ugens retter, minus basisvarer og det, I har i køleskabet. Tilføj egne varer, afkryds i butikken, og se et prisoverslag.
+- **Indkøb:** indkøbslisten bygges automatisk ud fra ugens retter, minus basisvarer og det, I har i køleskabet. Tilføj egne varer, afkryds i butikken, og se et prisoverslag. På telefonen er listen bygget til butikken: tryk på solen øverst for at holde skærmen tændt, mens listen er åben (huskes på telefonen, kræver HTTPS), en bjælke viser hvor langt I er, og "Fortryd" retter et forkert tryk. Det, I har i kurven, er foldet sammen nederst, og basisvarer og **Ny indkøbstur** ligger under **···**.
 - **Retter:** jeres egne retter med opskrift, billede og historik. Importér en opskrift fra et link, eller opret den selv.
 - **Opdag:** inspiration fra en samling af kendte retter. Med en OpenAI-nøgle kan appen også finde nye opskrifter på nettet fra godkendte opskriftssider.
 - **Planlæg:** en guide, der laver et forslag til flere dage ad gangen. "Hurtigt forslag" vælger blandt jeres egne retter uden AI. "Assist" (kræver OpenAI) kan også finde nye retter. Du ser forslaget igennem, låser det, du kan lide, og gemmer. **Lav om** viser de tre bedste alternativer til dagen med en kort begrundelse. Varer i køleskabet, der snart udløber, prioriteres højt.

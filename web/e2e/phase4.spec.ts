@@ -26,6 +26,11 @@ test("indkøb på telefon 390x844", async ({ page }) => {
   await rows.first().click();
   await rows.first().click();
   await expect(page.getByRole("heading", { name: /I kurven · 2/u })).toBeVisible();
+  await expect(page.getByText("2 af", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: /I kurven · 2/u }).click();
+  await expect(page.locator("li button[aria-pressed=true]")).toHaveCount(2);
+  await page.getByRole("button", { name: "Fortryd" }).click();
+  await expect(page.getByRole("heading", { name: /I kurven · 1/u })).toBeVisible();
   await page.getByRole("heading", { name: /I kurven/u }).scrollIntoViewIfNeeded();
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}\\indkob-checked-390x844.png` });
@@ -51,8 +56,9 @@ test("indkøb: ekstra vare, slutdato og ny tur", async ({ page }) => {
   await expect(page.getByRole("button", { name: /søndag 22\. nov\./u })).toBeVisible();
 
   await page.locator("li button[aria-pressed=false]").first().click();
-  await page.getByRole("button", { name: "Ny indkøbstur" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Ny indkøbstur" }).click();
+  await page.getByRole("button", { name: "Flere muligheder" }).click();
+  await page.getByRole("dialog", { name: "Indkøbslisten" }).getByRole("button", { name: "Ny indkøbstur" }).click();
+  await page.getByRole("dialog", { name: /ny indkøbstur/u }).getByRole("button", { name: "Ny indkøbstur" }).click();
   await expect(page.getByRole("heading", { name: /I kurven/u })).toHaveCount(0);
 });
 

@@ -1,13 +1,16 @@
 import { Link } from "react-router";
 import { useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
+import { ChevronDown } from "lucide-react";
+import { watchlistHits, type ShoppingListItem, type WatchItem } from "@madplan/domain";
 import { useShoppingActions } from "@/api/shopping-mutations";
 import { useBootstrap, useOffers, useShopping } from "@/api/queries";
 import { useHouseholdActions } from "@/api/library-mutations";
-import { watchlistHits } from "@madplan/domain";
 import { useIsWide } from "@/hooks/use-media";
 import { useShoppingRange } from "@/hooks/use-shopping-range";
 import { useToday } from "@/hooks/use-today";
+import { useKeepAwake } from "@/hooks/use-wake-lock";
+import { notify } from "@/lib/notify";
 import type { ShoppingTab } from "@/lib/route";
 import { groupByCategory } from "@/lib/shopping-view";
 import { ErrorState } from "@/components/ui/StatusViews";
@@ -17,6 +20,7 @@ import { PriceSummary } from "./PriceSummary";
 import { OffersPanel } from "./OffersPanel";
 import { RangeSheet } from "./RangeSheet";
 import { ResetSheet } from "./ResetSheet";
+import { ShoppingMenuSheet } from "./ShoppingMenuSheet";
 import { DoneRow, OpenRow } from "./ShoppingRow";
 import { ShoppingHeader } from "./ShoppingHeader";
 
@@ -32,6 +36,9 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
   const actions = useShoppingActions();
   const [rangeOpen, setRangeOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [basketOpen, setBasketOpen] = useState<boolean | null>(null);
+  const keepAwake = useKeepAwake();
   const offersOn = bootstrap.data?.capabilities.offers === true;
   const household = useHouseholdActions();
   const settings = bootstrap.data?.settings;
@@ -55,44 +62,28 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
 
   const showOffers = offersOn && tab === "tilbud";
   const isEmpty = list.items.length === 0;
-  const openGroups = (
-    <div className="flex flex-col gap-[18px]">
-      {open.map((group) => (
-        <section key={group.category} aria-label={group.category} className="flex flex-col gap-1.5">
-          <h2 className={heading}>{group.category}</h2>
-          <ul className="flex flex-col gap-1.5">
-            <AnimatePresence initial={false}>
-              {group.items.map((item) => (
-                <OpenRow key={item.id} item={item} onToggle={actions.toggle} onRemove={actions.removeExtra} />
-              ))}
-            </AnimatePresence>
-          </ul>
-        </section>
-      ))}
-      {open.length === 0 && !isEmpty ? (
-        <p className="rounded-2xl bg-surface px-4 py-5 text-[15px] text-ink-2">Alt er i kurven. God tur hjem.</p>
-      ) : null}
-      {isEmpty ? <EmptyState /> : null}
-    </div>
-  );
-  const basket =
-    done.length > 0 ? (
-      <section aria-label="I kurven" className="flex flex-col gap-1.5">
-        <h2 className={heading}>I kurven · {done.length}</h2>
-        <ul className="flex flex-col gap-1">
-          {done.map((item) => (
-            <DoneRow key={item.id} item={item} onToggle={actions.toggle} onRemove={actions.removeExtra} />
-          ))}
-        </ul>
-      </section>
-    ) : null;
-  const note = (
-    <p className="mx-0.5 text-[13px] leading-normal text-muted">
-      Salt, peber, olie og det I har i køleskabet er trukket fra
-      {list.excludedCount > 0 ? ` (${list.excludedCount} ingredienser)` : ""}.
-    </p>
-  );
-  const newTrip = (
+  // The basket is folded away on phones (the list is what matters in the shop) and open on tablets.
+  const showBasket = basketOpen ?? wide;
+
+  const toggle = (item: ShoppingListItem): void => {
+    actions.toggle(item.id);
+    if (item.checked) return;
+    try {
+      navigator.vibrate?.(12);
+    } catch {
+      // No vibration on this device.
+    }
+    notify(`«${item.label.charAt(0).toLocaleUpperCase("da-DK")}${item.label.slice(1)}» er i kurven.`, 3500, { label: "Fortryd", run: () => actions.toggle(item.id) });
+  };
+  const toggleAwake = (): void => {
+    const next = !keepAwake.wanted;
+    keepAwake.setWanted(next);
+    notify(next ? "Skærmen holdes tændt, mens indkøbslisten er åben." : "Skærmen slukker igen som normalt.");
+  };
+  const saveWatchlist = (next: WatchItem[]): void => {
+    if (settings) void household.saveSettings({ ...settings, offerWatchlist: next });
+  };
+  const newTripButton = (
     <button
       type="button"
       onClick={() => setResetOpen(true)}
@@ -100,6 +91,63 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
     >
       Ny indkøbstur
     </button>
+  );
+
+  const openGroups = (
+    <div className="flex flex-col gap-[18px]">
+      {open.map((group) => (
+        <section key={group.category} aria-label={group.category} className="flex flex-col gap-1.5">
+          <h2 className={`${heading} ${wide ? "" : "sticky top-0 z-10 -mx-4 bg-ground/95 px-[18px] py-1.5 backdrop-blur"}`}>
+            {group.category} <span className="font-normal normal-case tracking-normal">· {group.items.length}</span>
+          </h2>
+          <ul className="flex flex-col gap-1.5">
+            <AnimatePresence initial={false}>
+              {group.items.map((item) => (
+                <OpenRow key={item.id} item={item} onToggle={() => toggle(item)} onRemove={actions.removeExtra} />
+              ))}
+            </AnimatePresence>
+          </ul>
+        </section>
+      ))}
+      {open.length === 0 && !isEmpty ? (
+        <div className="flex flex-col gap-3 rounded-3xl bg-surface p-5">
+          <p className="m-0 text-[17px] font-semibold text-ink">Alt er i kurven. God tur hjem.</p>
+          {wide ? null : newTripButton}
+        </div>
+      ) : null}
+      {isEmpty ? <EmptyState /> : null}
+    </div>
+  );
+  const basket =
+    done.length > 0 ? (
+      <section aria-label="I kurven" className="flex flex-col gap-1.5">
+        <h2 className="m-0">
+          <button
+            type="button"
+            aria-expanded={showBasket}
+            onClick={() => setBasketOpen(!showBasket)}
+            className={`${heading} flex min-h-11 w-full items-center gap-1.5 bg-transparent text-left`}
+          >
+            I kurven · {done.length}
+            <span className="flex-1" />
+            <span className="font-medium normal-case tracking-normal text-ink-2">{showBasket ? "Skjul" : "Vis"}</span>
+            <ChevronDown size={16} aria-hidden="true" className={`text-ink-2 transition-transform ${showBasket ? "rotate-180" : ""}`} />
+          </button>
+        </h2>
+        {showBasket ? (
+          <ul className="flex flex-col gap-1">
+            {done.map((item) => (
+              <DoneRow key={item.id} item={item} onToggle={() => toggle(item)} onRemove={actions.removeExtra} />
+            ))}
+          </ul>
+        ) : null}
+      </section>
+    ) : null;
+  const note = (
+    <p className="mx-0.5 text-[13px] leading-normal text-muted">
+      Salt, peber, olie og det I har i køleskabet er trukket fra
+      {list.excludedCount > 0 ? ` (${list.excludedCount} ingredienser)` : ""}.{!wide && list.basket ? " Tilbud: data fra Prej." : ""}
+    </p>
   );
 
   return (
@@ -112,10 +160,12 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
         tab={showOffers ? "tilbud" : undefined}
         offersOn={offersOn}
         watchedOnOffer={watchedOnOffer}
-        addField={wide ? null : <AddExtraField onAdd={actions.addExtra} />}
+        keepAwake={keepAwake}
+        onToggleAwake={toggleAwake}
+        {...(wide ? {} : { onOpenMenu: () => setMenuOpen(true) })}
       />
       {showOffers ? (
-        <div className={`min-h-0 flex-1 overflow-y-auto ${wide ? "px-8 pb-8" : "px-4 pb-4"}`}>
+        <div className={`min-h-0 flex-1 overflow-y-auto ${wide ? "px-8 pb-8" : "px-4 pb-4 pt-3"}`}>
           <div className="max-w-[720px]">
             <OffersPanel
               list={list}
@@ -124,14 +174,12 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
               today={today}
               onAdd={actions.addExtra}
               watchlist={watchlist}
-              onWatchChange={(next) => {
-                if (settings) void household.saveSettings({ ...settings, offerWatchlist: next });
-              }}
+              onWatchChange={saveWatchlist}
             />
           </div>
         </div>
       ) : wide ? (
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-8 overflow-y-auto px-8 pb-8">
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-8 overflow-y-auto px-8 pb-8 pt-4">
           <div className="flex flex-col gap-[18px]">
             {openGroups}
             {note}
@@ -141,20 +189,29 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
             <AddExtraField onAdd={actions.addExtra} />
             {basket}
             <PantryChips pantry={bootstrap.data?.pantry ?? []} onChange={actions.setPantry} />
-            {newTrip}
+            {newTripButton}
           </div>
         </div>
       ) : (
         <>
-          <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pb-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pb-6 pt-3">
+            <AddExtraField onAdd={actions.addExtra} />
             {openGroups}
             {basket}
             {note}
-            <PantryChips pantry={bootstrap.data?.pantry ?? []} onChange={actions.setPantry} />
-            {newTrip}
           </div>
           <PriceSummary list={list} footer />
         </>
+      )}
+      {wide ? null : (
+        <ShoppingMenuSheet
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          pantry={bootstrap.data?.pantry ?? []}
+          onPantryChange={actions.setPantry}
+          onNewTrip={() => setResetOpen(true)}
+          canKeepAwake={keepAwake.supported}
+        />
       )}
       <RangeSheet
         open={rangeOpen}
@@ -169,6 +226,7 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
         onClose={() => setResetOpen(false)}
         onConfirm={() => {
           setEnd(undefined);
+          setBasketOpen(null);
           void actions.reset();
         }}
       />

@@ -11,18 +11,38 @@ export function cheapestLine(list: ShoppingList): string | null {
   return `Billigst på ${basket.commonCount} ${basket.commonCount === 1 ? "tilbudsvare" : "tilbudsvarer"}: ${prices}`;
 }
 
+/** Estimated price of what is not in the basket yet. */
+export const remainingPrice = (list: ShoppingList): number =>
+  list.items.reduce((total, item) => total + (item.checked ? 0 : item.estimatedPrice), 0);
+
 export function PriceSummary({ list, footer }: { list: ShoppingList; footer?: boolean }) {
   const stores = offerStores(list.items);
   const offers =
     list.offerItemCount > 0
       ? `${list.offerItemCount === 1 ? "1 tilbud" : `${list.offerItemCount} tilbud`}${stores ? ` · ${stores}` : ""}`
       : "";
+  if (footer) {
+    const left = remainingPrice(list);
+    const started = list.checkedCount > 0 && left > 0;
+    return (
+      <div className="flex shrink-0 items-center gap-3 border-t border-hairline bg-surface px-4 py-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-[22px] font-bold leading-tight">
+              {list.totalEstimatedPrice > 0 ? `ca. ${formatPrice(list.totalEstimatedPrice)}` : "Ingen pris endnu"}
+            </span>
+            {started ? <span className="truncate text-[13px] text-muted">{`ca. ${formatPrice(left)} tilbage`}</span> : null}
+          </div>
+          {cheapestLine(list) ? <div className="truncate text-[12px] text-ink-2">{cheapestLine(list)}</div> : null}
+        </div>
+        {offers ? (
+          <span className="max-w-[45%] shrink-0 truncate rounded-full bg-offer-soft px-3 py-1.5 text-[13px] font-semibold text-offer">{offers}</span>
+        ) : null}
+      </div>
+    );
+  }
   return (
-    <div
-      className={`flex items-center gap-3 ${
-        footer ? "shrink-0 border-t border-hairline bg-surface px-4 pb-[18px] pt-3.5" : "rounded-3xl bg-surface p-5"
-      }`}
-    >
+    <div className="flex items-center gap-3 rounded-3xl bg-surface p-5">
       <div className="flex-1">
         <div className="text-[13px] text-muted">Forventet pris</div>
         <div className="font-display text-[26px] font-bold leading-tight">

@@ -25,5 +25,8 @@ test("@integration a checked shopping item survives a reload", async ({ page, re
 
   await page.reload();
   await expect(page.getByRole("heading", { name: /I kurven · 1/u })).toBeVisible();
+  // The basket is folded away on phones; open it to see the checked item.
+  const basket = page.getByRole("button", { name: /I kurven · 1/u });
+  if ((await basket.getAttribute("aria-expanded")) === "false") await basket.click();
   await expect(page.locator("li button[aria-pressed=true]").filter({ hasText: name })).toBeVisible();
 });
