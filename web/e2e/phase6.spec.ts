@@ -61,8 +61,8 @@ test("gem til senere vises under Gemt", async ({ page }) => {
   await page.getByRole("heading", { name: "Fra samlingen" }).waitFor();
   await page.getByRole("button", { name: "Gem til senere" }).first().click();
   await page.getByRole("tab", { name: "Gemt (1)" }).click();
-  await expect(page.getByRole("button", { name: "Gemt" })).toHaveCount(1);
-  await page.getByRole("button", { name: "Gemt" }).click();
+  await expect(page.getByRole("button", { name: /^Fjern .* fra gemte$/u })).toHaveCount(1);
+  await page.getByRole("button", { name: /^Fjern .* fra gemte$/u }).click();
   await expect(page.getByText("Du har ikke gemt nogen retter endnu.")).toBeVisible();
 });
 

@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkCheck, Clock, ExternalLink, Plus } from "lucide-react";
+import { Bookmark, BookmarkMinus, Clock, ExternalLink, Plus } from "lucide-react";
 import type { InspirationRecipe } from "@madplan/domain";
 import { DishImage } from "@/components/ui/DishImage";
 import { inspirationImageSrc } from "@/lib/images";
@@ -45,9 +45,17 @@ export function InspirationCard({ recipe, saved, isNew, badge, busy, onToggleSav
             <Plus size={17} aria-hidden="true" />
             Tilføj til retter
           </button>
-          <button type="button" onClick={onToggleSave} aria-pressed={saved} className="flex h-11 items-center gap-1.5 rounded-full border border-line px-4 text-[15px] font-semibold text-ink hover:bg-raised">
-            {saved ? <BookmarkCheck size={17} className="text-accent" aria-hidden="true" /> : <Bookmark size={17} aria-hidden="true" />}
-            {saved ? "Gemt" : "Gem til senere"}
+          <button
+            type="button"
+            onClick={onToggleSave}
+            aria-label={saved ? `Fjern ${recipe.name} fra gemte` : undefined}
+            title={saved ? "Fjern fra gemte" : undefined}
+            className={`flex h-11 items-center gap-1.5 rounded-full border px-4 text-[15px] font-semibold ${
+              saved ? "border-line text-ink-2 hover:border-danger hover:text-danger" : "border-line text-ink hover:bg-raised"
+            }`}
+          >
+            {saved ? <BookmarkMinus size={17} aria-hidden="true" /> : <Bookmark size={17} aria-hidden="true" />}
+            {saved ? "Fjern" : "Gem til senere"}
           </button>
           <a
             href={recipe.sourceUrl}
