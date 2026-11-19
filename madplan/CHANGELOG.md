@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.18.0
+
+- feat(shopping): phone-first shopping list with "Hold skærmen tændt"
+
 ## 0.17.0
 
 - feat(library): saved recipes show a clear "Fjern" button instead of "Gemt"
