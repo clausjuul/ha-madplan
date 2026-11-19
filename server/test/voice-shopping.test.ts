@@ -69,18 +69,26 @@ describe("voice listener", () => {
   it("authenticates, subscribes and replies to events with the spoken answer", () => {
     const s = setup({ config: { supervisorToken: "tok", voiceCommands: true } });
     const sockets: FakeSocket[] = [];
-    const listener = startVoiceShopping(s.deps, () => {
-      const socket = new FakeSocket();
-      sockets.push(socket);
-      return socket;
+    let ups = 0;
+    const listener = startVoiceShopping(s.deps, {
+      connect: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+      onHomeAssistantUp: () => ups++,
     });
     const socket = sockets[0]!;
     socket.receive({ type: "auth_required" });
     expect(socket.sent[0]).toEqual({ type: "auth", access_token: "tok" });
     socket.receive({ type: "auth_ok" });
     expect(socket.sent[1]).toMatchObject({ type: "subscribe_events", event_type: "madplan_stemme" });
+    expect(socket.sent[2]).toMatchObject({ type: "subscribe_events", event_type: "homeassistant_started" });
+    expect(ups).toBe(1);
+    socket.receive({ type: "event", event: { event_type: "homeassistant_started", data: {} } });
+    expect(ups).toBe(2);
     socket.receive({ type: "event", event: { event_type: "madplan_stemme", data: { handling: "tilfoj", tekst: "rugbrød", id: "42" } } });
-    expect(socket.sent[2]).toMatchObject({
+    expect(socket.sent[3]).toMatchObject({
       type: "fire_event",
       event_type: "madplan_stemme_svar",
       event_data: { id: "42", svar: "Jeg har sat rugbrød på indkøbslisten." },
@@ -90,15 +98,25 @@ describe("voice listener", () => {
     expect(socket.closed).toBe(true);
   });
 
-  it("does nothing without a token or with voice commands switched off", () => {
-    let connects = 0;
-    const factory = () => {
-      connects++;
-      return new FakeSocket();
+  it("does nothing without a token, and only watches for restarts when voice commands are off", () => {
+    const sockets: FakeSocket[] = [];
+    const connect = () => {
+      const socket = new FakeSocket();
+      sockets.push(socket);
+      return socket;
     };
-    startVoiceShopping(setup({ config: { supervisorToken: "", voiceCommands: true } }).deps, factory).stop();
-    startVoiceShopping(setup({ config: { supervisorToken: "tok", voiceCommands: false } }).deps, factory).stop();
-    expect(connects).toBe(0);
+    startVoiceShopping(setup({ config: { supervisorToken: "", voiceCommands: true } }).deps, { connect }).stop();
+    expect(sockets).toHaveLength(0);
+    const s = setup({ config: { supervisorToken: "tok", voiceCommands: false } });
+    const listener = startVoiceShopping(s.deps, { connect });
+    const socket = sockets[0]!;
+    socket.receive({ type: "auth_required" });
+    socket.receive({ type: "auth_ok" });
+    expect(socket.sent.slice(1)).toEqual([expect.objectContaining({ event_type: "homeassistant_started" })]);
+    socket.receive({ type: "event", event: { event_type: "madplan_stemme", data: { handling: "tilfoj", tekst: "rugbrød", id: "1" } } });
+    expect(socket.sent).toHaveLength(2);
+    expect(labels(s)).toEqual([]);
+    listener.stop();
   });
 
   it("the automations send the spoken wildcard and speak the app's reply", () => {

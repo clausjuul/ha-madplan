@@ -43,8 +43,9 @@ def events_from(days: list[dict[str, Any]]) -> list[CalendarEvent]:
 
 
 class MadplanCalendar(MadplanEntity, CalendarEntity):
-    # No name of its own: the entity is called "Madplan" (calendar.madplan).
-    _attr_name = None
+    # "Madplan Aftensmad" (calendar.madplan_aftensmad): its own name, so it never clashes with a
+    # calendar the family already calls "Madplan".
+    _attr_translation_key = "dinner"
 
     def __init__(self, coordinator: MadplanCoordinator) -> None:
         super().__init__(coordinator, "calendar")

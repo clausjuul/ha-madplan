@@ -1,6 +1,8 @@
 # Plan: Madplan-integration til Home Assistant (indkøbsliste som todo og madplan som kalender)
 
-Status: bygget 2026-11-19 (fase 0–5, undtagen test på den rigtige Home Assistant efter release). Entiteterne hedder `todo.madplan_shopping_list` og `calendar.madplan` (entity-id'er dannes ud fra de engelske navne).
+Status: bygget og taget i brug 2026-11-19 (v0.20.0). Entity-id'erne dannes ud fra systemsproget: på dansk `todo.madplan_indkobsliste` og `calendar.madplan_aftensmad`. Hos os har Madplans liste overtaget `todo.indkobsliste` (Home Assistants egen Indkøbsliste-integration er slettet), så Familie Hub-kortene viser Madplans liste.
+
+Fundet under ibrugtagningen: sensorerne fra `/api/states` forsvandt ved genstart af Home Assistant og kom først igen ved næste ændring. Madplan skriver dem nu igen, når websocket-forbindelsen er tilbage og ved `homeassistant_started`.
 
 **Afvigelse fra planen:** stemme-automationerne "Tilføj/Fjern fra indkøbslisten" bliver. Husstanden har også Home Assistants egen "Indkøbsliste" (`todo.indkobsliste`), så uden automationerne ville "tilføj mælk til indkøbslisten" ramme den liste i stedet for Madplans. Fase 0 viste, at stemme-løsningen virker fra ende til anden, og at Supervisor discovery ikke begrænser servicenavne (custom integrationer kan modtage den).
 

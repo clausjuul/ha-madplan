@@ -69,7 +69,8 @@ const publisher = createPublisher(deps);
 publisher.start();
 const offers = offerSyncFor(deps);
 offers.start();
-const voiceShopping = startVoiceShopping(deps);
+// Voice commands, and a force-publish of the sensors whenever Home Assistant has restarted.
+const voiceShopping = startVoiceShopping(deps, { onHomeAssistantUp: () => void publisher.publish(true) });
 
 function shutdown(): void {
   publisher.stop();

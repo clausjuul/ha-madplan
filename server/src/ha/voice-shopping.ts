@@ -95,17 +95,35 @@ export type SocketFactory = (url: string) => SocketLike;
 
 export type VoiceListener = { stop(): void };
 
+export type VoiceOptions = {
+  connect?: SocketFactory;
+  retryMs?: { first: number; max: number };
+  /**
+   * Called when Home Assistant is (back) up: after every (re)connect and on `homeassistant_started`.
+   * States written through /api/states are lost when Home Assistant restarts, so the sensors are
+   * published again from here.
+   */
+  onHomeAssistantUp?: () => void;
+};
+
 /**
- * Keeps a websocket subscription to `madplan_stemme` open, reconnecting with back-off.
- * No-op without a Supervisor token or when voice commands are switched off.
+ * Keeps a websocket connection to Home Assistant open, reconnecting with back-off. It answers the
+ * `madplan_stemme` voice events (only when voice commands are on) and notices Home Assistant restarts.
+ * No-op without a Supervisor token.
  */
-export function startVoiceShopping(
-  deps: Deps,
-  connect: SocketFactory = (url) => new WebSocket(url) as unknown as SocketLike,
-  retryMs = { first: 5_000, max: 60_000 },
-): VoiceListener {
+export function startVoiceShopping(deps: Deps, options: VoiceOptions = {}): VoiceListener {
+  const connect = options.connect ?? ((url: string) => new WebSocket(url) as unknown as SocketLike);
+  const retryMs = options.retryMs ?? { first: 5_000, max: 60_000 };
   const token = deps.config.supervisorToken;
-  if (!token || !deps.config.voiceCommands) return { stop: () => undefined };
+  if (!token) return { stop: () => undefined };
+  const voice = deps.config.voiceCommands;
+  const up = (): void => {
+    try {
+      options.onHomeAssistantUp?.();
+    } catch (error) {
+      console.error("Kunne ikke opdatere Home Assistant efter genstart", error);
+    }
+  };
   let socket: SocketLike | undefined;
   let timer: NodeJS.Timeout | undefined;
   let delay = retryMs.first;
@@ -118,7 +136,7 @@ export function startVoiceShopping(
     try {
       current = connect(WS_URL);
     } catch (error) {
-      console.warn("Kunne ikke forbinde til Home Assistant for stemmekommandoer", error);
+      console.warn("Kunne ikke forbinde til Home Assistant", error);
       return retry();
     }
     socket = current;
@@ -132,16 +150,19 @@ export function startVoiceShopping(
       if (message.type === "auth_required") {
         current.send(JSON.stringify({ type: "auth", access_token: token }));
       } else if (message.type === "auth_ok") {
-        current.send(JSON.stringify({ id: nextId++, type: "subscribe_events", event_type: VOICE_EVENT }));
+        if (voice) current.send(JSON.stringify({ id: nextId++, type: "subscribe_events", event_type: VOICE_EVENT }));
+        current.send(JSON.stringify({ id: nextId++, type: "subscribe_events", event_type: "homeassistant_started" }));
         delay = retryMs.first;
-        if (warned) console.log("Stemmekommandoer til indkøbslisten er forbundet igen.");
+        if (warned) console.log("Forbundet til Home Assistant igen.");
         warned = false;
+        up();
       } else if (message.type === "auth_invalid") {
-        console.warn("Home Assistant afviste appens adgang til stemmekommandoer.");
+        console.warn("Home Assistant afviste appens websocket-adgang.");
         current.close();
       } else if (message.type === "event") {
         const event = message.event as { event_type?: unknown; data?: unknown } | undefined;
-        if (event?.event_type !== VOICE_EVENT) return;
+        if (event?.event_type === "homeassistant_started") return up();
+        if (event?.event_type !== VOICE_EVENT || !voice) return;
         const reply = handleVoiceEvent(deps, event.data);
         current.send(JSON.stringify({ id: nextId++, type: "fire_event", event_type: VOICE_REPLY_EVENT, event_data: reply }));
       }
@@ -150,7 +171,7 @@ export function startVoiceShopping(
     current.onclose = () => {
       if (socket === current) socket = undefined;
       if (!warned && !stopped) {
-        console.warn("Forbindelsen til Home Assistant for stemmekommandoer blev afbrudt; prøver igen.");
+        console.warn("Forbindelsen til Home Assistant blev afbrudt (genstart?); prøver igen.");
         warned = true;
       }
       retry();

@@ -111,8 +111,8 @@ Madplan følger med en lille integration, som appen selv installerer i `custom_c
 
 | Entitet | Hvad den er |
 | --- | --- |
-| `todo.madplan_shopping_list` ("Madplan Indkøbsliste") | Indkøbslisten som to-do-liste. Tilføj, sæt hak og slet fra To-do-kortet, Home Assistant-appen på telefonen, automationer (`todo.add_item`) og AI-samtaleagenter. Mængde og ret står i varens beskrivelse. |
-| `calendar.madplan` ("Madplan") | Madplanen som kalender: én heldagsbegivenhed pr. aftensmad med tilberedningstid og note. Dage markeret "ikke spist" vises ikke. |
+| `todo.madplan_indkobsliste` ("Madplan Indkøbsliste") | Indkøbslisten som to-do-liste. Tilføj, sæt hak og slet fra To-do-kortet, Home Assistant-appen på telefonen, automationer (`todo.add_item`) og AI-samtaleagenter. Mængde og ret står i varens beskrivelse. |
+| `calendar.madplan_aftensmad` ("Madplan Aftensmad") | Madplanen som kalender: én heldagsbegivenhed pr. aftensmad med tilberedningstid og note. Dage markeret "ikke spist" vises ikke. |
 
 **Sådan slår du den til:**
 
@@ -124,7 +124,15 @@ Madplan følger med en lille integration, som appen selv installerer i `custom_c
 
 **Varer fra madplanen** kommer fra opskrifterne. Dem kan du sætte hak ved, men ikke omdøbe. Sletter du en, bliver den afkrydset i stedet ("Ryd fuldførte" sletter derfor kun dine egne varer). Dine egne varer opfører sig som på enhver to-do-liste.
 
-**Har du også Home Assistants egen indkøbsliste?** Så siger du stadig "tilføj mælk til indkøbslisten" for at få det på Madplans liste: stemmekommandoerne fra "Spørg med stemmen" sender den sætning til Madplan. En AI-samtaleagent kan bruge `todo.madplan_shopping_list`, når den er vist for Assist under **Indstillinger → Stemmeassistenter → Vis**.
+(Entity-id'erne dannes ud fra Home Assistants sprog. På engelsk hedder de `todo.madplan_shopping_list` og `calendar.madplan_dinner`.)
+
+**Har du også Home Assistants egen indkøbsliste** (`todo.indkobsliste`)? Så kan Madplan overtage dens plads, så dashboards, automationer og stemmen bruger Madplans liste:
+
+1. Flyt det, der står på den gamle liste, og slet integrationen **Indkøbsliste** under **Indstillinger → Enheder og tjenester**.
+2. Åbn `todo.madplan_indkobsliste`, tryk på tandhjulet, og ret entity-id'et til `todo.indkobsliste` og navnet til "Indkøbsliste".
+3. Vis den for Assist under **Indstillinger → Stemmeassistenter → Vis**, hvis den gamle var vist.
+
+Kort, der brugte `todo.indkobsliste`, viser derefter Madplans liste. "Tilføj mælk til indkøbslisten" går til Madplan uanset hvad, fordi stemmekommandoerne fra "Spørg med stemmen" fanger sætningen først.
 
 Når Madplan-appen opdateres, opdaterer den også integrationen og beder om en genstart. Vil du selv styre integrationen (f.eks. en ændret udgave), så slet filen `.installed-by-madplan` i mappen; så lader appen den være. Slå `ha_integration` fra, hvis appen hverken skal installere eller melde integrationen. Den interne forbindelse bruger port 8100 på Home Assistants interne netværk og kan ikke nås udefra.
 

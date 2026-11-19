@@ -29,6 +29,11 @@
       "shopping": {
         "name": "Shopping list"
       }
+    },
+    "calendar": {
+      "dinner": {
+        "name": "Dinner"
+      }
     }
   },
   "issues": {

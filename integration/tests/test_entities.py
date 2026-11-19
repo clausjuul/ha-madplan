@@ -14,7 +14,7 @@ from custom_components.madplan.calendar import events_from
 from .conftest import BASE, MEALS, SHOPPING
 
 TODO = "todo.madplan_shopping_list"
-CALENDAR = "calendar.madplan"
+CALENDAR = "calendar.madplan_dinner"
 
 
 async def _setup(hass: HomeAssistant, entry) -> None:

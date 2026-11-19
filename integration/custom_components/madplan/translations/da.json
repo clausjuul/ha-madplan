@@ -29,6 +29,11 @@
       "shopping": {
         "name": "Indkøbsliste"
       }
+    },
+    "calendar": {
+      "dinner": {
+        "name": "Aftensmad"
+      }
     }
   },
   "issues": {
