@@ -1,5 +1,12 @@
 # Ændringer
 
+## 0.17.0
+
+- feat(library): saved recipes show a clear "Fjern" button instead of "Gemt"
+- fix(library): dish cards without a photo fill their grid cell
+- feat(shopping): show offers as a tab next to the list
+- feat(planning): neighbour days, weekday rhythm, self-correction and learning from "Lav om"
+
 ## 0.16.0
 
 - feat(web): follow the Home Assistant theme
