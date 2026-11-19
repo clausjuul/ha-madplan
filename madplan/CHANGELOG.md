@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.20.1
+
+- fix(ha): republish sensors after a Home Assistant restart; calendar named "Aftensmad"
+
 ## 0.20.0
 
 - feat(ha): shopping list as a to-do list and meal plan as a calendar in Home Assistant
