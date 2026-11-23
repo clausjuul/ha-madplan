@@ -70,6 +70,7 @@ export function ReviewRow({ day, dish, badge, relaxed, variantLines = [], onDrop
           </span>
         ))}
         <span className="line-clamp-3 text-sm leading-snug text-muted md:line-clamp-1">{day.reason}</span>
+        {day.locked ? <span className="text-[13px] font-medium text-accent">Låst · lås op for at lave den om</span> : null}
       </div>
       <div className="grid w-full shrink-0 grid-cols-3 gap-1.5 md:flex md:w-auto">
         <button
@@ -86,7 +87,6 @@ export function ReviewRow({ day, dish, badge, relaxed, variantLines = [], onDrop
         <button
           type="button"
           aria-label="Lav om, se alternativer til denne dag"
-          title={day.locked ? "Lås dagen op for at lave den om" : undefined}
           disabled={busy || day.locked}
           onClick={onRegenerate}
           className={iconButton}
@@ -94,7 +94,7 @@ export function ReviewRow({ day, dish, badge, relaxed, variantLines = [], onDrop
           <RefreshCw size={18} aria-hidden="true" />
           <span className="md:hidden">Lav om</span>
         </button>
-        <button type="button" aria-label="Vælg selv en ret" disabled={busy} onClick={onPick} className={iconButton}>
+        <button type="button" aria-label="Vælg selv en ret" disabled={busy || day.locked} onClick={onPick} className={iconButton}>
           <Search size={18} aria-hidden="true" />
           <span className="md:hidden">Vælg selv</span>
         </button>

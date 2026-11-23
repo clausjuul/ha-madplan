@@ -69,8 +69,9 @@ export function PlanWizard({ data, today, draft, seed, startWeek, busy, onSubmit
         ) : null}
         <div className="flex-1" />
         {step === 2 ? (
-          <span className="hidden text-[13px] text-muted md:inline">
-            {form.engine === "ai" ? "Forslag fra Assist (AI)" : "Hurtigt forslag (lokalt)"}
+          // On a phone this gets its own line above the buttons.
+          <span className="order-first basis-full text-[13px] text-muted md:order-none md:basis-auto">
+            {form.engine === "ai" ? "Assist (AI) · tager typisk et halvt minut eller mere" : "Hurtigt forslag fra jeres egne retter"}
             {draft ? " · erstatter den nuværende kladde" : ""}
           </span>
         ) : null}

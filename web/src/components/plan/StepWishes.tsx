@@ -39,8 +39,12 @@ export function StepWishes({ form, onChange, data, today }: Props) {
   return (
     <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-5">
       <h1 className="font-display m-0 text-[28px] font-bold leading-tight">Hvad har I lyst til?</h1>
-      <div className="grid gap-4 md:grid-cols-2 md:items-start">
-        <div className="flex flex-col gap-4">
+      {/* The engine decides what else is on this page (new dishes), so it comes first. */}
+      <Card title="Forslag fra">
+        <EngineChoice value={form.engine} aiAvailable={aiAvailable} onChange={(engine) => patch({ engine })} />
+      </Card>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card title="Ønsker til ugen" hint="Skriv frit – fx “noget stærkt med nudler” eller “mest hurtig mad”.">
             <textarea
               aria-label="Ønsker til ugen"
@@ -82,7 +86,7 @@ export function StepWishes({ form, onChange, data, today }: Props) {
             />
           </Card>
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           {form.engine === "ai" ? (
             <Card title="Nye retter" hint="Helt nye retter, som Assist laver, og som ikke findes i jeres retter endnu.">
             <Stepper
@@ -130,9 +134,6 @@ export function StepWishes({ form, onChange, data, today }: Props) {
           </Card>
           <Card title="Det har vi i køleskabet" hint="Kun til denne plan. Ændrer ikke jeres køleskab under Indstillinger.">
             <ChipInput label="Køleskab" hideLabel values={form.fridge} onChange={(fridge) => patch({ fridge })} placeholder="Fx spinat, fløde" />
-          </Card>
-          <Card title="Forslag fra">
-            <EngineChoice value={form.engine} aiAvailable={aiAvailable} onChange={(engine) => patch({ engine })} />
           </Card>
         </div>
       </div>

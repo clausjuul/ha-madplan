@@ -29,10 +29,13 @@ export function DayWishes({ dates, wishes, relaxed, onChange, onToggleRelaxed }:
                 type="button"
                 aria-expanded={expanded}
                 onClick={() => setOpen(expanded ? null : date)}
-                className="flex min-h-12 min-w-0 flex-1 items-center gap-3 pl-4 pr-2 text-left text-[15px]"
+                className="flex min-h-12 min-w-0 flex-1 items-center gap-3 py-1.5 pl-4 pr-2 text-left text-[15px]"
               >
-                <span className="w-28 shrink-0 font-semibold capitalize">{label(date)}</span>
-                <span className={`min-w-0 flex-1 truncate ${wish ? "text-ink-2" : "text-muted"}`}>{wish || "Intet særligt"}</span>
+                {/* Phone: the wish goes under the day, so neither is cut short next to "God tid". */}
+                <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
+                  <span className="shrink-0 font-semibold capitalize sm:w-28">{label(date)}</span>
+                  <span className={`min-w-0 flex-1 truncate ${wish ? "text-ink-2" : "text-muted"}`}>{wish || "Intet særligt"}</span>
+                </span>
                 <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-muted transition-transform ${expanded ? "rotate-180" : ""}`} />
               </button>
               <button
@@ -41,7 +44,7 @@ export function DayWishes({ dates, wishes, relaxed, onChange, onToggleRelaxed }:
                 aria-label={`God tid ${label(date)}`}
                 title="Retten må tage længere tid og koste lidt mere"
                 onClick={() => onToggleRelaxed(date)}
-                className={`flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium ${
+                className={`ml-1 flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium ${
                   isRelaxed ? "bg-accent text-on-accent" : "border border-line text-muted hover:text-ink"
                 }`}
               >

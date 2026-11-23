@@ -3,7 +3,7 @@ import { Check } from "lucide-react";
 import { describeVariant, eatenHistory, lastEatenByDish, parseDateKey, weekdayName, type BootstrapResponse, type PlanDraftRecord } from "@madplan/domain";
 import type { DraftActions } from "@/api/draft-mutations";
 import { useIsWide } from "@/hooks/use-media";
-import { dishOfDay, engineLabel, draftDayBadge, summarizeDraft } from "@/lib/draft-summary";
+import { dayDishId, dishOfDay, engineLabel, draftDayBadge, summarizeDraft } from "@/lib/draft-summary";
 import { DishPickerSheet, plannedLabels } from "@/components/week/sheets/DishPickerSheet";
 import { AlternativesSheet } from "./AlternativesSheet";
 import { ConfirmSheet } from "./ConfirmSheet";
@@ -25,24 +25,41 @@ export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: 
   const [pickDate, setPickDate] = useState<string | null>(null);
   const [altDate, setAltDate] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmApply, setConfirmApply] = useState(false);
   const summary = useMemo(() => summarizeDraft(draft, data, today), [draft, data, today]);
   const lastEaten = useMemo(() => lastEatenByDish(eatenHistory(data.meals, today)), [data.meals, today]);
   const dishes = useMemo(() => [...data.dishes, ...draft.days.flatMap((day) => (day.newDish ? [day.newDish] : []))], [data.dishes, draft.days]);
   const unlocked = draft.days.filter((day) => !day.locked).map((day) => day.date);
   const labelOf = (date: string | null): string => (date ? `${weekdayName(date, "long")} ${parseDateKey(date).getDate()}.` : "");
   const pickLabel = labelOf(pickDate);
+  // What "Gem" will do, said next to the button: how many planned dishes are replaced and which rules are broken.
+  const replaced = draft.days.filter((day) => {
+    const meal = data.meals[day.date];
+    return meal && !meal.locked && !meal.skipped && meal.dishId !== dayDishId(day);
+  }).length;
+  const violations = (draft.review?.checks ?? []).filter((check) => check.status === "violation");
+  const consequences = [
+    replaced > 0 ? `Erstatter ${replaced} ${replaced === 1 ? "ret" : "retter"} i ugeplanen` : null,
+    violations.length > 0 ? `${violations.length} ${violations.length === 1 ? "regel" : "regler"} overtrådt` : null,
+  ].filter((line): line is string => line !== null);
 
   const primary = (
     <button
       type="button"
       disabled={actions.busy || draft.days.length === 0}
-      onClick={onApply}
+      onClick={() => (violations.length > 0 ? setConfirmApply(true) : onApply())}
       className="flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-accent text-[17px] font-semibold text-on-accent disabled:opacity-60"
     >
       <Check size={20} strokeWidth={2.4} aria-hidden="true" />
       Gem i ugeplanen
     </button>
   );
+  const beforeSave =
+    consequences.length > 0 ? (
+      <p className={`m-0 text-center text-[13px] ${violations.length > 0 ? "font-medium text-danger" : "text-muted"}`}>
+        {consequences.join(" · ")}
+      </p>
+    ) : null;
   const secondary = (
     <div className="flex flex-col gap-2">
       <button
@@ -130,6 +147,16 @@ export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: 
         onClose={() => setConfirmDiscard(false)}
         onConfirm={onDiscard}
       />
+      <ConfirmSheet
+        open={confirmApply}
+        title="Gem trods regelbrud?"
+        body="Planen overtræder jeres regler:"
+        details={violations.map((check) => check.message)}
+        confirmLabel="Gem alligevel"
+        tone="accent"
+        onClose={() => setConfirmApply(false)}
+        onConfirm={onApply}
+      />
     </>
   );
 
@@ -141,6 +168,7 @@ export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: 
           <SummaryCard summary={summary} />
           <ChecksCard review={draft.review} />
           <div className="flex-1" />
+          {beforeSave}
           {primary}
           {secondary}
         </aside>
@@ -151,12 +179,15 @@ export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: 
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4 pt-4 [&>*]:shrink-0">
+        {/* A broken rule is shown before the days, not under seven rows. */}
+        {violations.length > 0 ? <ChecksCard review={draft.review} /> : null}
         {rows}
         <SummaryCard summary={summary} />
-        <ChecksCard review={draft.review} />
+        {violations.length > 0 ? null : <ChecksCard review={draft.review} />}
         {secondary}
       </div>
-      <div className="shrink-0 border-t border-hairline bg-ground px-4 pb-4 pt-3" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
+      <div className="flex shrink-0 flex-col gap-2 border-t border-hairline bg-ground px-4 pb-4 pt-3" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
+        {beforeSave}
         {primary}
       </div>
       {sheets}
