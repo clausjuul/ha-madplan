@@ -40,7 +40,7 @@ test("ret-vælger åben på telefon", async ({ page }) => {
   await openApp(page);
   await page.getByRole("button", { name: /Handlinger for Tirsdag 10\./ }).click();
   await page.getByRole("button", { name: /Skift ret/ }).click();
-  await page.getByPlaceholder("Søg i retter").waitFor();
+  await page.getByPlaceholder("Søg i navn eller ingrediens").waitFor();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${SHOTS}\\picker-390x844.png` });
 });
