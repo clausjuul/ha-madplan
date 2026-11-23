@@ -14,18 +14,23 @@ type Props = {
   draft: PlanDraftRecord | null;
   /** Wishes to start from, e.g. after cancelling a plan that was being made. */
   seed: PlanRequest | null;
+  /** The week the person was looking at; a later week becomes the start date. */
+  startWeek?: string;
   busy: boolean;
   onSubmit: (request: PlanRequest) => void;
   onBackToDraft: () => void;
 };
 
 /** Steps 1 and 2. The form lives here until "Lav forslag" turns it into a draft on the server. */
-export function PlanWizard({ data, today, draft, seed, busy, onSubmit, onBackToDraft }: Props) {
+export function PlanWizard({ data, today, draft, seed, startWeek, busy, onSubmit, onBackToDraft }: Props) {
   const aiAvailable = data.capabilities.openai;
   const fridgeNames = useMemo(() => data.fridge.map((item) => item.name), [data.fridge]);
   const [form, setForm] = useState<PlanForm>(() => {
     const start = draft?.request ?? seed;
-    if (!start) return initialForm(today, fridgeNames, aiAvailable);
+    if (!start) {
+      const fresh = initialForm(today, fridgeNames, aiAvailable);
+      return startWeek && startWeek > today ? { ...fresh, from: startWeek } : fresh;
+    }
     const restored = formFromRequest(start, aiAvailable);
     return start.fridgeOverride ? restored : { ...restored, fridge: fridgeNames };
   });

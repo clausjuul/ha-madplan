@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { MessageCircle, SlidersHorizontal, Sparkles, Utensils } from "lucide-react";
-import { navFor, routePath, type NavName, type Route } from "@/lib/route";
+import { MessageCircle, Settings, Sparkles, Utensils } from "lucide-react";
+import { navFor, planRouteFor, routePath, type NavName, type Route } from "@/lib/route";
 import { openAssist } from "@/lib/assist-store";
 import { WeekSwitcher } from "./WeekSwitcher";
 
@@ -45,20 +45,26 @@ export function TopBar({ route, weekStart, onWeekChange }: Props) {
         ))}
       </nav>
       <div className="flex-1" />
-      <WeekSwitcher weekStart={weekStart} onChange={onWeekChange} />
+      {route.name === "uge" ? <WeekSwitcher weekStart={weekStart} onChange={onWeekChange} /> : null}
       <Link
-        to={routePath({ name: "planlaeg" })}
-        aria-label="Planlæg uge"
-        className="flex h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-3.5 text-[15px] font-semibold text-on-accent no-underline lg:px-5"
+        to={routePath(planRouteFor(route))}
+        className="flex h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-4 text-[15px] font-semibold text-on-accent no-underline lg:px-5"
       >
         <Sparkles size={18} aria-hidden="true" />
-        <span className="hidden lg:inline">Planlæg uge</span>
+        <span>
+          Planlæg<span className="hidden lg:inline"> uge</span>
+        </span>
       </Link>
       <button type="button" aria-label="Spørg Assist" onClick={openAssist} className={iconButton}>
         <MessageCircle size={20} aria-hidden="true" />
       </button>
-      <Link to={routePath({ name: "indstillinger" })} aria-label="Indstillinger" className={iconButton}>
-        <SlidersHorizontal size={20} aria-hidden="true" />
+      <Link
+        to={routePath({ name: "indstillinger" })}
+        aria-label="Indstillinger"
+        aria-current={route.name === "indstillinger" ? "page" : undefined}
+        className={`${iconButton} ${route.name === "indstillinger" ? "!bg-ink !text-ground" : ""}`}
+      >
+        <Settings size={20} aria-hidden="true" />
       </Link>
     </header>
   );

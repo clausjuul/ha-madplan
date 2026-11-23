@@ -4,10 +4,12 @@ import { useBootstrap, useShopping } from "@/api/queries";
 import { useMealActions } from "@/api/meal-mutations";
 import { useIsWide } from "@/hooks/use-media";
 import { useToday } from "@/hooks/use-today";
-import { mondayOf } from "@/lib/route";
-import { buildDay, buildWeek } from "@/lib/week-model";
+import { Link } from "react-router";
+import { CalendarDays } from "lucide-react";
+import { mondayOf, routePath } from "@/lib/route";
+import { buildDay, buildWeek, weekStatus } from "@/lib/week-model";
 import { WeekSkeleton } from "@/components/ui/Skeletons";
-import { ErrorState, ImportOffer } from "@/components/ui/StatusViews";
+import { EmptyStart, ErrorState } from "@/components/ui/StatusViews";
 import { PhoneList } from "./PhoneList";
 import { RateRecent } from "./RateRecent";
 import { ShoppingSummary, UseFirst } from "./SidePanels";
@@ -57,13 +59,28 @@ export function WeekView({ weekStart }: { weekStart: string }) {
   ) : null;
   const sheets = <WeekSheets sheet={sheet} setSheet={setSheet} data={data} today={today} actions={actions} />;
 
+  // "I aften" only belongs to the current week; another week gets a way back instead.
+  const backToThisWeek = isCurrentWeek ? null : (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-3xl bg-surface px-4 py-3 md:px-[22px]">
+      <span className="min-w-0 flex-1 text-[15px] text-ink-2">{weekStatus(days)}</span>
+      <Link
+        to={routePath({ name: "uge" })}
+        className="flex min-h-11 items-center gap-2 rounded-full px-1 text-[15px] font-semibold text-accent no-underline"
+      >
+        <CalendarDays size={18} aria-hidden="true" />
+        Til denne uge
+      </Link>
+    </div>
+  );
+
   if (!wide) {
     const rest = isCurrentWeek ? days.filter((day) => day.date !== today) : days;
     return (
       <div className="flex flex-col gap-2.5 px-4 pb-4">
-        {data.isEmpty ? <ImportOffer /> : null}
+        {data.isEmpty ? <EmptyStart /> : null}
+        {isCurrentWeek ? <TonightHero day={tonight} servings={servings} handlers={handlers} wide={false} /> : backToThisWeek}
         {rate}
-        <TonightHero day={tonight} servings={servings} handlers={handlers} wide={false} />
+        {isCurrentWeek ? <UseFirst fridge={data.fridge} today={today} compact /> : null}
         <PhoneList days={rest} handlers={handlers} heading={isCurrentWeek ? "Resten af ugen" : "Ugen"} />
         {sheets}
       </div>
@@ -72,15 +89,28 @@ export function WeekView({ weekStart }: { weekStart: string }) {
 
   return (
     <div className="flex min-h-full flex-col gap-[26px] px-6 pb-7 pt-6 lg:px-8">
-      {data.isEmpty ? <ImportOffer /> : null}
+      {data.isEmpty ? <EmptyStart /> : null}
       {rate}
-      <div className="grid gap-4 lg:h-[292px] lg:grid-cols-[minmax(0,1fr)_320px]">
-        <TonightHero day={tonight} servings={servings} handlers={handlers} wide />
-        <div className="grid grid-cols-2 gap-4 lg:flex lg:flex-col">
-          <ShoppingSummary list={shopping.data} />
-          <UseFirst fridge={data.fridge} today={today} />
+      {isCurrentWeek ? (
+        <div className="grid gap-4 lg:h-[292px] lg:grid-cols-[minmax(0,1fr)_320px]">
+          <TonightHero day={tonight} servings={servings} handlers={handlers} wide />
+          <div className="grid grid-cols-2 gap-4 lg:flex lg:flex-col">
+            <ShoppingSummary list={shopping.data} />
+            <UseFirst fridge={data.fridge} today={today} />
+          </div>
         </div>
-      </div>
+      ) : (
+        // The top bar shows the week and the strip below says how much is planned: only the way back is needed.
+        <div className="-mb-3 flex justify-end">
+          <Link
+            to={routePath({ name: "uge" })}
+            className="flex min-h-11 items-center gap-2 rounded-full bg-surface px-4 text-[15px] font-semibold text-accent no-underline"
+          >
+            <CalendarDays size={18} aria-hidden="true" />
+            Til denne uge
+          </Link>
+        </div>
+      )}
       <WeekStrip days={days} handlers={handlers} onSwap={(a, b) => void actions.swap(a, b)} />
       {sheets}
     </div>

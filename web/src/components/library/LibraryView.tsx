@@ -50,13 +50,13 @@ export function LibraryView({ dishId, tab }: Props) {
       <>
         <nav role="tablist" aria-label="Retter" className="no-scrollbar flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-surface p-1">
           <Link role="tab" aria-selected={!tab} to={routePath({ name: "retter" })} className={tabClass(!tab)}>
-            Vores retter
+            Vores
           </Link>
           <Link role="tab" aria-selected={tab === "opdag"} to={routePath({ name: "retter", tab: "opdag" })} className={tabClass(tab === "opdag")}>
-            Opdag nyt
+            Opdag
           </Link>
           <Link role="tab" aria-selected={tab === "ugens"} to={routePath({ name: "retter", tab: "ugens" })} className={tabClass(tab === "ugens")}>
-            Ugeplaner
+            Madsider
           </Link>
           <Link role="tab" aria-selected={tab === "gemt"} to={routePath({ name: "retter", tab: "gemt" })} className={tabClass(tab === "gemt")}>
             Gemt{data.savedInspirations.length > 0 ? ` (${data.savedInspirations.length})` : ""}

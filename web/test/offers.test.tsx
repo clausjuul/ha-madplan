@@ -80,7 +80,7 @@ describe("offers list", () => {
   });
 
   it("puts Indstillinger in the phone header", () => {
-    render(<PhoneHeader weekStart="2026-11-09" onWeekChange={() => undefined} />, { wrapper: MemoryRouter });
+    render(<PhoneHeader route={{ name: "uge" }} weekStart="2026-11-09" onWeekChange={() => undefined} />, { wrapper: MemoryRouter });
     expect(screen.getByRole("link", { name: "Indstillinger" }).getAttribute("href")).toBe("/indstillinger");
   });
 });

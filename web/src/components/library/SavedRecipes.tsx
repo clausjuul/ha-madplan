@@ -4,7 +4,7 @@ import { routePath } from "@/lib/route";
 import { InspirationCard } from "./InspirationCard";
 import { useInspirationActions } from "./use-inspiration-actions";
 
-/** Recipes saved for later from "Opdag nyt" and "Ugeplaner". */
+/** Recipes saved for later from "Opdag" and "Madsider". */
 export function SavedRecipes({ data }: { data: BootstrapResponse }) {
   const saved = data.savedInspirations;
   const { savedIds, adding, toggleSave, add } = useInspirationActions(saved);
@@ -15,8 +15,8 @@ export function SavedRecipes({ data }: { data: BootstrapResponse }) {
         <p className="m-0 mb-3">Du har ikke gemt nogen retter endnu.</p>
         <p className="m-0">
           Tryk “Gem til senere” under{" "}
-          <Link to={routePath({ name: "retter", tab: "opdag" })} className="text-accent underline">Opdag nyt</Link> eller{" "}
-          <Link to={routePath({ name: "retter", tab: "ugens" })} className="text-accent underline">Ugeplaner</Link>.
+          <Link to={routePath({ name: "retter", tab: "opdag" })} className="text-accent underline">Opdag</Link> eller{" "}
+          <Link to={routePath({ name: "retter", tab: "ugens" })} className="text-accent underline">Madsider</Link>.
         </p>
       </div>
     );

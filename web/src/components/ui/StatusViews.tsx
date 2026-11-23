@@ -1,6 +1,7 @@
 import { Link } from "react-router";
-import { RefreshCw, WifiOff } from "lucide-react";
+import { RefreshCw, Sparkles, WifiOff } from "lucide-react";
 import { ApiRequestError } from "@/api/client";
+import { routePath } from "@/lib/route";
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry: () => void }) {
   const message =
@@ -38,21 +39,33 @@ export function OfflineBanner() {
   );
 }
 
-export function ImportOffer() {
+/** First visit: plan the first week, or bring the old madplan along. */
+export function EmptyStart() {
   return (
-    <Link
-      to="/indstillinger"
-      className="mx-4 mb-4 flex items-center gap-4 rounded-3xl border border-line bg-surface p-5 text-ink md:mx-0"
-    >
-      <span className="min-w-0 flex-1">
-        <strong className="font-display block text-lg">Din madplan er tom</strong>
-        <span className="mt-1 block text-[15px] leading-snug text-ink-2">
-          Har du brugt den gamle madplan? Importér dine retter og uger fra den.
-        </span>
-      </span>
-      <span className="shrink-0 rounded-full bg-accent px-5 py-3 text-[15px] font-semibold text-on-accent">
-        Importér
-      </span>
-    </Link>
+    <section aria-labelledby="empty-start" className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-5">
+      <div>
+        <h2 id="empty-start" className="font-display m-0 text-lg font-bold">
+          Kom i gang med madplanen
+        </h2>
+        <p className="mb-0 mt-1 text-[15px] leading-snug text-ink-2">
+          Lad Madplan foreslå jeres første uge ud fra retterne og jeres ønsker. Bagefter kommer indkøbslisten af sig selv.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          to={routePath({ name: "planlaeg" })}
+          className="flex min-h-11 items-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent no-underline"
+        >
+          <Sparkles size={18} aria-hidden="true" />
+          Planlæg ugen
+        </Link>
+        <Link
+          to={routePath({ name: "indstillinger", tab: "data" })}
+          className="flex min-h-11 items-center rounded-full border border-line px-5 text-[15px] font-semibold text-ink no-underline"
+        >
+          Importér fra den gamle madplan
+        </Link>
+      </div>
+    </section>
   );
 }

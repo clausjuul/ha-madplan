@@ -1,9 +1,10 @@
 import { Link } from "react-router";
-import { CalendarDays, MoreHorizontal, Sun, SunDim } from "lucide-react";
+import { CalendarDays, MessageCircle, MoreHorizontal, Sun, SunDim } from "lucide-react";
 import type { ShoppingList } from "@madplan/domain";
 import { routePath, type ShoppingTab } from "@/lib/route";
 import { rangeTitle } from "@/lib/shopping-view";
 import type { KeepAwake } from "@/hooks/use-wake-lock";
+import { openAssist } from "@/lib/assist-store";
 
 type Props = {
   list: ShoppingList;
@@ -41,24 +42,27 @@ export function ShoppingHeader(props: Props) {
     </span>
   );
 
+  // The period line; on a phone it gets its own row so it is not cut short by the buttons.
+  const sub = onList ? (
+    <button
+      type="button"
+      onClick={onOpenRange}
+      aria-label={`${rangeTitle(list.from, list.to, today)}. Skift slutdato`}
+      className="-my-2 -ml-2 flex min-h-11 max-w-full items-center gap-1.5 rounded-full bg-transparent px-2 text-[13px] text-muted hover:text-ink"
+    >
+      <span className="truncate">{rangeTitle(list.from, list.to, today)}</span>
+      <CalendarDays size={15} className="shrink-0 text-accent" aria-hidden="true" />
+    </button>
+  ) : (
+    <p className="m-0 truncate text-[13px] text-muted">Fra jeres butikker, hentet i morges</p>
+  );
+
   return (
     <header className={`relative flex shrink-0 flex-col gap-2.5 ${wide ? "px-8 pb-5 pt-6" : "px-4 pb-3 pt-3"}`}>
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
           <h1 className={`font-display font-bold leading-[1.1] ${wide ? "text-[26px]" : "text-[24px]"}`}>Indkøb</h1>
-          {onList ? (
-            <button
-              type="button"
-              onClick={onOpenRange}
-              aria-label={`${rangeTitle(list.from, list.to, today)}. Skift slutdato`}
-              className="-my-2 -ml-2 flex min-h-11 max-w-full items-center gap-1.5 rounded-full bg-transparent px-2 text-[13px] text-muted hover:text-ink"
-            >
-              <span className="truncate">{rangeTitle(list.from, list.to, today)}</span>
-              <CalendarDays size={15} className="shrink-0 text-accent" aria-hidden="true" />
-            </button>
-          ) : (
-            <p className="m-0 truncate text-[13px] text-muted">Fra jeres butikker, hentet i morges</p>
-          )}
+          {wide ? sub : null}
         </div>
         {keepAwake.supported ? (
           <button
@@ -72,12 +76,19 @@ export function ShoppingHeader(props: Props) {
             {keepAwake.wanted ? <Sun size={19} aria-hidden="true" /> : <SunDim size={19} aria-hidden="true" />}
           </button>
         ) : null}
+        {wide ? null : (
+          // The phone has no global header here, so Assist lives next to the list's own buttons.
+          <button type="button" onClick={openAssist} aria-label="Spørg Assist" className={`${iconButton} bg-surface text-ink-2 hover:text-ink`}>
+            <MessageCircle size={20} aria-hidden="true" />
+          </button>
+        )}
         {onOpenMenu ? (
           <button type="button" onClick={onOpenMenu} aria-label="Flere muligheder" className={`${iconButton} bg-surface text-ink-2 hover:text-ink`}>
             <MoreHorizontal size={20} aria-hidden="true" />
           </button>
         ) : null}
       </div>
+      {wide ? null : <div className="-mt-2 min-w-0">{sub}</div>}
       {offersOn ? (
         <div className="flex items-center gap-3">
           <nav role="tablist" aria-label="Indkøb" className="flex w-fit max-w-full gap-1 rounded-full bg-surface p-1">

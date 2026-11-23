@@ -98,6 +98,14 @@ export function plannedCount(week: readonly DayModel[]): number {
   return week.filter((day) => day.dish).length;
 }
 
+/** "5 af 7 dage planlagt", shown instead of "I aften" when looking at another week. */
+export function weekStatus(week: readonly DayModel[]): string {
+  const planned = plannedCount(week);
+  if (planned === 0) return "Ingen dage planlagt endnu";
+  if (planned === week.length) return "Alle dage er planlagt";
+  return `${planned} af ${week.length} dage planlagt`;
+}
+
 export type UseFirstItem = { name: string; label: string; urgent: boolean };
 
 function expiryLabel(days: number): string {

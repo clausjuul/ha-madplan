@@ -1,6 +1,7 @@
 import { Link } from "react-router";
-import { ShoppingCart } from "lucide-react";
+import { ChevronRight, ShoppingCart } from "lucide-react";
 import { formatPrice, type FridgeItem, type ShoppingList } from "@madplan/domain";
+import { routePath } from "@/lib/route";
 import { shoppingUntilLabel, useFirstItems } from "@/lib/week-model";
 
 export function ShoppingSummary({ list }: { list: ShoppingList | undefined }) {
@@ -40,11 +41,19 @@ export function ShoppingSummary({ list }: { list: ShoppingList | undefined }) {
   );
 }
 
-export function UseFirst({ fridge, today }: { fridge: readonly FridgeItem[]; today: string }) {
+/** "Brug først fra køleskabet"; the whole card opens the fridge for editing. `compact` is the phone version. */
+export function UseFirst({ fridge, today, compact }: { fridge: readonly FridgeItem[]; today: string; compact?: boolean }) {
   const items = useFirstItems(fridge, today);
+  if (compact && items.length === 0) return null;
   return (
-    <section aria-label="Brug først" className="flex flex-col gap-2.5 rounded-3xl bg-surface px-[22px] py-[18px]">
-      <span className="text-sm text-muted">Brug først fra køleskabet</span>
+    <Link
+      to={routePath({ name: "indstillinger", tab: "mad" })}
+      className={`flex flex-col gap-2.5 rounded-3xl bg-surface text-ink no-underline ${compact ? "px-4 py-3.5" : "px-[22px] py-[18px]"}`}
+    >
+      <span className="flex items-center justify-between gap-2 text-sm text-muted">
+        Brug først fra køleskabet
+        <ChevronRight size={16} aria-hidden="true" />
+      </span>
       {items.length === 0 ? (
         <span className="text-[15px] text-ink-2">Intet haster i køleskabet.</span>
       ) : (
@@ -61,6 +70,6 @@ export function UseFirst({ fridge, today }: { fridge: readonly FridgeItem[]; tod
           ))}
         </ul>
       )}
-    </section>
+    </Link>
   );
 }

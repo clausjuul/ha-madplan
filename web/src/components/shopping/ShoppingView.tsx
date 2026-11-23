@@ -243,10 +243,10 @@ function EmptyState() {
         selv.
       </p>
       <Link
-        to="/uge"
+        to="/planlaeg"
         className="flex h-12 items-center rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent no-underline"
       >
-        Gå til ugen
+        Planlæg ugen
       </Link>
     </div>
   );

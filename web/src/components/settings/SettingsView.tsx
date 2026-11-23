@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { useBootstrap } from "@/api/queries";
+import { useIsWide } from "@/hooks/use-media";
 import { useHouseholdActions } from "@/api/library-mutations";
 import { ErrorState } from "@/components/ui/StatusViews";
 import { routePath, type SettingsTab } from "@/lib/route";
@@ -10,7 +11,7 @@ import { StoresSection } from "./StoresSection";
 
 const TABS: readonly { tab: SettingsTab | undefined; label: string }[] = [
   { tab: undefined, label: "Familien" },
-  { tab: "mad", label: "Mad" },
+  { tab: "mad", label: "Mad og køleskab" },
   { tab: "butikker", label: "Butikker" },
   { tab: "data", label: "Data" },
 ];
@@ -24,6 +25,7 @@ const tabClass = (active: boolean): string =>
 export function SettingsView({ tab }: { tab?: SettingsTab }) {
   const bootstrap = useBootstrap();
   const actions = useHouseholdActions();
+  const wide = useIsWide();
   const data = bootstrap.data;
 
   if (bootstrap.isError && !data) return <ErrorState error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />;
@@ -57,7 +59,8 @@ export function SettingsView({ tab }: { tab?: SettingsTab }) {
 
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-4 px-4 pb-10 pt-4 md:px-6 md:pt-6">
-      <h1 className="font-display m-0 text-[32px] font-bold">Indstillinger</h1>
+      {/* On a phone the header already says "Indstillinger". */}
+      {wide ? <h1 className="font-display m-0 text-[32px] font-bold">Indstillinger</h1> : null}
       <nav
         role="tablist"
         aria-label="Indstillinger"

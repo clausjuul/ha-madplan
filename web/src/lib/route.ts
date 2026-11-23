@@ -4,7 +4,7 @@ export type Route =
   | { name: "uge"; week?: string }
   | { name: "indkob"; tab?: ShoppingTab }
   | { name: "retter"; dishId?: string; tab?: LibraryTab }
-  | { name: "planlaeg" }
+  | { name: "planlaeg"; week?: string }
   | { name: "indstillinger"; tab?: SettingsTab }
   | { name: "lav-mad"; dishId: string };
 
@@ -28,7 +28,7 @@ export function parsePath(path: string): Route {
     case "indkob":
       return second === "tilbud" ? { name: "indkob", tab: second } : { name: "indkob" };
     case "planlaeg":
-      return { name: first };
+      return isDateKey(second) ? { name: "planlaeg", week: mondayOf(second) } : { name: "planlaeg" };
     case "indstillinger":
       return SETTINGS_TABS.includes(second) ? { name: "indstillinger", tab: second as SettingsTab } : { name: "indstillinger" };
     case "retter":
@@ -57,8 +57,8 @@ export function routePath(route: Route): string {
       return route.tab ? `/indkob/${route.tab}` : "/indkob";
     case "indstillinger":
       return route.tab ? `/indstillinger/${route.tab}` : "/indstillinger";
-    default:
-      return `/${route.name}`;
+    case "planlaeg":
+      return route.week ? `/planlaeg/${route.week}` : "/planlaeg";
   }
 }
 
@@ -71,3 +71,23 @@ export function navFor(route: Route): NavName | undefined {
   if (route.name === "lav-mad") return "uge";
   return route.name;
 }
+
+/** The screen name shown in the phone header (the week screen shows the week instead). */
+export function screenTitle(route: Route): string {
+  switch (route.name) {
+    case "indkob":
+      return "Indkøb";
+    case "retter":
+      return "Retter";
+    case "indstillinger":
+      return "Indstillinger";
+    case "planlaeg":
+      return "Planlæg";
+    default:
+      return "Madplan";
+  }
+}
+
+/** Where "Planlæg" should start: the week being looked at, when that is not the current week. */
+export const planRouteFor = (route: Route): Route =>
+  route.name === "uge" && route.week ? { name: "planlaeg", week: route.week } : { name: "planlaeg" };

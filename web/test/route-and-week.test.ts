@@ -15,9 +15,10 @@ describe("hash routing", () => {
     expect(parseHash("#/indstillinger/ukendt")).toEqual({ name: "indstillinger" });
     expect(parseHash("#/indkob/tilbud")).toEqual({ name: "indkob", tab: "tilbud" });
     expect(parseHash("#/lav-mad/tacos")).toEqual({ name: "lav-mad", dishId: "tacos" });
+    expect(parseHash("#/planlaeg/2026-11-18")).toEqual({ name: "planlaeg", week: "2026-11-16" });
   });
   it("round-trips", () => {
-    for (const hash of ["#/uge", "#/uge/2026-11-16", "#/retter", "#/indkob", "#/indkob/tilbud", "#/planlaeg", "#/indstillinger", "#/indstillinger/mad", "#/indstillinger/data", "#/lav-mad/tacos"]) {
+    for (const hash of ["#/uge", "#/uge/2026-11-16", "#/retter", "#/indkob", "#/indkob/tilbud", "#/planlaeg", "#/planlaeg/2026-11-16", "#/indstillinger", "#/indstillinger/mad", "#/indstillinger/data", "#/lav-mad/tacos"]) {
       expect(routeHref(parseHash(hash))).toBe(hash);
     }
   });
@@ -62,5 +63,16 @@ describe("live updates", () => {
     expect(keysForTopics(["shopping"])).toEqual([["shopping"]]);
     expect(keysForTopics(["meals"])).toEqual([["bootstrap"], ["shopping"]]);
     expect(keysForTopics(["drafts"])).toEqual([["plan-draft"]]);
+  });
+});
+
+describe("navigation helpers", () => {
+  it("starts Planlæg in the week being looked at", async () => {
+    const { planRouteFor, screenTitle } = await import("../src/lib/route");
+    expect(planRouteFor({ name: "uge", week: "2026-11-16" })).toEqual({ name: "planlaeg", week: "2026-11-16" });
+    expect(planRouteFor({ name: "uge" })).toEqual({ name: "planlaeg" });
+    expect(planRouteFor({ name: "retter" })).toEqual({ name: "planlaeg" });
+    expect(screenTitle({ name: "retter" })).toBe("Retter");
+    expect(screenTitle({ name: "indstillinger", tab: "mad" })).toBe("Indstillinger");
   });
 });

@@ -45,7 +45,7 @@ const when = (date: string, today: string): string =>
   date === addDaysToKey(today, -1) ? "i går" : `i ${weekdayName(date)}s`;
 
 const button =
-  "flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-raised px-3 text-[15px] font-medium text-ink hover:bg-line";
+  "flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-raised px-2 text-[14px] font-medium text-ink hover:bg-line sm:gap-2 sm:px-3 sm:text-[15px]";
 
 /** "Hvordan var lasagnen i går?": one tap feeds the family's verdict back into future suggestions. */
 export function RateRecent({ meals, dishes, today, onRate }: Props) {
@@ -71,7 +71,7 @@ export function RateRecent({ meals, dishes, today, onRate }: Props) {
           <X size={18} aria-hidden="true" />
         </button>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2">
         <button type="button" className={button} onClick={() => onRate(date, "up")}>
           <ThumbsUp size={18} aria-hidden="true" />
           Godt

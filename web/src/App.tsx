@@ -1,11 +1,11 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
 import { useIsWide } from "@/hooks/use-media";
 import { useRoute } from "@/hooks/use-route";
 import { useToday } from "@/hooks/use-today";
 import { useLiveUpdates } from "@/api/live-updates";
 import { useBootstrap } from "@/api/queries";
-import { mondayOf, type Route } from "@/lib/route";
+import { mondayOf, routePath, type Route } from "@/lib/route";
 import { BottomNav, PhoneHeader } from "@/components/shell/PhoneChrome";
 import { TopBar } from "@/components/shell/TopBar";
 import { Toast } from "@/components/ui/Toast";
@@ -49,6 +49,13 @@ export function App() {
 
   const offline = !connected || bootstrap.isRefetchError;
 
+  // All screens share one scroll container: start each screen (and each week) at the top.
+  const main = useRef<HTMLElement>(null);
+  const path = routePath(route);
+  useEffect(() => {
+    main.current?.scrollTo({ top: 0 });
+  }, [path]);
+
   if (route.name === "lav-mad") {
     // Cooking mode owns the whole screen: no navigation chrome.
     return (
@@ -70,7 +77,7 @@ export function App() {
         <div className="flex h-dvh flex-col overflow-hidden bg-ground text-ink">
           {offline ? <OfflineBanner /> : null}
           <Suspense fallback={<RouteSkeleton />}>
-            <PlanFlow />
+            <PlanFlow {...(route.week ? { week: route.week } : {})} />
           </Suspense>
           <Toast />
         </div>
@@ -84,10 +91,10 @@ export function App() {
         {wide ? (
           <TopBar route={route} weekStart={weekStart} onWeekChange={changeWeek} />
         ) : route.name === "indkob" ? null : (
-          <PhoneHeader weekStart={weekStart} onWeekChange={changeWeek} />
+          <PhoneHeader route={route} weekStart={weekStart} onWeekChange={changeWeek} />
         )}
         {offline ? <OfflineBanner /> : null}
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main ref={main} className="min-h-0 flex-1 overflow-y-auto">
           {route.name === "uge" ? (
             <WeekView weekStart={weekStart} />
           ) : (

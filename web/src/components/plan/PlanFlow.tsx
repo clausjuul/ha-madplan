@@ -15,10 +15,10 @@ import { PlanWizard } from "./PlanWizard";
 import { ReviewStep } from "./ReviewStep";
 
 /**
- * `#/planlaeg`: resumes the current draft from the server (so it survives reloads and other devices),
+ * `#/planlaeg[/<week>]`: resumes the current draft from the server (so it survives reloads and other devices),
  * otherwise walks through the days and wishes steps.
  */
-export function PlanFlow() {
+export function PlanFlow({ week }: { week?: string }) {
   const today = useToday();
   const { navigate } = useRoute();
   const bootstrap = useBootstrap();
@@ -64,6 +64,7 @@ export function PlanFlow() {
         today={today}
         draft={draft}
         seed={seed}
+        {...(week ? { startWeek: week } : {})}
         busy={actions.busy}
         onSubmit={(request) => void create(request)}
         onBackToDraft={() => setEditing(false)}
