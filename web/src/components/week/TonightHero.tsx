@@ -159,7 +159,7 @@ export function TonightHero({ day, servings, handlers, wide }: Props) {
             className={`${ghost} h-[52px] whitespace-nowrap px-5 text-base font-medium disabled:opacity-40`}
           >
             <ArrowLeftRight size={18} aria-hidden="true" />
-            Byt ret
+            Skift ret
           </button>
           <button
             type="button"

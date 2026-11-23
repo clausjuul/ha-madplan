@@ -24,7 +24,7 @@ export function WeekView({ weekStart }: { weekStart: string }) {
   const bootstrap = useBootstrap();
   const shopping = useShopping();
   const data = bootstrap.data;
-  const actions = useMealActions(data?.meals);
+  const actions = useMealActions(data?.meals, data?.dishes);
   const [sheet, setSheet] = useState<SheetState>(null);
 
   const days = useMemo(

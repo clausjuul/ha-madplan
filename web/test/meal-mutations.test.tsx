@@ -8,7 +8,7 @@ import { createFakeClient } from "../src/api/fake-client";
 import { useMealActions } from "../src/api/meal-mutations";
 import { ApiProvider } from "../src/api/provider";
 import { useBootstrap } from "../src/api/queries";
-import { dismissNotice } from "../src/lib/notify";
+import { dismissNotice, useNotice } from "../src/lib/notify";
 
 const TODAY = "2026-11-09";
 const A = "2026-11-10"; // laks
@@ -25,8 +25,9 @@ function setup(override: Partial<ApiClient> = {}) {
   const hook = renderHook(
     () => {
       const bootstrap = useBootstrap();
-      const actions = useMealActions(bootstrap.data?.meals);
-      return { meals: bootstrap.data?.meals, actions };
+      const actions = useMealActions(bootstrap.data?.meals, bootstrap.data?.dishes);
+      const notice = useNotice();
+      return { meals: bootstrap.data?.meals, actions, notice };
     },
     { wrapper },
   );
@@ -116,5 +117,16 @@ describe("meal mutations", () => {
       await gate.promise.catch(() => undefined);
     });
     await waitFor(() => expect(hook.result.current.meals?.[A]?.dishId).toBe("laks"));
+  });
+
+  it("offers Fortryd after removing a meal, which puts it back", async () => {
+    const hook = setup();
+    await waitFor(() => expect(hook.result.current.meals).toBeDefined());
+    act(() => hook.result.current.actions.removeMeal(A));
+    await waitFor(() => expect(hook.result.current.notice?.action?.label).toBe("Fortryd"));
+    expect(hook.result.current.notice?.message).toMatch(/er fjernet fra tirsdag/);
+    act(() => hook.result.current.notice?.action?.run());
+    await waitFor(() => expect(hook.result.current.meals?.[A]?.dishId).toBe("laks"));
+    act(() => dismissNotice());
   });
 });

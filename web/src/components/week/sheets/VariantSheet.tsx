@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router";
+import { routePath } from "@/lib/route";
 import { parseIngredient, type MealVariant, type Profile } from "@madplan/domain";
 import { Sheet } from "@/components/ui/Sheet";
 import { chipClass } from "@/components/plan/Stepper";
@@ -27,13 +29,20 @@ function VariantForm({ day, profiles, onSave }: { day: DayModel; profiles: reado
 
   if (!swappers.length) {
     return (
-      <p className="mx-3 mb-3 rounded-2xl bg-raised px-4 py-3 text-[15px] leading-snug text-ink-2">
-        Skriv under Indstillinger → Familien, hvad en person altid spiser (fx nuggets). Så kan du her bytte én del af retten for dem.
-      </p>
+      <div className="mx-3 mb-3 flex flex-col items-start gap-3 rounded-2xl bg-raised px-4 py-3 text-[15px] leading-snug text-ink-2">
+        <p className="m-0">
+          Skriv under Familien, hvad en person altid spiser (fx nuggets). Så kan du her bytte én del af retten for dem.
+        </p>
+        <Link to={routePath({ name: "indstillinger" })} className="flex min-h-11 items-center font-semibold text-accent">
+          Gå til Familien
+        </Link>
+      </div>
     );
   }
 
   const set = (profileId: string, choice: Choice): void => setChoices({ ...choices, [profileId]: choice });
+  // A swap without "i stedet for" would put the wrong thing on the shopping list.
+  const incomplete = Object.values(choices).some((choice) => choice !== null && !choice.replaces);
 
   return (
     <form
@@ -64,7 +73,7 @@ function VariantForm({ day, profiles, onSave }: { day: DayModel; profiles: reado
                   key={food}
                   type="button"
                   aria-pressed={choice?.with === food}
-                  onClick={() => set(profile.id, { replaces: choice?.replaces ?? parts[0] ?? "", with: food })}
+                  onClick={() => set(profile.id, { replaces: choice?.replaces ?? "", with: food })}
                   className={chipClass(choice?.with === food)}
                 >
                   {food}
@@ -77,8 +86,12 @@ function VariantForm({ day, profiles, onSave }: { day: DayModel; profiles: reado
                 <select
                   value={choice.replaces}
                   onChange={(event) => set(profile.id, { ...choice, replaces: event.target.value })}
+                  aria-invalid={!choice.replaces}
                   className="h-12 rounded-2xl border border-line bg-ground px-4 text-[15px] font-normal text-ink"
                 >
+                  <option value="" disabled>
+                    Vælg hvad det erstatter
+                  </option>
                   {parts.map((part) => (
                     <option key={part} value={part}>
                       {part}
@@ -90,17 +103,22 @@ function VariantForm({ day, profiles, onSave }: { day: DayModel; profiles: reado
           </fieldset>
         );
       })}
-      <button type="submit" className="h-12 rounded-full bg-accent text-[15px] font-semibold text-on-accent">
+      {incomplete ? <p className="m-0 text-sm text-muted">Vælg, hvad det erstatter, før du gemmer.</p> : null}
+      <button
+        type="submit"
+        disabled={incomplete}
+        className="h-12 rounded-full bg-accent text-[15px] font-semibold text-on-accent disabled:opacity-50"
+      >
         Gem
       </button>
     </form>
   );
 }
 
-/** "Byt en del for én": e.g. nuggets instead of the steak for one person, the rest of the dish the same. */
+/** "Særlig ret til én": e.g. nuggets instead of the steak for one person, the rest of the dish the same. */
 export function VariantSheet({ day, profiles, onSave, onClose }: Props) {
   return (
-    <Sheet open={day !== null} onClose={onClose} title="Byt en del for én" subtitle={day?.dish?.name}>
+    <Sheet open={day !== null} onClose={onClose} title="Særlig ret til én" subtitle={day?.dish?.name}>
       {day ? <VariantForm key={day.date} day={day} profiles={profiles} onSave={onSave} /> : null}
     </Sheet>
   );

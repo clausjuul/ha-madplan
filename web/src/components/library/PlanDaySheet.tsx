@@ -13,7 +13,7 @@ const dayLabel = (date: string): string => {
 
 /** Pick one of the next 14 days to put the dish on. */
 export function PlanDaySheet({ open, dish, data, today, onClose }: Props) {
-  const actions = useMealActions(data.meals);
+  const actions = useMealActions(data.meals, data.dishes);
   const dishName = (id: string): string => data.dishes.find((candidate) => candidate.id === id)?.name ?? "";
 
   const pick = (date: string): void => {

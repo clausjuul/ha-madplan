@@ -30,7 +30,7 @@ test("handlingsark åbent", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openApp(page);
   await page.getByRole("button", { name: /Handlinger for Onsdag 11\./ }).click();
-  await page.getByRole("dialog").getByText("Byt med anden dag").waitFor();
+  await page.getByRole("dialog").getByText("Byt plads med en anden dag").waitFor();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${SHOTS}\\day-sheet-1280x800.png` });
 });
@@ -39,7 +39,7 @@ test("ret-vælger åben på telefon", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openApp(page);
   await page.getByRole("button", { name: /Handlinger for Tirsdag 10\./ }).click();
-  await page.getByRole("button", { name: /Byt ret/ }).click();
+  await page.getByRole("button", { name: /Skift ret/ }).click();
   await page.getByPlaceholder("Søg i retter").waitFor();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${SHOTS}\\picker-390x844.png` });

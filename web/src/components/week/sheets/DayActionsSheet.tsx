@@ -58,8 +58,8 @@ export function DayActionsSheet({ day, onClose, onAction }: Props) {
           ) : null}
           <ActionRow
             icon={<ArrowLeftRight size={20} aria-hidden="true" />}
-            label="Byt ret"
-            hint="Vælg blandt dine retter"
+            label="Skift ret"
+            hint="Vælg blandt jeres retter"
             disabled={locked}
             onClick={() => onAction("pick")}
           />
@@ -72,7 +72,7 @@ export function DayActionsSheet({ day, onClose, onAction }: Props) {
           />
           <ActionRow
             icon={<Shuffle size={20} aria-hidden="true" />}
-            label="Byt med anden dag"
+            label="Byt plads med en anden dag"
             disabled={locked || !hasMeal}
             onClick={() => onAction("swap")}
           />
@@ -85,7 +85,7 @@ export function DayActionsSheet({ day, onClose, onAction }: Props) {
           />
           <ActionRow
             icon={<Replace size={20} aria-hidden="true" />}
-            label="Byt en del for én"
+            label="Særlig ret til én"
             hint={day.variantLines.join(" · ") || "Fx nuggets i stedet for bøf til én person"}
             disabled={!hasMeal}
             onClick={() => onAction("variant")}

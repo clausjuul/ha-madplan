@@ -15,7 +15,7 @@ export function SwapDaySheet({ from, days, onPick, onClose }: Props) {
     <Sheet
       open={from !== null}
       onClose={onClose}
-      title="Byt med anden dag"
+      title="Byt plads med en anden dag"
       subtitle={from ? `${from.dish?.name ?? ""} · ${from.longLabel}` : undefined}
     >
       <ul className="m-0 flex list-none flex-col gap-0.5 p-0">

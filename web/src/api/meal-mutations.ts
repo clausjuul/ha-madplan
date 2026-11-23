@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { BootstrapResponse, MealInput, MealMap } from "@madplan/domain";
+import { weekdayName, type BootstrapResponse, type Dish, type Meal, type MealInput, type MealMap } from "@madplan/domain";
 import { notify } from "@/lib/notify";
 import {
   canSwap,
@@ -60,7 +60,10 @@ export type MealActions = {
   busy: boolean;
 };
 
-export function useMealActions(meals: MealMap | undefined): MealActions {
+const capitalize = (value: string): string => value.charAt(0).toLocaleUpperCase("da-DK") + value.slice(1);
+
+/** `dishes` names the dishes in the "Fortryd" messages after removing or replacing a meal. */
+export function useMealActions(meals: MealMap | undefined, dishes?: readonly Dish[]): MealActions {
   const api = useApi();
   const queryClient = useQueryClient();
 
@@ -89,10 +92,28 @@ export function useMealActions(meals: MealMap | undefined): MealActions {
     },
   });
 
+  const nameOf = (dishId: string): string => dishes?.find((dish) => dish.id === dishId)?.name ?? "Retten";
+  /** Puts a day back the way it was before a removal or a suggestion. */
+  const restore = (date: string, previous: Meal | undefined): void => {
+    if (previous) set.mutate({ date, input: previous });
+    else remove.mutate(date);
+  };
+
   return {
     setMeal: (date, input) => set.mutate({ date, input }),
     patchMeal: (date, changes) => patch.mutate({ date, patch: changes }),
-    removeMeal: (date) => remove.mutate(date),
+    removeMeal: (date) => {
+      const previous = meals?.[date];
+      remove.mutate(date, {
+        onSuccess: () => {
+          if (!previous) return;
+          notify(`${nameOf(previous.dishId)} er fjernet fra ${weekdayName(date)}.`, 6000, {
+            label: "Fortryd",
+            run: () => restore(date, previous),
+          });
+        },
+      });
+    },
     swap: async (a, b) => {
       const check = canSwap(meals ?? {}, a, b);
       if (!check.ok) {
@@ -102,7 +123,18 @@ export function useMealActions(meals: MealMap | undefined): MealActions {
       await swapMutation.mutateAsync({ a, b }).catch(() => undefined);
       return true;
     },
-    suggest: (date) => suggestMutation.mutate(date),
+    suggest: (date) => {
+      const previous = meals?.[date];
+      suggestMutation.mutate(date, {
+        onSuccess: (meal) => {
+          const day = capitalize(weekdayName(date));
+          const text = previous && previous.dishId !== meal.dishId
+            ? `${day}: ${nameOf(meal.dishId)} i stedet for ${nameOf(previous.dishId)}.`
+            : `${day}: ${nameOf(meal.dishId)}.`;
+          notify(text, 6000, { label: "Fortryd", run: () => restore(date, previous) });
+        },
+      });
+    },
     busy: suggestMutation.isPending,
   };
 }

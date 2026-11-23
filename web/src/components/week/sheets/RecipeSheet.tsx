@@ -7,7 +7,7 @@ import type { DayModel } from "@/lib/week-model";
 
 type Props = { day: DayModel | null; onClose: () => void };
 
-/** Simple recipe overview for this phase; the full cook mode comes later. */
+/** Quick look at the evening's recipe from the week; the full dish page (with editing) is one tap away. */
 export function RecipeSheet({ day, onClose }: Props) {
   const dish = day?.dish;
   return (
@@ -22,6 +22,20 @@ export function RecipeSheet({ day, onClose }: Props) {
             </span>
             <span className="rounded-full bg-raised px-3 py-1.5 text-sm text-ink-2">{dish.category}</span>
           </div>
+          <div className="flex gap-2">
+            <Link
+              to={routePath({ name: "lav-mad", dishId: dish.id })}
+              className="flex h-12 flex-1 items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-ground no-underline"
+            >
+              Lav mad
+            </Link>
+            <Link
+              to={routePath({ name: "retter", dishId: dish.id })}
+              className="flex h-12 flex-1 items-center justify-center rounded-full border border-line text-[15px] font-semibold text-ink no-underline"
+            >
+              Hele opskriften
+            </Link>
+          </div>
           {dish.ingredients.length > 0 ? (
             <section>
               <h3 className="mb-2 text-sm font-semibold text-muted">Ingredienser</h3>
@@ -35,7 +49,7 @@ export function RecipeSheet({ day, onClose }: Props) {
           {dish.instructions && dish.instructions.length > 0 ? (
             <section>
               <h3 className="mb-2 text-sm font-semibold text-muted">Fremgangsmåde</h3>
-              <ol className="m-0 pl-5 text-[15px] leading-relaxed text-ink-2">
+              <ol className="m-0 list-decimal pl-5 text-[15px] leading-relaxed text-ink-2">
                 {dish.instructions.map((step) => (
                   <li key={step} className="mb-1.5">
                     {step}
@@ -44,12 +58,6 @@ export function RecipeSheet({ day, onClose }: Props) {
               </ol>
             </section>
           ) : null}
-          <Link
-            to={routePath({ name: "lav-mad", dishId: dish.id })}
-            className="flex h-12 items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-ground no-underline"
-          >
-            Lav mad
-          </Link>
         </div>
       ) : null}
     </Sheet>

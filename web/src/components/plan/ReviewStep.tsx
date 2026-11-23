@@ -4,7 +4,7 @@ import { describeVariant, eatenHistory, lastEatenByDish, parseDateKey, weekdayNa
 import type { DraftActions } from "@/api/draft-mutations";
 import { useIsWide } from "@/hooks/use-media";
 import { dishOfDay, engineLabel, draftDayBadge, summarizeDraft } from "@/lib/draft-summary";
-import { DishPickerSheet } from "@/components/week/sheets/DishPickerSheet";
+import { DishPickerSheet, plannedLabels } from "@/components/week/sheets/DishPickerSheet";
 import { AlternativesSheet } from "./AlternativesSheet";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { ReviewRow } from "./ReviewRow";
@@ -114,6 +114,7 @@ export function ReviewStep({ draft, data, today, actions, onApply, onDiscard }: 
         dishes={data.dishes}
         meals={data.meals}
         today={today}
+        planned={plannedLabels(draft.days.map((day) => ({ date: day.date, dishId: day.dishId ?? day.newDish?.id })), pickDate ?? "")}
         onClose={() => setPickDate(null)}
         onPick={(dishId) => {
           const date = pickDate;
