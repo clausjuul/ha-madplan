@@ -113,7 +113,7 @@ export function WatchSection({ watchlist, hits, offers, onChange, onAdd }: Props
                     type="button"
                     aria-label={`Stop med at holde øje med ${item.name}`}
                     onClick={() => onChange(watchlist.filter((existing) => existing !== item))}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:text-ink"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted hover:text-ink"
                   >
                     <X size={16} aria-hidden="true" />
                   </button>
@@ -136,7 +136,7 @@ export function WatchSection({ watchlist, hits, offers, onChange, onAdd }: Props
                           type="button"
                           onClick={() => onAdd(offer)}
                           aria-label={`Læg ${offer.name} på indkøbslisten`}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface text-ink-2 hover:text-ink"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink-2 hover:text-ink"
                         >
                           <Plus size={16} aria-hidden="true" />
                         </button>
@@ -170,7 +170,7 @@ export function WatchSection({ watchlist, hits, offers, onChange, onAdd }: Props
             <button
               type="submit"
               aria-label={value.trim() ? `Hold øje med alt med «${value.trim()}»` : "Hold øje med varen"}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-raised text-ink"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-raised text-ink"
             >
               <Plus size={18} aria-hidden="true" />
             </button>

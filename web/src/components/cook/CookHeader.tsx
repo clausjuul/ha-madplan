@@ -21,7 +21,8 @@ export function CookHeader({ title, wake, timers, wide, onIngredients, onGoToSte
   return (
     <header className="flex items-center gap-3 md:gap-4">
       <h1 className="min-w-0 truncate font-display text-[22px] font-bold md:text-3xl">{title}</h1>
-      <span className={chip} role="status">
+      {/* Status, not a button: on a phone just a small icon, so it does not look like the shopping list's toggle. */}
+      <span className={wide ? chip : "flex shrink-0 items-center text-muted"} role="status">
         {wake === "active" ? (
           <Sun size={16} className="shrink-0 text-offer" aria-hidden="true" />
         ) : (

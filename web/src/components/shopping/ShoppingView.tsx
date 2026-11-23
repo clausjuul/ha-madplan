@@ -26,10 +26,11 @@ import { ShoppingHeader } from "./ShoppingHeader";
 
 const heading = "mx-0.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-muted";
 
-/** `#/indkob` – the one current shopping list ("butikstilstand"); `#/indkob/tilbud` – the offers tab. */
 /** Ticks closer together than this share one toast. */
 const BURST_MS = 4000;
 const capitalize = (value: string): string => value.charAt(0).toLocaleUpperCase("da-DK") + value.slice(1);
+
+/** `#/indkob` – the one current shopping list ("butikstilstand"); `#/indkob/tilbud` – the offers tab. */
 
 export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
   const today = useToday();
@@ -241,6 +242,7 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
         today={today}
         from={list.from}
         to={list.to}
+        isDefault={query === undefined}
         onChange={setEnd}
       />
       <ResetSheet

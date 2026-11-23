@@ -40,14 +40,14 @@ export function ChipInput({ label, values, onChange, placeholder, hideLabel }: P
         {values.map((value) => (
           <span
             key={value}
-            className="flex h-9 items-center gap-0.5 rounded-full bg-raised pl-3.5 pr-1 text-[15px] text-ink"
+            className="flex h-11 items-center gap-0.5 rounded-full bg-raised pl-3.5 pr-0.5 text-[15px] text-ink"
           >
             {value}
             <button
               type="button"
               aria-label={`Fjern ${value}`}
               onClick={() => onChange(removeChip(values, value))}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:text-ink"
+              className="flex h-11 w-10 items-center justify-center rounded-full text-muted hover:text-ink"
             >
               <X size={15} aria-hidden="true" />
             </button>

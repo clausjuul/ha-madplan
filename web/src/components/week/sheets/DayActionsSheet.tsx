@@ -64,17 +64,17 @@ export function DayActionsSheet({ day, onClose, onAction }: Props) {
             onClick={() => onAction("pick")}
           />
           <ActionRow
+            icon={<Shuffle size={20} aria-hidden="true" />}
+            label="Byt plads med en anden dag"
+            disabled={locked || !hasMeal}
+            onClick={() => onAction("swap")}
+          />
+          <ActionRow
             icon={<Sparkles size={20} aria-hidden="true" />}
             label="Foreslå ny"
             hint="Forslag ud fra dine retter, køleskab og historik"
             disabled={locked}
             onClick={() => onAction("suggest")}
-          />
-          <ActionRow
-            icon={<Shuffle size={20} aria-hidden="true" />}
-            label="Byt plads med en anden dag"
-            disabled={locked || !hasMeal}
-            onClick={() => onAction("swap")}
           />
           <ActionRow
             icon={locked ? <LockOpen size={20} aria-hidden="true" /> : <Lock size={20} aria-hidden="true" />}

@@ -33,7 +33,7 @@ export function RequiredDishes({ selected, dishes, meals, today, feasibility, lo
               type="button"
               aria-label={`Fjern ${byId.get(id)?.name ?? id}`}
               onClick={() => onChange(selected.filter((other) => other !== id))}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:text-ink"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:text-ink"
             >
               <X size={16} aria-hidden="true" />
             </button>

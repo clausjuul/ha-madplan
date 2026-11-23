@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { ArrowLeftRight, ChefHat, Clock, MoreHorizontal } from "lucide-react";
+import { ArrowLeftRight, BookOpen, ChefHat, Clock, MoreHorizontal } from "lucide-react";
 import { formatFullDate } from "@madplan/domain";
 import { DishImage } from "@/components/ui/DishImage";
 import { routePath } from "@/lib/route";
@@ -79,6 +79,14 @@ export function TonightHero({ day, servings, handlers, wide }: Props) {
           onClick={() => handlers.openRecipe(day.date)}
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         />
+        {/* Says that the picture opens the recipe; the tap itself is the button above. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-2.5 top-2.5 flex h-9 items-center gap-1.5 rounded-full bg-scrim px-3 text-[13px] font-medium text-ink"
+        >
+          <BookOpen size={15} />
+          Se opskrift
+        </span>
         <button
           type="button"
           aria-label="Flere handlinger for i aften"
@@ -100,12 +108,23 @@ export function TonightHero({ day, servings, handlers, wide }: Props) {
               </div>
             ))}
           </div>
-          <Link
-            to={routePath({ name: "lav-mad", dishId: dish.id })}
-            className="pointer-events-auto flex h-11 items-center rounded-full bg-ink px-[18px] text-[15px] font-semibold text-ground no-underline"
-          >
-            Lav mad
-          </Link>
+          <div className="pointer-events-auto flex shrink-0 flex-col items-stretch gap-2">
+            <button
+              type="button"
+              onClick={() => handlers.openPicker(day.date)}
+              aria-label="Skift aftenens ret"
+              className="flex h-11 items-center justify-center gap-1.5 rounded-full bg-scrim px-4 text-[15px] font-medium text-ink"
+            >
+              <ArrowLeftRight size={16} aria-hidden="true" />
+              Skift
+            </button>
+            <Link
+              to={routePath({ name: "lav-mad", dishId: dish.id })}
+              className="flex h-11 items-center justify-center rounded-full bg-ink px-[18px] text-[15px] font-semibold text-ground no-underline"
+            >
+              Lav mad
+            </Link>
+          </div>
         </div>
       </section>
     );
