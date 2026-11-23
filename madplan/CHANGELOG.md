@@ -1,5 +1,16 @@
 # Ændringer
 
+## 0.21.0
+
+- test(e2e): dish picker screenshot uses the new search placeholder
+- feat(web): last UX polish from the review
+- feat(assist): knows the week and day, can be stopped and retried, explains what it left out
+- feat(web): shopping list – one toast per burst of ticks, Fortryd on removals
+- feat(web): plan flow says what saving does and puts the big choice first
+- feat(web): safer day changes and a smarter dish picker
+- feat(web): cooking timers and step survive leaving cooking mode
+- feat(web): clearer navigation – week context only where it belongs
+
 ## 0.20.1
 
 - fix(ha): republish sensors after a Home Assistant restart; calendar named "Aftensmad"
