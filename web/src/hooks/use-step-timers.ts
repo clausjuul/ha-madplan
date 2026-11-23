@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { alertTimerDone, primeAudio } from "@/lib/beep";
-import { notify } from "@/lib/notify";
-import {
-  createTimer,
-  pauseTimer,
-  remainingMs,
-  resetTimer,
-  startTimer,
-  tickTimer,
-  type TimerState,
-} from "@/lib/timer-machine";
+import { primeAudio } from "@/lib/beep";
+import { updateCookTimer, useCookSessions } from "@/lib/cook-session";
+import { pauseTimer, remainingMs, resetTimer, startTimer, type TimerState } from "@/lib/timer-machine";
 
 export type TimerSummary = { step: number; status: TimerState["status"]; remainingMs: number };
 
@@ -23,54 +15,42 @@ export type StepTimers = {
   active: TimerSummary[];
 };
 
-/** One timer per step; they keep running while you move between steps. Beeps + vibrates when one finishes. */
-export function useStepTimers(): StepTimers {
-  const [timers, setTimers] = useState<Record<number, TimerState>>({});
+/** A clock that ticks while `running`, for showing time left. */
+export function useNow(running: boolean): number {
   const [now, setNow] = useState(() => Date.now());
-  const anyRunning = Object.values(timers).some((timer) => timer.status === "running");
-
   useEffect(() => {
-    if (!anyRunning) return;
+    if (!running) return;
     const refresh = (): void => setNow(Date.now());
+    refresh();
     const id = setInterval(refresh, 250);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       clearInterval(id);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [anyRunning]);
+  }, [running]);
+  return now;
+}
 
-  useEffect(() => {
-    const next: Record<number, TimerState> = { ...timers };
-    let finished = 0;
-    for (const [key, timer] of Object.entries(timers)) {
-      const ticked = tickTimer(timer, now);
-      if (ticked !== timer) {
-        next[Number(key)] = ticked;
-        finished += 1;
-      }
-    }
-    if (finished === 0) return;
-    setTimers(next);
-    alertTimerDone();
-    notify("Timeren er færdig.", 8000);
-  }, [now, timers]);
-
-  const update = useCallback((step: number, change: (timer: TimerState, at: number) => TimerState, seconds = 0) => {
-    const at = Date.now();
-    setTimers((current) => ({ ...current, [step]: change(current[step] ?? createTimer(seconds * 1000), at) }));
-    setNow(at);
-  }, []);
+/**
+ * One timer per step of a dish. They live in the cook session store, so they keep running when you
+ * leave cooking mode; `CookTimersHost` beeps when one finishes, wherever you are in the app.
+ */
+export function useStepTimers(dishId: string, dishName: string): StepTimers {
+  const sessions = useCookSessions();
+  const timers = useMemo(() => sessions[dishId]?.timers ?? {}, [sessions, dishId]);
+  const anyRunning = Object.values(timers).some((timer) => timer.status === "running");
+  const now = useNow(anyRunning);
 
   const start = useCallback(
     (step: number, seconds: number) => {
       primeAudio();
-      update(step, startTimer, seconds);
+      updateCookTimer(dishId, dishName, step, startTimer, seconds);
     },
-    [update],
+    [dishId, dishName],
   );
-  const pause = useCallback((step: number) => update(step, pauseTimer), [update]);
-  const reset = useCallback((step: number) => update(step, (timer) => resetTimer(timer)), [update]);
+  const pause = useCallback((step: number) => updateCookTimer(dishId, dishName, step, pauseTimer), [dishId, dishName]);
+  const reset = useCallback((step: number) => updateCookTimer(dishId, dishName, step, (timer) => resetTimer(timer)), [dishId, dishName]);
 
   const active = useMemo<TimerSummary[]>(
     () =>

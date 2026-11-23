@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { ListChecks, Sun, SunDim, X } from "lucide-react";
 import type { WakeStatus } from "@/hooks/use-wake-lock";
 import type { TimerSummary } from "@/hooks/use-step-timers";
@@ -11,11 +10,13 @@ type Props = {
   wide: boolean;
   onIngredients: () => void;
   onGoToStep: (step: number) => void;
+  /** Leaves cooking mode; the step and any running timer are kept. */
+  onClose: () => void;
 };
 
 const chip = "flex items-center gap-2 rounded-full bg-surface px-3.5 py-2 text-sm text-muted";
 
-export function CookHeader({ title, wake, timers, wide, onIngredients, onGoToStep }: Props) {
+export function CookHeader({ title, wake, timers, wide, onIngredients, onGoToStep, onClose }: Props) {
   const first = timers[0];
   return (
     <header className="flex items-center gap-3 md:gap-4">
@@ -54,13 +55,14 @@ export function CookHeader({ title, wake, timers, wide, onIngredients, onGoToSte
           <ListChecks size={20} aria-hidden="true" />
         </button>
       )}
-      <Link
-        to="/uge"
-        aria-label="Afslut kogetilstand"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink md:h-12 md:w-12"
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={timers.some((timer) => timer.status === "running") ? "Luk kogetilstand (timeren kører videre)" : "Luk kogetilstand"}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-0 bg-surface text-ink md:h-12 md:w-12"
       >
         <X size={22} aria-hidden="true" />
-      </Link>
+      </button>
     </header>
   );
 }

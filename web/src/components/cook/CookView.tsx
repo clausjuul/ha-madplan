@@ -6,7 +6,8 @@ import { useBootstrap } from "@/api/queries";
 import { useIsWide } from "@/hooks/use-media";
 import { useStepTimers } from "@/hooks/use-step-timers";
 import { useWakeLock } from "@/hooks/use-wake-lock";
-import { useRoute } from "@/hooks/use-route";
+import { useBack } from "@/hooks/use-back";
+import { finishCooking, setCookStep, useCookSessions } from "@/lib/cook-session";
 import { clampServings, scaledLines } from "@/lib/cook-model";
 import { detectTimer } from "@/lib/step-timers";
 import { DishImage } from "@/components/ui/DishImage";
@@ -21,20 +22,24 @@ const SWIPE_PX = 60;
 
 /** `#/lav-mad/<dishId>` – full-screen cooking mode, one step at a time. */
 export function CookView({ dishId }: { dishId: string }) {
-  const { navigate } = useRoute();
+  const back = useBack({ name: "uge" });
   const bootstrap = useBootstrap();
   const wide = useIsWide();
   const wake = useWakeLock();
-  const timers = useStepTimers();
-  const [step, setStep] = useState(0);
   const [chosenServings, setChosenServings] = useState<number>();
   const [drawer, setDrawer] = useState(false);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
   const data = bootstrap.data;
   const dish = data?.dishes.find((candidate) => candidate.id === dishId);
+  const dishName = dish?.name ?? "";
+  const timers = useStepTimers(dishId, dishName);
   const steps = dish?.instructions?.filter((text) => text.trim()) ?? [];
   const last = steps.length - 1;
+  // The step is remembered per dish, so leaving cooking mode (or reloading) does not start over.
+  const savedStep = useCookSessions()[dishId]?.step ?? 0;
+  const step = Math.min(savedStep, Math.max(last, 0));
+  const setStep = useCallback((next: number) => setCookStep(dishId, dishName, next), [dishId, dishName]);
   const defaultServings = data
     ? targetServings(profileServings(data.profiles), data.settings.preferredServings)
     : 4;
@@ -42,11 +47,12 @@ export function CookView({ dishId }: { dishId: string }) {
   const lines = useMemo(() => (dish ? scaledLines(dish, servings) : []), [dish, servings]);
 
   const go = useCallback(
-    (delta: number) => setStep((current) => Math.min(Math.max(current + delta, 0), Math.max(steps.length - 1, 0))),
-    [steps.length],
+    (delta: number) => setStep(Math.min(Math.max(step + delta, 0), Math.max(steps.length - 1, 0))),
+    [setStep, step, steps.length],
   );
   const finish = (): void => {
-    navigate({ name: "uge" });
+    finishCooking(dishId);
+    back();
   };
   const forward = (): void => (step >= last ? finish() : go(1));
 
@@ -118,6 +124,7 @@ export function CookView({ dishId }: { dishId: string }) {
           wide={wide}
           onIngredients={() => setDrawer(true)}
           onGoToStep={setStep}
+          onClose={back}
         />
         {steps.length === 0 ? (
           <NoInstructions dish={dish} lines={lines} servings={servings} onServings={(value) => setChosenServings(clampServings(value))} />

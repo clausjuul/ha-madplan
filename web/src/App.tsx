@@ -13,6 +13,7 @@ import { OfflineBanner } from "@/components/ui/StatusViews";
 import { RouteSkeleton } from "@/components/ui/Skeletons";
 import { useAssistOpen } from "@/lib/assist-store";
 import { WeekView } from "@/components/week/WeekView";
+import { CookTimerBanner, CookTimersHost } from "@/components/cook/CookTimers";
 
 // Everything except the week view is split into its own chunk and loaded on first visit.
 const CookView = lazy(() => import("@/components/cook/CookView").then((m) => ({ default: m.CookView })));
@@ -64,6 +65,7 @@ export function App() {
           <Suspense fallback={<RouteSkeleton />}>
             <CookView dishId={route.dishId} />
           </Suspense>
+          <CookTimersHost />
           <Toast />
         </div>
       </MotionConfig>
@@ -79,6 +81,7 @@ export function App() {
           <Suspense fallback={<RouteSkeleton />}>
             <PlanFlow {...(route.week ? { week: route.week } : {})} />
           </Suspense>
+          <CookTimersHost />
           <Toast />
         </div>
       </MotionConfig>
@@ -94,6 +97,7 @@ export function App() {
           <PhoneHeader route={route} weekStart={weekStart} onWeekChange={changeWeek} />
         )}
         {offline ? <OfflineBanner /> : null}
+        <CookTimerBanner />
         <main ref={main} className="min-h-0 flex-1 overflow-y-auto">
           {route.name === "uge" ? (
             <WeekView weekStart={weekStart} />
@@ -111,6 +115,7 @@ export function App() {
         </main>
         {wide ? null : <BottomNav route={route} />}
         <AssistHost />
+        <CookTimersHost />
         <Toast />
       </div>
     </MotionConfig>
