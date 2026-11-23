@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { watchlistHits, type ShoppingListItem, type WatchItem } from "@madplan/domain";
@@ -27,6 +27,10 @@ import { ShoppingHeader } from "./ShoppingHeader";
 const heading = "mx-0.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-muted";
 
 /** `#/indkob` – the one current shopping list ("butikstilstand"); `#/indkob/tilbud` – the offers tab. */
+/** Ticks closer together than this share one toast. */
+const BURST_MS = 4000;
+const capitalize = (value: string): string => value.charAt(0).toLocaleUpperCase("da-DK") + value.slice(1);
+
 export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
   const today = useToday();
   const wide = useIsWide();
@@ -38,6 +42,7 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
   const [resetOpen, setResetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [basketOpen, setBasketOpen] = useState<boolean | null>(null);
+  const checkBurst = useRef<{ at: number; ids: string[] }>({ at: 0, ids: [] });
   const keepAwake = useKeepAwake();
   const offersOn = bootstrap.data?.capabilities.offers === true;
   const household = useHouseholdActions();
@@ -73,7 +78,24 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
     } catch {
       // No vibration on this device.
     }
-    notify(`«${item.label.charAt(0).toLocaleUpperCase("da-DK")}${item.label.slice(1)}» er i kurven.`, 3500, { label: "Fortryd", run: () => actions.toggle(item.id) });
+    // Ticking off fast in the shop: one toast counts the burst, and Fortryd takes back the latest one.
+    const now = Date.now();
+    const burst = now - checkBurst.current.at < BURST_MS ? [...checkBurst.current.ids, item.id] : [item.id];
+    checkBurst.current = { at: now, ids: burst };
+    const undoLatest = {
+      label: "Fortryd",
+      run: () => {
+        actions.toggle(item.id);
+        checkBurst.current = { at: 0, ids: [] };
+      },
+    };
+    const message = burst.length === 1 ? `«${capitalize(item.label)}» er i kurven.` : `${burst.length} varer i kurven · senest ${item.label}.`;
+    notify(message, BURST_MS, undoLatest);
+  };
+  const removeExtra = (itemId: string): void => {
+    const item = list.items.find((candidate) => candidate.id === itemId);
+    actions.removeExtra(itemId);
+    if (item) notify(`«${capitalize(item.label)}» er fjernet fra listen.`, 5000, { label: "Fortryd", run: () => actions.addExtra(item.sourceLabel) });
   };
   const toggleAwake = (): void => {
     const next = !keepAwake.wanted;
@@ -103,7 +125,7 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
           <ul className="flex flex-col gap-1.5">
             <AnimatePresence initial={false}>
               {group.items.map((item) => (
-                <OpenRow key={item.id} item={item} onToggle={() => toggle(item)} onRemove={actions.removeExtra} />
+                <OpenRow key={item.id} item={item} onToggle={() => toggle(item)} onRemove={removeExtra} />
               ))}
             </AnimatePresence>
           </ul>
@@ -137,7 +159,7 @@ export function ShoppingView({ tab }: { tab?: ShoppingTab }) {
         {showBasket ? (
           <ul className="flex flex-col gap-1">
             {done.map((item) => (
-              <DoneRow key={item.id} item={item} onToggle={() => toggle(item)} onRemove={actions.removeExtra} />
+              <DoneRow key={item.id} item={item} onToggle={() => toggle(item)} onRemove={removeExtra} />
             ))}
           </ul>
         ) : null}
