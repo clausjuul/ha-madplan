@@ -47,15 +47,19 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
 const enc = encodeURIComponent;
 
 /** POST api/assist/stream: NDJSON events; reply deltas go to onReply, the "done" event is the answer. */
-async function streamAssist(input: AssistRequest, onReply: (replySoFar: string) => void): Promise<AssistResponse> {
+const aborted = (error: unknown): boolean => error instanceof DOMException && error.name === "AbortError";
+
+async function streamAssist(input: AssistRequest, onReply: (replySoFar: string) => void, signal?: AbortSignal): Promise<AssistResponse> {
   let response: Response;
   try {
     response = await fetch(resolve("api/assist/stream"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
+      ...(signal ? { signal } : {}),
     });
-  } catch {
+  } catch (error) {
+    if (aborted(error)) throw error;
     throw new ApiRequestError(0, "network", NETWORK_MESSAGE);
   }
   if (!response.ok || !response.body) {
@@ -96,7 +100,7 @@ async function streamAssist(input: AssistRequest, onReply: (replySoFar: string) 
     }
     handle(pending);
   } catch (error) {
-    if (error instanceof ApiRequestError) throw error;
+    if (error instanceof ApiRequestError || aborted(error)) throw error;
     throw new ApiRequestError(0, "network", NETWORK_MESSAGE);
   }
   if (!result) throw new ApiRequestError(0, "network", "Svaret fra Assist blev afbrudt. Prøv igen.");
@@ -157,7 +161,8 @@ export function createHttpClient(): ApiClient {
     offers: () => request("GET", "api/offers"),
     refreshOffers: () => request("POST", "api/offers/refresh"),
 
-    assist: (input, onReply) => (onReply ? streamAssist(input, onReply) : request("POST", "api/assist", input)),
+    assist: (input, onReply, signal) =>
+      onReply || signal ? streamAssist(input, onReply ?? (() => undefined), signal) : request("POST", "api/assist", input),
     applyAssistProposal: (id, only) => request("POST", `api/assist/proposals/${enc(id)}/apply`, only ? { only } : {}),
     discardAssistProposal: (id) => request("DELETE", `api/assist/proposals/${enc(id)}`),
     undoAssist: async (undoId) => {

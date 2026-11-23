@@ -228,8 +228,10 @@ export type AssistChatMessage = { role: "user" | "assistant"; content: string };
 export type AssistContext = {
   /** Current view: "uge" | "indkob" | "retter" | "opskrift" | "planlaeg" | "indstillinger" | other. */
   view: string;
-  /** Focused day (YYYY-MM-DD), when the view has one. */
+  /** Focused day (YYYY-MM-DD), when the view has one, e.g. "Spørg Assist" from a day's menu. */
   date?: string;
+  /** Monday (YYYY-MM-DD) of the week the person is looking at; a weekday without a date means that week. */
+  week?: string;
   /** Focused dish, e.g. the recipe being read. */
   dishId?: string;
 };

@@ -184,3 +184,22 @@ describe("assist: settings and family", () => {
     expect(t.response.proposal).toBeUndefined();
   });
 });
+
+describe("assist: undo", () => {
+  it("is not blocked by changes elsewhere, but is by a change to the same day", async () => {
+    const t = await run([{ type: "setMeal", date: "2026-11-12", dishId: "tacos" }]);
+    const first = await t.apply();
+    // Someone else changes another day: the undo still goes through.
+    await t.json("PUT", "meals/2026-11-14", { dishId: "lasagne" });
+    await t.json("POST", `assist/undo/${first.undoId}`);
+    expect((await t.boot()).meals["2026-11-14"]?.dishId).toBe("lasagne");
+
+    t.ai.next(answer([{ type: "setMeal", date: "2026-11-12", dishId: "tacos" }]));
+    const again = await t.json<AssistResponse>("POST", "assist", ASK);
+    const second = await t.json<AssistApplyResult>("POST", `assist/proposals/${again.proposal?.id}/apply`);
+    // Someone changes the same day afterwards: undo would overwrite it, so it is refused.
+    await t.json("PUT", "meals/2026-11-12", { dishId: "lasagne" });
+    expect((await t.call("POST", `assist/undo/${second.undoId}`)).status).toBe(409);
+    expect((await t.boot()).meals["2026-11-12"]?.dishId).toBe("lasagne");
+  });
+});

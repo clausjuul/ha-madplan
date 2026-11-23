@@ -21,7 +21,7 @@ async function open(page: Page, size: { width: number; height: number }, query =
 
 async function askForProposal(page: Page): Promise<void> {
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Byt torsdag ud med noget vegetarisk" }).click();
+  await dialog.getByRole("button", { name: /ud med noget vegetarisk/ }).first().click();
   await dialog.getByRole("region", { name: "Forslag fra Assist" }).waitFor();
 }
 

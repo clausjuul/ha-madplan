@@ -1,5 +1,5 @@
 /** Pure helpers for the Assist chat: context, quick prompts, previews, speech support, session storage. */
-import { addDaysToKey } from "@madplan/domain";
+import { addDaysToKey, weekdayName } from "@madplan/domain";
 import type {
   AssistActionResult,
   AssistActionType,
@@ -21,6 +21,12 @@ export type ChatEntry = {
   content: string;
   /** Marks a failed request shown in the list; never sent back to the assistant. */
   error?: boolean;
+  /** On a failed or stopped request: the message to send again with "Prøv igen". */
+  retryText?: string;
+  /** Why "Udfør" or "Fortryd" did not work; shown on the proposal, never sent to the assistant. */
+  actionError?: string;
+  /** Until when "Fortryd" works (ms epoch); the server forgets the undo after that. */
+  undoUntil?: number;
   proposal?: AssistProposal;
   proposalState?: ProposalState;
   results?: AssistActionResult[];
@@ -43,14 +49,18 @@ export const EMPTY_SESSION: AssistSession = { entries: [] };
 
 // Context and quick prompts ---------------------------------------------------
 
-export function contextFor(route: Route): AssistContext {
+/** What Assist is told about where the person is: the screen, the week being looked at and a chosen day. */
+export function contextFor(route: Route, focusDate?: string): AssistContext {
+  const date = focusDate ? { date: focusDate } : {};
   switch (route.name) {
     case "retter":
       return route.dishId ? { view: "opskrift", dishId: route.dishId } : { view: "retter" };
     case "lav-mad":
       return { view: "opskrift", dishId: route.dishId };
+    case "uge":
+      return { view: "uge", ...(route.week ? { week: route.week } : {}), ...date };
     default:
-      return { view: route.name };
+      return { view: route.name, ...date };
   }
 }
 
@@ -66,6 +76,40 @@ const GENERIC_CHIPS = ["Hvad skal vi have i aften?", "Hvad kan vi lave af det i 
 /** What the quick prompts may look at to be relevant right now. */
 export type ChipData = { today: string; meals: MealMap; fridge: readonly FridgeItem[]; dishes: readonly Dish[] };
 
+/** Questions only: what the Home Assistant agent (which cannot change anything) can answer. */
+const QUESTION_CHIPS = ["Hvad skal vi have i aften?", "Hvad skal vi have i morgen?", "Hvad står der på indkøbslisten?"];
+
+/** The first day from `from` (within a week) that has a meal that may be changed. */
+function changeableDay(data: ChipData, from: string): { date: string; dish: Dish } | undefined {
+  for (let offset = 0; offset < 7; offset += 1) {
+    const date = addDaysToKey(from, offset);
+    if (date < data.today) continue;
+    const meal = data.meals[date];
+    const dish = meal && !meal.locked && !meal.skipped ? data.dishes.find((entry) => entry.id === meal.dishId) : undefined;
+    if (dish) return { date, dish };
+  }
+  return undefined;
+}
+
+const lower = (value: string): string => value.toLocaleLowerCase("da-DK");
+
+/** Prompts built from the real plan instead of a fixed "torsdag" or "tacos". */
+function planChips(context: AssistContext, data: ChipData): string[] {
+  if (context.date) {
+    const meal = data.meals[context.date];
+    const dish = meal ? data.dishes.find((entry) => entry.id === meal.dishId) : undefined;
+    const day = weekdayName(context.date);
+    return dish
+      ? [`Foreslå noget andet end ${lower(dish.name)} ${day}`, `Læg det vi mangler til ${lower(dish.name)} på listen`]
+      : [`Foreslå en ret til ${day}`];
+  }
+  const target = changeableDay(data, context.week && context.week > data.today ? context.week : addDaysToKey(data.today, 1));
+  if (!target) return [];
+  if (context.view === "indkob") return [`Tilføj det vi mangler til ${lower(target.dish.name)}`];
+  if (context.view === "uge") return [`Byt ${weekdayName(target.date)} ud med noget vegetarisk`];
+  return [];
+}
+
 /** Prompts that fit the situation: an empty day tomorrow, something about to expire, last night's dinner. */
 function situationChips(data: ChipData): string[] {
   const chips: string[] = [];
@@ -80,10 +124,13 @@ function situationChips(data: ChipData): string[] {
   return chips;
 }
 
-export function chipsFor(context: AssistContext, data?: ChipData): string[] {
+export function chipsFor(context: AssistContext, data?: ChipData, engine: AssistEngine = "openai"): string[] {
+  if (engine === "homeassistant") return QUESTION_CHIPS;
   const fixed = CHIPS[context.view] ?? GENERIC_CHIPS;
-  const smart = data ? situationChips(data) : [];
-  return [...new Set([...smart, ...fixed])].slice(0, 4);
+  if (!data) return fixed.slice(0, 4);
+  // With real data, the fixed example prompts about a day or a dish are replaced by ones about the plan.
+  const examples = fixed.filter((chip) => !/torsdag|tacos/u.test(chip));
+  return [...new Set([...planChips(context, data), ...situationChips(data), ...examples])].slice(0, 4);
 }
 
 // Messages sent to the server ---------------------------------------------------
@@ -191,19 +238,19 @@ export function startedPlanDraft(proposal: AssistProposal, results?: readonly As
 export function engineTitle(engine: AssistEngine, demo: boolean): { title: string; subtitle?: string } {
   if (demo) return { title: "Assist · Demo", subtitle: "Svarene er indbyggede eksempler, ikke en rigtig assistent" };
   if (engine === "homeassistant") return { title: "Assist · Home Assistant", subtitle: "Kan kun svare, ikke ændre" };
-  return { title: "Assist · OpenAI" };
+  return { title: "Assist" };
 }
 
 // Speech input ------------------------------------------------------------------------
 
-export type SpeechResultEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
+export type SpeechResultEvent = { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal?: boolean }> };
 export type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
   onresult: ((event: SpeechResultEvent) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event?: { error?: string }) => void) | null;
   start(): void;
   stop(): void;
 };

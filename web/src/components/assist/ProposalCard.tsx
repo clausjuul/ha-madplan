@@ -31,13 +31,20 @@ type Props = {
   /** Ticks one action in or out; only offered when the proposal has more than one action. */
   onToggle?: (index: number) => void;
   onUndo?: () => void;
+  /** Asks the question behind an expired proposal again. */
+  onAskAgain?: () => void;
+  /** For tests; defaults to the clock. */
+  now?: number;
 };
 
 /** What the assistant wants to change, listed action by action. Nothing happens until "Udfør". */
-export function ProposalCard({ entry, onApply, onDismiss, onToggle, onUndo }: Props) {
+export function ProposalCard({ entry, onApply, onDismiss, onToggle, onUndo, onAskAgain, now = Date.now() }: Props) {
   const { proposal } = entry;
   if (!proposal) return null;
-  const state = entry.proposalState ?? "pending";
+  // A proposal kept in the chat may have run out on the server: show it as expired before "Udfør" fails.
+  const timedOut = entry.proposalState === "pending" && Date.parse(proposal.expiresAt) <= now;
+  const state = timedOut ? "expired" : (entry.proposalState ?? "pending");
+  const canUndo = Boolean(entry.undoId && onUndo && !entry.undone && (entry.undoUntil === undefined || entry.undoUntil > now));
   const lines = previewLines(proposal, entry.results);
   const running = state === "applied" && !entry.results;
   const unselected = entry.unselected ?? [];
@@ -117,7 +124,12 @@ export function ProposalCard({ entry, onApply, onDismiss, onToggle, onUndo }: Pr
         </div>
       ) : null}
       {running ? <p className="m-0 text-[13px] text-muted">Udfører…</p> : null}
-      {entry.undoId && onUndo && !entry.undone ? (
+      {entry.actionError ? (
+        <p role="alert" className="m-0 text-[13px] leading-snug text-danger">
+          {entry.actionError}
+        </p>
+      ) : null}
+      {canUndo ? (
         <button
           type="button"
           onClick={onUndo}
@@ -129,7 +141,16 @@ export function ProposalCard({ entry, onApply, onDismiss, onToggle, onUndo }: Pr
       ) : null}
       {entry.undone ? <p className="m-0 text-[13px] text-muted">Fortrudt. Alt er som før.</p> : null}
       {state === "dismissed" ? <p className="m-0 text-[13px] text-muted">Afvist. Der er ikke ændret noget.</p> : null}
-      {state === "expired" ? <p className="m-0 text-[13px] text-muted">Forslaget er udløbet. Bed Assist om det igen.</p> : null}
+      {state === "expired" ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="m-0 flex-1 text-[13px] text-muted">Forslaget er udløbet, så der er ikke ændret noget.</p>
+          {onAskAgain ? (
+            <button type="button" onClick={onAskAgain} className="h-10 rounded-full bg-raised px-4 text-[14px] font-medium text-ink-2 hover:text-ink">
+              Spørg igen
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {entry.results && !entry.undone && startedPlanDraft(proposal, entry.results) ? (
         <Link
           to={routePath({ name: "planlaeg" })}

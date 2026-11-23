@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { ArrowLeftRight, Lock, LockOpen, Replace, Shuffle, Sparkles, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Lock, LockOpen, MessageCircle, Replace, Shuffle, Sparkles, StickyNote, Trash2 } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import type { DayModel } from "@/lib/week-model";
 
-export type DayAction = "pick" | "suggest" | "swap" | "lock" | "note" | "variant" | "remove";
+export type DayAction = "pick" | "suggest" | "swap" | "lock" | "note" | "variant" | "remove" | "assist";
 
 type RowProps = {
   icon: ReactNode;
@@ -96,6 +96,12 @@ export function DayActionsSheet({ day, onClose, onAction }: Props) {
             hint={day.meal?.note || undefined}
             disabled={!hasMeal}
             onClick={() => onAction("note")}
+          />
+          <ActionRow
+            icon={<MessageCircle size={20} aria-hidden="true" />}
+            label="Spørg Assist om dagen"
+            hint="Fx “noget hurtigere” eller “hvad mangler vi til den?”"
+            onClick={() => onAction("assist")}
           />
           <ActionRow
             icon={<Trash2 size={20} aria-hidden="true" />}

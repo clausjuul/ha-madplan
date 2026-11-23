@@ -3,6 +3,7 @@ import { eatenHistory, lastEatenByDish, rankAlternatives, ratingScores, type Boo
 import type { MealActions } from "@/api/meal-mutations";
 import { buildDay, buildWeek, type DayModel } from "@/lib/week-model";
 import { mondayOf } from "@/lib/route";
+import { openAssist } from "@/lib/assist-store";
 import { DayActionsSheet, type DayAction } from "./sheets/DayActionsSheet";
 import { DishPickerSheet, plannedLabels } from "./sheets/DishPickerSheet";
 import { NoteSheet } from "./sheets/NoteSheet";
@@ -84,6 +85,9 @@ export function WeekSheets({ sheet, setSheet, data, today, actions }: Props) {
       case "remove":
         actions.removeMeal(date);
         return close();
+      case "assist":
+        close();
+        return openAssist({ date });
     }
   };
 

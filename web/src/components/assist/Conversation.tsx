@@ -1,6 +1,6 @@
-import { AlertCircle, ArrowDown, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowDown, RotateCcw, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AssistContext } from "@madplan/domain";
+import type { AssistContext, AssistEngine } from "@madplan/domain";
 import { useAssistChat } from "@/hooks/use-assist-chat";
 import { useBootstrap } from "@/api/queries";
 import { useToday } from "@/hooks/use-today";
@@ -26,20 +26,31 @@ function groupOf(entries: ChatEntry[], index: number): Group {
   return before && after ? "middle" : before ? "last" : after ? "first" : "single";
 }
 
-/** A failed request, shown centred and muted like Astryx' ChatSystemMessage. */
-function SystemMessage({ children }: { children: string }) {
+/** A failed or stopped request, shown centred and muted like Astryx' ChatSystemMessage, with "Prøv igen". */
+function SystemMessage({ entry, onRetry, busy }: { entry: ChatEntry; onRetry: () => void; busy: boolean }) {
   return (
-    <li className="flex justify-center py-1">
+    <li className="flex flex-col items-center gap-1.5 py-1">
       <p className="m-0 flex max-w-[90%] items-start gap-2 text-center text-[13px] leading-snug text-danger">
         <AlertCircle size={15} aria-hidden="true" className="mt-px shrink-0" />
-        <span>{children}</span>
+        <span>{entry.content}</span>
       </p>
+      {entry.retryText ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={busy}
+          className="flex min-h-10 items-center gap-1.5 rounded-full bg-raised px-4 text-[14px] font-medium text-ink-2 hover:text-ink disabled:opacity-50"
+        >
+          <RotateCcw size={15} aria-hidden="true" />
+          Prøv igen
+        </button>
+      ) : null}
     </li>
   );
 }
 
 function Message({ entry, group, chat }: { entry: ChatEntry; group: Group; chat: ChatApi }) {
-  if (entry.error) return <SystemMessage>{entry.content}</SystemMessage>;
+  if (entry.error) return <SystemMessage entry={entry} busy={chat.busy} onRetry={() => void chat.retry(entry)} />;
   const mine = entry.role === "user";
   const startsGroup = group === "single" || group === "first";
 
@@ -74,6 +85,7 @@ function Message({ entry, group, chat }: { entry: ChatEntry; group: Group; chat:
               onDismiss={() => void chat.dismiss(entry)}
               onToggle={(index) => chat.toggle(entry, index)}
               onUndo={() => void chat.undo(entry)}
+              onAskAgain={() => void chat.askAgain(entry)}
             />
           </div>
         ) : null}
@@ -115,7 +127,7 @@ function QuickPrompts({ prompts, onPick }: { prompts: string[]; onPick: (text: s
   );
 }
 
-function EmptyState({ demo, prompts, onPick }: { demo: boolean; prompts: string[]; onPick: (text: string) => void }) {
+function EmptyState({ demo, engine, prompts, onPick }: { demo: boolean; engine: AssistEngine; prompts: string[]; onPick: (text: string) => void }) {
   return (
     <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
       <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
@@ -124,17 +136,31 @@ function EmptyState({ demo, prompts, onPick }: { demo: boolean; prompts: string[
       <p className="m-0 max-w-sm text-[15px] leading-relaxed text-ink-2">
         {demo
           ? "Det her er en demo. Spørg om noget, så får du et indbygget eksempelsvar."
-          : "Spørg om madplanen, opskrifter eller indkøb. Jeg foreslår ændringer, men gør intet før du trykker Udfør."}
+          : engine === "homeassistant"
+            ? "Spørg om madplanen og indkøbslisten. Her svarer Home Assistant, som kan svare, men ikke ændre noget."
+            : "Spørg om madplanen, opskrifter eller indkøb. Jeg foreslår ændringer, men gør intet før du trykker Udfør."}
       </p>
       <QuickPrompts prompts={prompts} onPick={onPick} />
     </div>
   );
 }
 
-type Props = { context: AssistContext; chat: ChatApi; demo: boolean };
+type Props = { context: AssistContext; chat: ChatApi; demo: boolean; engine: AssistEngine };
+
+/** What a screen reader hears: that Assist is writing, then the finished answer once (not every streamed piece). */
+function announcement(entries: readonly ChatEntry[], busy: boolean): string {
+  if (busy) return "Assist skriver…";
+  const last = entries.at(-1);
+  if (!last || last.role !== "assistant") return "";
+  if (last.proposal && last.proposalState === "applied" && last.results) {
+    const done = last.results.filter((result) => result.ok).length;
+    return `Forslaget er gennemført: ${done} af ${last.results.length} ændringer.`;
+  }
+  return last.content.slice(0, 400);
+}
 
 /** Chat layout after Astryx' ChatLayout: scrolling message area, docked composer, scroll-to-latest button. */
-export function Conversation({ context, chat, demo }: Props) {
+export function Conversation({ context, chat, demo, engine }: Props) {
   const { session, busy } = chat;
   const scroller = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
@@ -143,7 +169,7 @@ export function Conversation({ context, chat, demo }: Props) {
   const boot = useBootstrap().data;
   const today = useToday();
   const chipData: ChipData | undefined = boot ? { today, meals: boot.meals, fridge: boot.fridge, dishes: boot.dishes } : undefined;
-  const chips = chipsFor(context, chipData);
+  const chips = chipsFor(context, chipData, demo ? "openai" : engine);
 
   const scrollToEnd = useCallback((smooth: boolean) => {
     const el = scroller.current;
@@ -170,9 +196,9 @@ export function Conversation({ context, chat, demo }: Props) {
         className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6"
       >
         {empty ? (
-          <EmptyState demo={demo} prompts={chips} onPick={send} />
+          <EmptyState demo={demo} engine={engine} prompts={chips} onPick={send} />
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-1 p-0" aria-live="polite">
+          <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {session.entries.map((entry, index) => (
               <Message key={entry.id} entry={entry} group={groupOf(session.entries, index)} chat={chat} />
             ))}
@@ -194,16 +220,18 @@ export function Conversation({ context, chat, demo }: Props) {
             </button>
           </div>
         ) : null}
+        <p className="sr-only" role="status" aria-live="polite">
+          {announcement(session.entries, busy)}
+        </p>
         {empty ? null : (
-          <div className="flex items-center justify-between gap-2 pb-2">
-            <QuickPrompts prompts={chips.slice(0, 1)} onPick={send} />
+          <div className="flex items-center justify-end gap-2 pb-2">
             <button type="button" onClick={chat.reset} className="min-h-10 shrink-0 rounded-full px-3 text-[14px] font-medium text-ink-2 hover:text-ink">
               Ny samtale
             </button>
           </div>
         )}
         <div className="pb-1">
-          <Composer disabled={busy} onSend={send} />
+          <Composer busy={busy} onSend={send} onStop={chat.stop} />
         </div>
       </div>
     </div>

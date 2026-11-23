@@ -18,6 +18,7 @@ import { one, run, text, toJson } from "../repo.ts";
 import { findDish, saveDish } from "../store-dishes.ts";
 import {
   getFridge,
+  getPantry,
   getProfiles,
   getSettings,
   getShoppingState,
@@ -242,7 +243,28 @@ function write(deps: Deps, action: AssistAction, before: Before): void {
 }
 
 export const UNDO_TTL_MS = 10 * 60 * 1000;
-type UndoRecord = { revision: number; before: Before };
+/** `after` is how the touched data looked right after the apply; undo is only safe while it still looks like that. */
+type UndoRecord = { before: Before; after: string };
+
+/**
+ * The current state of exactly what an apply touched (the same days, the same lists, the same dishes),
+ * as a string to compare. Changes elsewhere (a tick on the shopping list, another day) do not move it.
+ */
+function touchedState(deps: Deps, before: Before): string {
+  const db = deps.repo.db;
+  const dishIds = [...Object.keys(before.dishes ?? {}), ...before.createdDishIds].sort();
+  return toJson({
+    meals: Object.keys(before.meals)
+      .sort()
+      .map((date) => [date, getMeal(db, date) ?? null]),
+    fridge: before.fridge ? getFridge(db) : null,
+    pantry: before.pantry ? getPantry(db) : null,
+    settings: before.settings ? getSettings(db) : null,
+    profiles: before.profiles ? getProfiles(db) : null,
+    shopping: before.shopping ? getShoppingState(db) : null,
+    dishes: dishIds.map((id) => [id, findDish(db, id) ?? null]),
+  });
+}
 
 export type ApplyOutcome = { results: AssistActionResult[]; undoId?: string };
 
@@ -277,8 +299,8 @@ export function applyActions(deps: Deps, actions: readonly AssistAction[], only?
       }
     });
   }
-  // Recorded right after the commit, before a plan draft (which is not undone) can move the revision.
-  const undoId = wrote ? saveUndo(deps, { revision: deps.repo.revision(), before }) : undefined;
+  // Recorded right after the commit, before a plan draft (which is not undone) runs.
+  const undoId = wrote ? saveUndo(deps, { before, after: touchedState(deps, before) }) : undefined;
   actions.forEach((action, index) => {
     if (action.type !== "startPlanDraft" || !chosen.has(index)) return;
     const problem = checkAction(envFromDb(deps), action);
@@ -307,8 +329,8 @@ function saveUndo(deps: Deps, record: UndoRecord): string {
 }
 
 /**
- * Puts back what an apply changed. Refused when anything else changed the data since (the revision
- * moved), so an undo can never overwrite someone's later edit.
+ * Puts back what an apply changed. Refused when the same data was changed since (by anyone), so an
+ * undo can never overwrite someone's later edit; changes to other days or lists do not block it.
  */
 export function undoApply(deps: Deps, id: string): void {
   const { db } = deps.repo;
@@ -317,8 +339,8 @@ export function undoApply(deps: Deps, id: string): void {
     run(db, "DELETE FROM assist_undo WHERE id = ?", id);
     throw notFound("Det er for sent at fortryde. Ret det selv, eller bed Assist om det.");
   }
-  const { revision, before } = JSON.parse(text(row, "json")) as UndoRecord;
-  if (deps.repo.revision() !== revision) {
+  const { before, after } = JSON.parse(text(row, "json")) as UndoRecord;
+  if (touchedState(deps, before) !== after) {
     throw new HttpError(409, "changed", "Der er ændret noget siden, så Assist kan ikke fortryde sikkert. Ret det selv.");
   }
   const topics: ChangeTopic[] = ["meals", "shopping"];

@@ -22,7 +22,7 @@ export function HeaderActions({ route }: { route: Route }) {
   const onSettings = route.name === "indstillinger";
   return (
     <>
-      <button type="button" aria-label="Spørg Assist" onClick={openAssist} className={`ml-0.5 ${roundButton}`}>
+      <button type="button" aria-label="Spørg Assist" onClick={() => openAssist()} className={`ml-0.5 ${roundButton}`}>
         <MessageCircle size={20} aria-hidden="true" />
       </button>
       <Link

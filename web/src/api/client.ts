@@ -102,7 +102,8 @@ export interface ApiClient {
   refreshOffers(): Promise<OffersStatus>;
 
   /** With `onReply`, the answer is streamed: called with the reply text so far while the model writes. */
-  assist(request: AssistRequest, onReply?: (replySoFar: string) => void): Promise<AssistResponse>;
+  /** `signal` stops waiting ("Stop"); the promise then rejects with an AbortError. */
+  assist(request: AssistRequest, onReply?: (replySoFar: string) => void, signal?: AbortSignal): Promise<AssistResponse>;
   /** `only`: indexes of the actions to run (all when omitted). */
   applyAssistProposal(id: string, only?: number[]): Promise<AssistApplyResult>;
   discardAssistProposal(id: string): Promise<void>;

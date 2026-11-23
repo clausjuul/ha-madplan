@@ -78,7 +78,7 @@ export function ShoppingHeader(props: Props) {
         ) : null}
         {wide ? null : (
           // The phone has no global header here, so Assist lives next to the list's own buttons.
-          <button type="button" onClick={openAssist} aria-label="Spørg Assist" className={`${iconButton} bg-surface text-ink-2 hover:text-ink`}>
+          <button type="button" onClick={() => openAssist()} aria-label="Spørg Assist" className={`${iconButton} bg-surface text-ink-2 hover:text-ink`}>
             <MessageCircle size={20} aria-hidden="true" />
           </button>
         )}

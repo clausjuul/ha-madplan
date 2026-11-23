@@ -138,12 +138,14 @@ async function answerWithOpenAi(
   store: ProposalStore,
   request: AssistRequest,
   onReply?: AssistProgress,
+  cancel?: AbortSignal,
 ): Promise<AssistResponse> {
   const state = snapshot(deps);
   const env = envFromDb(deps);
   const prompt = assistPrompt({ state, env, context: request.context, messages: request.messages, shopping: currentShoppingList(deps) });
   const schema = assistSchema(state);
-  const signal = AbortSignal.timeout(90_000);
+  // Stops when the person presses stop (the request is aborted) or after 90 seconds.
+  const signal = cancel ? AbortSignal.any([AbortSignal.timeout(90_000), cancel]) : AbortSignal.timeout(90_000);
   let answer: AssistModelAnswer;
   try {
     answer = await askAssistModel(deps.openai, deps.config.planModel, prompt, { schema, signal, ...(onReply ? { onReply } : {}) });
@@ -155,13 +157,15 @@ async function answerWithOpenAi(
   const withImages = async (rawActions: unknown[]): Promise<unknown[]> => {
     if (!wantsImages(rawActions)) return rawActions;
     onReply?.(`${answer.reply}\n\nHenter fra nettet…`);
-    const result = await resolveImageRequests(deps, env, rawActions, AbortSignal.timeout(60_000));
+    const imageSignal = cancel ? AbortSignal.any([AbortSignal.timeout(60_000), cancel]) : AbortSignal.timeout(60_000);
+    const result = await resolveImageRequests(deps, env, rawActions, imageSignal);
     notes.splice(0, notes.length, ...result.notes);
     return result.rawActions;
   };
   let parsed = parseAssistActions(await withImages(answer.rawActions), env);
   if (parsed.dropped.length > 0) {
     // One self-correction round: the model sees why actions were refused and may fix them.
+    onReply?.(`${answer.reply}\n\nTjekker forslaget mod jeres regler…`);
     try {
       const retry = await askAssistModel(deps.openai, deps.config.planModel, correctionPrompt(prompt, answer.raw, parsed.dropped), { schema, signal });
       const retried = parseAssistActions(await withImages(retry.rawActions), env);
@@ -174,7 +178,12 @@ async function answerWithOpenAi(
     }
   }
   const { actions, dropped } = parsed;
-  const ruleNote = dropped.length > 0 ? `\n\n(${dropped.length} forslag blev fjernet, fordi de ikke overholdt jeres regler.)` : "";
+  // Say what was left out and why ("Torsdag er låst"), not just how many.
+  const shown = dropped.slice(0, 4).map((reason) => `• ${reason}`);
+  if (dropped.length > shown.length) shown.push(`• og ${dropped.length - shown.length} mere`);
+  const ruleNote = dropped.length > 0
+    ? `\n\n${dropped.length === 1 ? "1 forslag blev fjernet" : `${dropped.length} forslag blev fjernet`}, fordi det ikke passer med jeres regler:\n${shown.join("\n")}`
+    : "";
   const note = ruleNote + (notes.length > 0 ? `\n\n${notes.join("\n")}` : "");
   if (actions.length === 0) return { reply: answer.reply + note, engine: "openai" };
   const proposal = store.create(deps, answer.reply.slice(0, 200), actions);
@@ -192,8 +201,15 @@ async function answerWithHomeAssistant(deps: Deps, request: AssistRequest): Prom
   return { reply: answer.text, engine: "homeassistant", ...(answer.conversationId ? { conversationId: answer.conversationId } : {}) };
 }
 
-export function assist(deps: Deps, store: ProposalStore, request: AssistRequest, onReply?: AssistProgress): Promise<AssistResponse> {
-  if (deps.openai.configured) return answerWithOpenAi(deps, store, request, onReply);
+/** `cancel` aborts the model call when the person stops waiting (the HTTP request is aborted). */
+export function assist(
+  deps: Deps,
+  store: ProposalStore,
+  request: AssistRequest,
+  onReply?: AssistProgress,
+  cancel?: AbortSignal,
+): Promise<AssistResponse> {
+  if (deps.openai.configured) return answerWithOpenAi(deps, store, request, onReply, cancel);
   if (haAgentAvailable(deps.config)) return answerWithHomeAssistant(deps, request);
   throw unavailable(NO_ENGINE);
 }

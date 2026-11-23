@@ -21,7 +21,7 @@ import {
 const proposal: AssistProposal = {
   id: "p1",
   summary: "Test",
-  expiresAt: "2026-11-09T18:00:00.000Z",
+  expiresAt: "2099-01-01T00:00:00.000Z",
   actions: [
     { type: "setMeal", date: "2026-11-12", dishId: "tacos", label: "Sæt «Tacos» på torsdag den 12. november" },
     { type: "addShoppingExtra", item: "Mælk", label: "Tilføj «Mælk» til indkøbslisten" },
@@ -97,7 +97,7 @@ describe("proposal preview", () => {
 
 describe("header and session", () => {
   it("labels the engine honestly", () => {
-    expect(engineTitle("openai", false).title).toBe("Assist · OpenAI");
+    expect(engineTitle("openai", false).title).toBe("Assist");
     expect(engineTitle("homeassistant", false)).toEqual({ title: "Assist · Home Assistant", subtitle: "Kan kun svare, ikke ændre" });
     expect(engineTitle("openai", true).title).toBe("Assist · Demo");
   });
@@ -196,5 +196,43 @@ describe("demo assistant", () => {
     expect(dismissed).toBeUndefined();
 
     expect((await ask("hvad som helst")).proposal).toBeUndefined();
+  });
+});
+
+describe("assist: context, expiry and errors", () => {
+  it("tells Assist which week and day are being looked at", () => {
+    expect(contextFor({ name: "uge", week: "2026-11-16" })).toEqual({ view: "uge", week: "2026-11-16" });
+    expect(contextFor({ name: "uge" }, "2026-11-12")).toEqual({ view: "uge", date: "2026-11-12" });
+  });
+
+  it("builds prompts from the plan, and only questions for the Home Assistant agent", () => {
+    const data = {
+      today: "2026-11-09",
+      meals: { "2026-11-11": { dishId: "tacos", locked: false, note: "", source: "manual" as const } },
+      fridge: [],
+      dishes: [{ id: "tacos", name: "Tacos", ingredients: [], prepMinutes: 20, category: "Mexicansk", favorite: false, leftoverFriendly: false, freezerFriendly: false }],
+    };
+    expect(chipsFor({ view: "uge" }, data)).toContain("Byt onsdag ud med noget vegetarisk");
+    expect(chipsFor({ view: "indkob" }, data)).toContain("Tilføj det vi mangler til tacos");
+    expect(chipsFor({ view: "uge", date: "2026-11-11" }, data)[0]).toBe("Foreslå noget andet end tacos onsdag");
+    expect(chipsFor({ view: "uge" }, data, "homeassistant").every((chip) => chip.endsWith("?"))).toBe(true);
+  });
+
+  it("shows an expired proposal as expired, offers Spørg igen, and shows action errors", () => {
+    const onAskAgain = vi.fn();
+    const { rerender } = render(
+      <ProposalCard entry={entry()} onApply={vi.fn()} onDismiss={vi.fn()} onAskAgain={onAskAgain} now={Date.parse("2099-01-02T00:00:00Z")} />,
+    );
+    expect(screen.queryByRole("button", { name: "Udfør" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Spørg igen" }));
+    expect(onAskAgain).toHaveBeenCalled();
+    rerender(<ProposalCard entry={entry({ actionError: "Måltidet er låst." })} onApply={vi.fn()} onDismiss={vi.fn()} />);
+    expect(screen.getByRole("alert").textContent).toBe("Måltidet er låst.");
+  });
+
+  it("hides Fortryd once the undo has run out", () => {
+    const applied = entry({ proposalState: "applied", results: [{ label: "a", ok: true }], undoId: "u1", undoUntil: 1000 });
+    render(<ProposalCard entry={applied} onApply={vi.fn()} onDismiss={vi.fn()} onUndo={vi.fn()} now={2000} />);
+    expect(screen.queryByRole("button", { name: "Fortryd" })).toBeNull();
   });
 });

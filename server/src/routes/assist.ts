@@ -20,6 +20,7 @@ export function assistRequest(value: unknown): AssistRequest {
   if (messages.at(-1)?.role !== "user") throw badRequest("Samtalen skal slutte med en besked fra dig.");
   const context = rec(body.context, "Visning");
   const date = optStr(context.date, "Dato", 10);
+  const week = optStr(context.week, "Uge", 10);
   const dishId = optStr(context.dishId, "Ret", 200);
   const conversationId = optStr(body.conversationId, "Samtale-id", 256);
   return {
@@ -27,6 +28,7 @@ export function assistRequest(value: unknown): AssistRequest {
     context: {
       view: str(context.view, "Visning", { min: 1, max: 40 }),
       ...(date ? { date: dateParam(date) } : {}),
+      ...(week ? { week: dateParam(week) } : {}),
       ...(dishId ? { dishId } : {}),
     },
     ...(conversationId ? { conversationId } : {}),
@@ -36,7 +38,7 @@ export function assistRequest(value: unknown): AssistRequest {
 export function assistRoutes(api: Hono, deps: Deps): void {
   const store = createProposalStore(deps);
 
-  api.post("/assist", async (c) => c.json(await assist(deps, store, assistRequest(await readJson(c)))));
+  api.post("/assist", async (c) => c.json(await assist(deps, store, assistRequest(await readJson(c)), undefined, c.req.raw.signal)));
 
   /** Same answer as POST /assist, as NDJSON: reply deltas while the model writes, then "done" (or "error"). */
   api.post("/assist/stream", async (c) => {
@@ -52,7 +54,7 @@ export function assistRoutes(api: Hono, deps: Deps): void {
           const delta = reply.slice(shown);
           shown = reply.length;
           if (delta) void send({ type: "delta", text: delta });
-        });
+        }, c.req.raw.signal);
         await send({ type: "done", response });
       } catch (error) {
         if (!(error instanceof HttpError)) console.error("Assist-stream fejlede", error);

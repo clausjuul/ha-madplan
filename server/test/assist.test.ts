@@ -201,6 +201,7 @@ describe("assist with OpenAI", () => {
     const response = await json<AssistResponse>("POST", "assist", ASK);
     expect(response.proposal).toBeUndefined();
     expect(response.reply).toMatch(/3 forslag blev fjernet/u);
+    expect(response.reply).toMatch(/• .*låst/u);
   });
 
   it("starts a plan draft through the drafts service", async () => {

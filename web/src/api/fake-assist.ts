@@ -29,6 +29,8 @@ const MEAT = /kød|kylling|bacon|laks|fisk|pølse|flæsk|rejer|skinke|tun|frikad
 const GONE = (): ApiRequestError =>
   new ApiRequestError(404, "not_found", "Forslaget findes ikke (mere). Bed Assist om det igen.");
 
+const WEEKDAYS = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"];
+
 /** A canned, clearly marked demo assistant: recognises a few prompts and proposes safe actions. */
 export function createFakeAssist(context: Context): AssistMethods {
   const proposals = new Map<string, AssistProposal>();
@@ -46,9 +48,10 @@ export function createFakeAssist(context: Context): AssistMethods {
     return proposal;
   };
 
-  const thursday = (): string => {
+  /** The coming day with that weekday (0 = mandag), today included. */
+  const nextWeekday = (weekday: number): string => {
     const monday = dateKey(startOfWeek(parseDateKey(context.today)));
-    const date = addDaysToKey(monday, 3);
+    const date = addDaysToKey(monday, weekday);
     return date >= context.today ? date : addDaysToKey(date, 7);
   };
 
@@ -74,16 +77,18 @@ export function createFakeAssist(context: Context): AssistMethods {
   };
 
   return {
-    async assist(request) {
+    async assist(request, _onReply, signal) {
       await context.wait();
+      if (signal?.aborted) throw new DOMException("Stoppet", "AbortError");
       const text = (request.messages.at(-1)?.content ?? "").toLowerCase();
-      if (text.includes("torsdag") && text.includes("vegetar")) {
-        const date = thursday();
+      const weekday = WEEKDAYS.findIndex((name) => text.includes(name));
+      if (weekday >= 0 && text.includes("vegetar")) {
+        const date = nextWeekday(weekday);
         const dish = vegetarian(context.state.meals[date]?.dishId);
         if (dish) {
           const label = `Sæt «${dish.name}» på ${formatFullDate(date)}`;
-          const proposal = propose("Byt torsdag til en vegetarisk ret", [{ type: "setMeal", date, dishId: dish.id, label }]);
-          return { reply: `${DEMO}Her er et vegetarisk forslag til torsdag: ${dish.name}.`, engine: "openai", proposal };
+          const proposal = propose(`Byt ${WEEKDAYS[weekday]} til en vegetarisk ret`, [{ type: "setMeal", date, dishId: dish.id, label }]);
+          return { reply: `${DEMO}Her er et vegetarisk forslag til ${WEEKDAYS[weekday]}: ${dish.name}.`, engine: "openai", proposal };
         }
       }
       if (text.includes("taco")) {

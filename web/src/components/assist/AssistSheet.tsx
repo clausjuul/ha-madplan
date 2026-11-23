@@ -1,8 +1,10 @@
+import { useMemo } from "react";
+import { formatFullDate } from "@madplan/domain";
 import { useApi } from "@/api/provider";
 import { useBootstrap } from "@/api/queries";
 import { useAssistChat } from "@/hooks/use-assist-chat";
 import { useRoute } from "@/hooks/use-route";
-import { closeAssist, useAssistOpen } from "@/lib/assist-store";
+import { closeAssist, useAssistFocusDate, useAssistOpen } from "@/lib/assist-store";
 import { contextFor, engineTitle } from "@/lib/assist-model";
 import { Sheet } from "@/components/ui/Sheet";
 import { Conversation } from "./Conversation";
@@ -26,7 +28,8 @@ export function AssistSheet() {
   const api = useApi();
   const { route } = useRoute();
   const capabilities = useBootstrap().data?.capabilities;
-  const context = contextFor(route);
+  const focusDate = useAssistFocusDate();
+  const context = useMemo(() => contextFor(route, focusDate), [route, focusDate]);
   const chat = useAssistChat(context);
 
   const available = capabilities ? capabilities.openai || capabilities.homeAssistantAgent : true;
@@ -37,8 +40,14 @@ export function AssistSheet() {
     : { title: "Assist er ikke tilgængelig" };
 
   return (
-    <Sheet open={open} onClose={closeAssist} title={heading.title} subtitle={heading.subtitle} tall={available}>
-      {available ? <Conversation context={context} chat={chat} demo={api.mode === "fake"} /> : <Unavailable />}
+    <Sheet
+      open={open}
+      onClose={closeAssist}
+      title={heading.title}
+      subtitle={focusDate && available ? `Om ${formatFullDate(focusDate)}` : heading.subtitle}
+      tall={available}
+    >
+      {available ? <Conversation context={context} chat={chat} demo={api.mode === "fake"} engine={engine} /> : <Unavailable />}
     </Sheet>
   );
 }

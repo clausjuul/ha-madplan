@@ -39,6 +39,8 @@ const RULES = [
   "Brug kun dato-, ret- og person-id'er fra DATA. Foreslå aldrig ændringer af låste dage (locked: true), og aldrig retter, der strider mod fravalg eller kostønsker.",
   "Foreslå kun handlinger, brugeren har bedt om. Spørgsmål besvares uden handlinger. Opfind aldrig resultater, priser eller tilbud.",
   "Tilbud: kun dem i DATA-blokken \"Tilbud\" (bekræftede tilbud fra jeres butikker via Prej) findes. Er blokken tom, så sig, at der ikke er hentet tilbud. Nævn butik, pris og slutdato, når du bruger et tilbud.",
+  "Ugedage: Når brugeren nævner en ugedag uden dato (\"byt fredag\"), menes dagen i den uge, brugeren ser (week i \"Visning og fokus\"); uden week menes den næste. Har brugeren valgt en dag (date), handler \"den\", \"dagen\" og \"i dag\" om den, medmindre andet er sagt. Skriv datoen i svaret, når det ikke er oplagt.",
+  "Skriv ren tekst uden Markdown (ingen **, #, eller tabeller). Lister skrives som korte linjer, der starter med •.",
   "Dit svar må ikke påstå, at noget ER gjort. Skriv i stedet, hvad du foreslår (\"Jeg foreslår ...\").",
   "Tidligere svar fra dig kan slutte med en linje som [Forslag (udført): ...], [Forslag (afvist): ...], [Forslag (afventer): ...] eller [Forslag (udløbet): ...]. Den fortæller, hvad du foreslog, og hvad brugeren gjorde. Foreslå ikke det samme igen, hvis det er udført; brug det, når brugeren henviser til \"det\", \"den anden\" osv. Skriv aldrig selv sådan en linje.",
   "Brug historikken (sidste uger, bedømmelser, dage siden sidst) til spørgsmål om, hvad I har spist, hvad der faldt i god jord, og hvad I ikke har haft længe. Retter med rating never må aldrig foreslås.",
@@ -121,7 +123,14 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
   const block = (title: string, data: unknown): string => fenced(title, data, fence);
   const dishName = (id: string): string => clip(env.dish(id)?.name ?? "ukendt", 130);
 
-  const dates = Array.from({ length: WINDOW_DAYS }, (_, index) => addDaysToKey(state.today, index));
+  // The window always covers the week (and day) being looked at, as far ahead as actions may reach.
+  const lastAllowed = addDaysToKey(state.today, SCHEMA_AHEAD);
+  const wanted = [addDaysToKey(state.today, WINDOW_DAYS - 1), context.week ? addDaysToKey(context.week, 6) : "", context.date ?? ""]
+    .filter((date) => date && date <= lastAllowed)
+    .sort()
+    .at(-1)!;
+  const windowDays = Math.max(WINDOW_DAYS, daysBetween(state.today, wanted) + 1);
+  const dates = Array.from({ length: windowDays }, (_, index) => addDaysToKey(state.today, index));
   const planned = dates.map((date) => {
     const meal = state.meals[date];
     return {
@@ -213,9 +222,10 @@ export function assistPrompt(input: AssistPromptInput): Prompt {
     block("Visning og fokus:", {
       view: clip(context.view, 40),
       date: context.date ?? null,
+      week: context.week ? { from: context.week, to: addDaysToKey(context.week, 6) } : null,
       dish: focusId ? (env.dish(focusId) ? { id: focusId, name: dishName(focusId) } : null) : null,
     }),
-    block(`Planlagte måltider, ${WINDOW_DAYS} dage frem:`, planned),
+    block(`Planlagte måltider, ${windowDays} dage frem:`, planned),
     block(`Spist de sidste ${PAST_DAYS} dage (rating: up = godt, down = ikke så godt, never = aldrig igen):`, past),
     block("Retkatalog (kun id'er herfra må bruges; daysSinceEaten null = aldrig spist):", catalog),
     block("Køleskab:", state.fridge.slice(0, 100).map((item) => ({ name: clip(item.name, 100), quantity: item.quantity ?? null, expiresOn: item.expiresOn ?? null }))),

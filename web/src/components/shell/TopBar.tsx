@@ -55,7 +55,7 @@ export function TopBar({ route, weekStart, onWeekChange }: Props) {
           Planlæg<span className="hidden lg:inline"> uge</span>
         </span>
       </Link>
-      <button type="button" aria-label="Spørg Assist" onClick={openAssist} className={iconButton}>
+      <button type="button" aria-label="Spørg Assist" onClick={() => openAssist()} className={iconButton}>
         <MessageCircle size={20} aria-hidden="true" />
       </button>
       <Link
