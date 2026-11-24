@@ -87,11 +87,20 @@ export type SuggestDayInput = { seed: number };
 // PUT  api/dishes/:id             body DishInput -> Dish (editing a built-in stores an override with the same id)
 // POST api/dishes/:id/archive                    -> Dish (sets archivedAt; meals and history are kept)
 // POST api/dishes/:id/restore                    -> Dish
-// POST api/dishes/import-url      body ImportUrlInput -> Dish (structured Recipe data from the page; 422 if none)
+// POST api/dishes/import-url      body ImportUrlInput -> ImportedDish (structured Recipe data from the page; 422 if none)
 export type DishInput = Omit<Dish, "id" | "archivedAt" | "custom">;
 /** The fields Assist may change on an existing dish. */
 export type DishChanges = Partial<Pick<Dish, "name" | "ingredients" | "instructions" | "prepMinutes" | "category" | "servings" | "favorite">>;
 export type ImportUrlInput = { url: string };
+/** What the recipe check did before an imported dish was saved. */
+export type RecipeReview = {
+  /** True when the AI check ran; false when it was skipped (no OpenAI key) or failed. */
+  checked: boolean;
+  /** Short Danish notes on what was corrected, e.g. "400 gr er rettet til 400 g". Empty when nothing changed. */
+  changes: string[];
+};
+/** The saved dish plus the review. `review` is not part of the stored dish. */
+export type ImportedDish = Dish & { review?: RecipeReview };
 
 // Shopping — ONE current list ("the next shopping trip") ----------------------
 // GET    api/shopping?from=&to=  -> ShoppingList   (defaults: from = today, to = last planned day >= today, max 14 days)
@@ -153,7 +162,7 @@ export type DraftDayPatch = { locked?: boolean; dishId?: string; variants?: Meal
 
 // Discovery -------------------------------------------------------------------
 // POST api/discover             body DiscoverInput -> { recipes: InspirationRecipe[] }  (503 without OpenAI)
-// POST api/discover/import      body { recipe: InspirationRecipe } -> Dish
+// POST api/discover/import      body { recipe: InspirationRecipe } -> ImportedDish
 // PUT  api/inspirations/saved   body InspirationRecipe[] -> InspirationRecipe[]
 export type DiscoverInput = { request: string; cuisine: InspirationCuisine | "Alle" };
 

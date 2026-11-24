@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { Clock, Link2 } from "lucide-react";
-import type { Dish } from "@madplan/domain";
+import { CheckCircle2, Clock, Link2 } from "lucide-react";
+import type { Dish, ImportedDish } from "@madplan/domain";
 import { errorMessage, useDishActions } from "@/api/library-mutations";
 import { Field, inputClass } from "@/components/ui/Field";
 import { Sheet } from "@/components/ui/Sheet";
@@ -12,15 +12,15 @@ import { routePath } from "@/lib/route";
 type Props = { open: boolean; onClose: () => void; onEdit: (dish: Dish) => void };
 
 /**
- * The server stores the parsed recipe as soon as it is fetched (contract: POST api/dishes/import-url -> Dish),
- * so the preview shows what was saved, with the option to undo it.
+ * The server checks and stores the parsed recipe as soon as it is fetched (POST api/dishes/import-url ->
+ * ImportedDish), so the preview shows what was saved and what the check corrected, with the option to undo it.
  */
 export function ImportUrlSheet({ open, onClose, onEdit }: Props) {
   const actions = useDishActions();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const [saved, setSaved] = useState<Dish | undefined>();
+  const [saved, setSaved] = useState<ImportedDish | undefined>();
 
   useEffect(() => {
     if (open) {
@@ -59,6 +59,7 @@ export function ImportUrlSheet({ open, onClose, onEdit }: Props) {
       {saved ? (
         <div className="flex flex-col gap-4 px-3 pb-2">
           <p className="m-0 rounded-2xl bg-accent-soft p-3 text-[15px] text-accent">Opskriften er hentet og gemt i dine retter.</p>
+          <ReviewNote review={saved.review} />
           <div className="rounded-3xl bg-raised p-5">
             <h3 className="font-display m-0 text-xl font-bold">{saved.name}</h3>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
@@ -77,7 +78,7 @@ export function ImportUrlSheet({ open, onClose, onEdit }: Props) {
             <button type="button" onClick={undo} className="h-12 flex-1 rounded-full border border-line px-5 text-[15px] font-semibold text-ink">
               Fortryd
             </button>
-            <button type="button" onClick={() => onEdit(saved)} className="h-12 flex-1 rounded-full border border-line px-5 text-[15px] font-semibold text-ink">
+            <button type="button" onClick={() => onEdit(withoutReview(saved))} className="h-12 flex-1 rounded-full border border-line px-5 text-[15px] font-semibold text-ink">
               Redigér først
             </button>
             <Link
@@ -96,10 +97,40 @@ export function ImportUrlSheet({ open, onClose, onEdit }: Props) {
           </Field>
           <button type="submit" disabled={busy} className="flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-on-accent disabled:opacity-60">
             <Link2 size={18} aria-hidden="true" />
-            {busy ? "Henter opskrift…" : "Hent opskrift"}
+            {busy ? "Henter og tjekker opskriften…" : "Hent opskrift"}
           </button>
         </form>
       )}
     </Sheet>
+  );
+}
+
+const withoutReview = ({ review: _review, ...dish }: ImportedDish): Dish => dish;
+
+function ReviewNote({ review }: { review: ImportedDish["review"] }) {
+  if (!review) return null;
+  if (!review.checked) {
+    return <p className="m-0 text-sm text-muted">Opskriften kunne ikke tjekkes automatisk. Se ingredienserne efter, før du handler ind.</p>;
+  }
+  if (review.changes.length === 0) {
+    return (
+      <p className="m-0 flex items-center gap-2 text-sm text-muted">
+        <CheckCircle2 size={16} aria-hidden="true" className="text-ok" />
+        Opskriften er tjekket. Der var intet at rette.
+      </p>
+    );
+  }
+  return (
+    <div className="rounded-2xl border border-line p-4">
+      <p className="m-0 flex items-center gap-2 text-[15px] font-semibold">
+        <CheckCircle2 size={18} aria-hidden="true" className="text-ok" />
+        Opskriften er tjekket og rettet
+      </p>
+      <ul className="mb-0 mt-2 list-disc pl-5 text-sm text-ink-2">
+        {review.changes.map((change) => (
+          <li key={change}>{change}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

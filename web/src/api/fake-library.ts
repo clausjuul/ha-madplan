@@ -143,7 +143,8 @@ export function createFakeLibrary({ state, wait, emit, onImported }: Context): L
           "Jeg kunne ikke finde en opskrift på den side. Prøv en side med struktureret opskriftsdata, eller opret retten selv.",
         );
       }
-      return replace({ ...DEMO_IMPORT, id: newId(), sourceUrl: url });
+      const dish = replace({ ...DEMO_IMPORT, id: newId(), sourceUrl: url });
+      return { ...dish, review: { checked: true, changes: ["400 gr er rettet til 400 g", "Dobbelte parenteser er fjernet"] } };
     },
 
     async discover(input) {

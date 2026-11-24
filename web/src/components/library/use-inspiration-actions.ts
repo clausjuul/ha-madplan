@@ -21,7 +21,12 @@ export function useInspirationActions(saved: InspirationRecipe[]) {
     actions
       .importInspiration(recipe)
       .then((dish) => {
-        notify(`${dish.name} er tilføjet til dine retter.`);
+        const fixes = dish.review?.changes.length ?? 0;
+        notify(
+          fixes > 0
+            ? `${dish.name} er tilføjet. Opskriften er tjekket, og ${fixes === 1 ? "1 ting" : `${fixes} ting`} er rettet.`
+            : `${dish.name} er tilføjet til dine retter.`,
+        );
         navigate({ name: "retter", dishId: dish.id });
       })
       .catch((error: unknown) => notify(errorMessage(error)))

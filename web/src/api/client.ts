@@ -16,6 +16,7 @@ import type {
   HealthResponse,
   ImportResult,
   ImportUrlInput,
+  ImportedDish,
   InspirationRecipe,
   Meal,
   MealInput,
@@ -69,7 +70,7 @@ export interface ApiClient {
   updateDish(id: string, input: DishInput): Promise<Dish>;
   archiveDish(id: string): Promise<Dish>;
   restoreDish(id: string): Promise<Dish>;
-  importDishFromUrl(input: ImportUrlInput): Promise<Dish>;
+  importDishFromUrl(input: ImportUrlInput): Promise<ImportedDish>;
 
   getShopping(query?: ShoppingQuery): Promise<ShoppingList>;
   toggleShoppingItem(itemId: string): Promise<ShoppingList>;
@@ -90,7 +91,7 @@ export interface ApiClient {
   discardDraft(id: string): Promise<void>;
 
   discover(input: DiscoverInput): Promise<{ recipes: InspirationRecipe[] }>;
-  importInspiration(recipe: InspirationRecipe): Promise<Dish>;
+  importInspiration(recipe: InspirationRecipe): Promise<ImportedDish>;
   saveInspirations(recipes: InspirationRecipe[]): Promise<InspirationRecipe[]>;
   /** This week's meal plans from Danish food sites; `refresh` asks the server to fetch again. */
   weeklyPlans(refresh?: boolean): Promise<WeeklyPlansResponse>;

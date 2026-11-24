@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { Hono } from "hono";
-import type { Dish, InspirationRecipe } from "@madplan/domain";
+import type { Dish, ImportedDish, InspirationRecipe } from "@madplan/domain";
 import { discoverRecipes } from "../ai/discovery.ts";
 import { importRecipeFromUrl } from "../ai/recipe-import.ts";
+import { reviewRecipe } from "../ai/recipe-review.ts";
 import type { Deps } from "../deps.ts";
 import { badRequest, unavailable } from "../errors.ts";
 import { readJson } from "../http.ts";
@@ -45,10 +46,12 @@ export function discoveryRoutes(api: Hono, deps: Deps): void {
     const body = rec(await readJson(c), "Import");
     const [recipe] = inspirations([body.recipe]);
     if (!recipe) throw badRequest("Opskriften mangler.");
-    const parsed = await importRecipeFromUrl(recipe.sourceUrl, deps.fetch, AbortSignal.timeout(15_000));
+    const fetched = await importRecipeFromUrl(recipe.sourceUrl, deps.fetch, AbortSignal.timeout(15_000));
+    const { recipe: parsed, review } = await reviewRecipe(deps.openai, deps.config.planModel, fetched, AbortSignal.timeout(45_000));
     const dish: Dish = { ...parsed, id: `custom-${randomUUID()}`, custom: true, category: recipe.cuisine };
     if (recipe.imageKey) dish.imageKey = recipe.imageKey;
     else if (recipe.imageUrl && !dish.imageUrl) dish.imageUrl = recipe.imageUrl;
-    return c.json(repo.mutate(["dishes"], () => (saveDish(repo.db, dish), dish)));
+    const imported: ImportedDish = { ...repo.mutate(["dishes", "shopping"], () => (saveDish(repo.db, dish), dish)), review };
+    return c.json(imported);
   });
 }
