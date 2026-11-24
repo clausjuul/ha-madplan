@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Hono } from "hono";
 import type { Dish, ImportedDish } from "@madplan/domain";
 import { importRecipeFromUrl } from "../ai/recipe-import.ts";
-import { reviewRecipe } from "../ai/recipe-review.ts";
+import { markReviewed, reviewRecipe } from "../ai/recipe-review.ts";
 import type { Deps } from "../deps.ts";
 import { notFound } from "../errors.ts";
 import { readJson } from "../http.ts";
@@ -33,6 +33,7 @@ export function dishRoutes(api: Hono, deps: Deps): void {
     const parsed = await importRecipeFromUrl(url, deps.fetch, AbortSignal.timeout(15_000));
     const { recipe, review } = await reviewRecipe(deps.openai, deps.config.planModel, parsed, AbortSignal.timeout(45_000));
     const imported: ImportedDish = { ...store({ ...recipe, id: `custom-${randomUUID()}`, custom: true }), review };
+    if (review.checked) markReviewed(repo.db, imported.id);
     return c.json(imported);
   });
 

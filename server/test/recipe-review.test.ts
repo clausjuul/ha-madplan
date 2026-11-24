@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ImportedDish, ShoppingList } from "@madplan/domain";
-import { applyReview } from "../src/ai/recipe-review.ts";
+import { applyReview, markReviewed, reviewEarlierImports } from "../src/ai/recipe-review.ts";
+import { loadConfig } from "../src/config.ts";
 import { parseRecipeHtml, type ParsedRecipe } from "../src/ai/recipe-import.ts";
 import { saveDish, tidyImportedDishes, findDish } from "../src/store-dishes.ts";
 import { Repo } from "../src/repo.ts";
@@ -141,5 +142,35 @@ describe("tidying dishes imported before the cleanup", () => {
     expect(findDish(repo.db, "custom-a")?.ingredients[1]).toBe("1 løg (hakket)");
     expect(findDish(repo.db, "custom-b")?.ingredients[0]).toBe("1 løg ((hakket))");
     expect(tidyImportedDishes(repo.db)).toBe(0);
+  });
+});
+
+describe("checking dishes imported before the recipe check", () => {
+  const config = loadConfig({}, "./no-options.json");
+
+  it("reviews each earlier import once and skips the ones already checked", async () => {
+    const repo = new Repo(openDatabase(":memory:"));
+    saveDish(repo.db, { ...recipe(["400 gr hakket oksekød", "1 alm løg"]), name: "Gammel", id: "custom-old", custom: true, sourceUrl: "https://x.dk/a" });
+    saveDish(repo.db, { ...recipe(["1 løg"]), id: "custom-new", custom: true, sourceUrl: "https://x.dk/b" });
+    markReviewed(repo.db, "custom-new");
+    saveDish(repo.db, { ...recipe(["1 løg"]), id: "custom-own", custom: true });
+
+    const ai = fakeAi();
+    ai.next(JSON.stringify({ ingredients: ["400 g hakket oksekød", "1 løg"], servings: null, changes: ["alm løg er rettet til løg"] }));
+    expect(await reviewEarlierImports({ repo, openai: ai, config })).toEqual(["Gammel"]);
+    expect(ai.calls).toHaveLength(1);
+    expect(findDish(repo.db, "custom-old")?.ingredients).toEqual(["400 g hakket oksekød", "1 løg"]);
+
+    expect(await reviewEarlierImports({ repo, openai: ai, config })).toEqual([]);
+    expect(ai.calls).toHaveLength(1);
+  });
+
+  it("retries on the next start when the check failed", async () => {
+    const repo = new Repo(openDatabase(":memory:"));
+    saveDish(repo.db, { ...recipe(["1 alm løg"]), id: "custom-old", custom: true, sourceUrl: "https://x.dk/a" });
+    const ai = fakeAi(); // no answer -> fails
+    expect(await reviewEarlierImports({ repo, openai: ai, config })).toEqual([]);
+    ai.next(JSON.stringify({ ingredients: ["1 løg"], servings: null, changes: ["alm løg er rettet til løg"] }));
+    expect(await reviewEarlierImports({ repo, openai: ai, config })).toHaveLength(1);
   });
 });

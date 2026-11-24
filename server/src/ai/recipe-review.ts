@@ -5,6 +5,9 @@
  * A line that fails the guard keeps its original text, so the check can tidy but never invent.
  */
 import { cleanIngredientLine, parseIngredient, type RecipeReview } from "@madplan/domain";
+import type { DatabaseSync } from "node:sqlite";
+import type { Deps } from "../deps.ts";
+import { findDish, saveDish, storedDishes } from "../store-dishes.ts";
 import type { OpenAiClient } from "./openai.ts";
 import { FENCE_RULE, fenced, newFence, type Prompt } from "./prompt.ts";
 import type { ParsedRecipe } from "./recipe-import.ts";
@@ -111,4 +114,55 @@ export async function reviewRecipe(
   } catch {
     return { recipe, review: { checked: false, changes: [] } };
   }
+}
+
+const REVIEWED_KEY = "reviewed_imports";
+
+function reviewedIds(db: DatabaseSync): Set<string> {
+  const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(REVIEWED_KEY) as { value?: string } | undefined;
+  try {
+    const ids: unknown = JSON.parse(row?.value ?? "[]");
+    return new Set(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Runs the recipe check once on dishes that were imported before it existed. A dish is marked
+ * as reviewed only when the check actually ran, so a failed call is retried on the next start.
+ * Returns the names of the dishes that were changed.
+ */
+export async function reviewEarlierImports(deps: Pick<Deps, "repo" | "openai" | "config">): Promise<string[]> {
+  if (!deps.openai.configured) return [];
+  const { db } = deps.repo;
+  const done = reviewedIds(db);
+  const changed: string[] = [];
+  for (const dish of storedDishes(db)) {
+    if (!dish.sourceUrl || dish.archivedAt || done.has(dish.id)) continue;
+    const { id, ...parsed } = dish;
+    const { recipe, review } = await reviewRecipe(deps.openai, deps.config.planModel, parsed, AbortSignal.timeout(60_000));
+    if (!review.checked) continue;
+    done.add(id);
+    deps.repo.mutate(review.changes.length ? ["dishes", "shopping"] : [], () => {
+      // Saved only if the dish was not edited meanwhile (the call takes a while).
+      const current = findDish(db, id);
+      if (review.changes.length && current && JSON.stringify(current.ingredients) === JSON.stringify(dish.ingredients)) {
+        saveDish(db, { ...current, ingredients: recipe.ingredients, ...(recipe.servings ? { servings: recipe.servings } : {}) });
+        changed.push(dish.name);
+      }
+      db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(
+        REVIEWED_KEY,
+        JSON.stringify([...done]),
+      );
+    });
+  }
+  return changed;
+}
+
+/** New imports are reviewed on the way in; remember them so the startup pass skips them. */
+export function markReviewed(db: DatabaseSync, id: string): void {
+  const done = reviewedIds(db);
+  done.add(id);
+  db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(REVIEWED_KEY, JSON.stringify([...done]));
 }

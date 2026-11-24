@@ -16,6 +16,7 @@ import { createPublisher } from "./ha/publisher.ts";
 import { offerSyncFor } from "./offers/sync.ts";
 import { Repo } from "./repo.ts";
 import { tidyImportedDishes } from "./store-dishes.ts";
+import { reviewEarlierImports } from "./ai/recipe-review.ts";
 import { failInterruptedDrafts } from "./services/drafts.ts";
 import { fetchSupervisorTimeZone } from "./timezone.ts";
 
@@ -67,6 +68,13 @@ const backup = (): void => {
 backup();
 const backupTimer = setInterval(backup, BACKUP_INTERVAL_MS);
 backupTimer.unref();
+
+// Dishes imported before the recipe check existed get it once, in the background.
+void reviewEarlierImports(deps)
+  .then((names) => {
+    if (names.length) console.log(`Opskrifter tjekket og rettet: ${names.join(", ")}`);
+  })
+  .catch((error: unknown) => console.error("Tjek af tidligere importerede opskrifter fejlede", error));
 
 const publisher = createPublisher(deps);
 publisher.start();
