@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.21.1
+
+- fix(server): app loads behind a kiosk app's proxy (blank page on Kiosk Satellite)
+- fix(web): never leave a blank white page
+
 ## 0.21.0
 
 - test(e2e): dish picker screenshot uses the new search placeholder
