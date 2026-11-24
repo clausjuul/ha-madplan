@@ -166,6 +166,27 @@ describe("ingress guard", () => {
     expect(foreign.status).toBe(403);
     const same = await app.request("http://ha.local/api/health", { headers: { origin: "http://ha.local", host: "ha.local" } }, env);
     expect(same.status).toBe(200);
+    const crossSite = await app.request(
+      "http://ha.local/api/meals/2026-11-10",
+      { method: "DELETE", headers: { origin: "http://127.0.0.1:2325", host: "ha.local", "sec-fetch-site": "cross-site" } },
+      env,
+    );
+    expect(crossSite.status).toBe(403);
+  });
+
+  it("works behind a second proxy where the browser origin differs from the forwarded host", async () => {
+    const { app } = strict();
+    const env = { incoming: { socket: { remoteAddress: "172.30.32.2" } } };
+    // Kiosk apps serve HA on http://127.0.0.1:<port>; Chromium sends Origin on crossorigin asset loads.
+    const headers = { origin: "http://127.0.0.1:2325", host: "192.168.1.22:8123", "x-forwarded-host": "192.168.1.22:8123" };
+    expect((await app.request("http://ha.local/", { headers }, env)).status).not.toBe(403);
+    expect((await app.request("http://ha.local/api/health", { headers }, env)).status).toBe(200);
+    const write = await app.request(
+      "http://ha.local/api/shopping/extras",
+      { method: "POST", headers: { ...headers, "sec-fetch-site": "same-origin", "content-type": "application/json" }, body: JSON.stringify({ label: "Mælk" }) },
+      env,
+    );
+    expect(write.status).not.toBe(403);
   });
 });
 

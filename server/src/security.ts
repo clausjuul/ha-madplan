@@ -18,19 +18,34 @@ export function ingressGuard(config: Pick<Config, "allowAnyOrigin">): Middleware
     if (remote !== INGRESS_ADDRESS) {
       return c.json({ error: "forbidden", message: "Appen kan kun åbnes via Home Assistant." }, 403);
     }
-    const origin = c.req.header("origin");
-    if (origin) {
-      let host = "";
-      try {
-        host = new URL(origin).host;
-      } catch {
-        // falls through to the refusal below
-      }
-      const allowed = [c.req.header("host"), c.req.header("x-forwarded-host")];
-      if (!host || !allowed.includes(host)) {
-        return c.json({ error: "forbidden", message: "Forespørgsler fra andre sider er ikke tilladt." }, 403);
-      }
+    if (!isSameOriginWrite(c.req.method, (name) => c.req.header(name))) {
+      return c.json({ error: "forbidden", message: "Forespørgsler fra andre sider er ikke tilladt." }, 403);
     }
     return next();
   };
+}
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * Cross-site request protection for writes. Reads change nothing and pass: browsers send an
+ * Origin header even on same-origin `crossorigin` script and stylesheet loads, and behind a
+ * second reverse proxy (e.g. a kiosk app serving HA on 127.0.0.1) that origin never matches
+ * the Host Home Assistant forwards, which used to block the app's own files (blank page).
+ * For writes the browser's Sec-Fetch-Site decides when present; older browsers fall back to
+ * comparing Origin with the forwarded host.
+ */
+export function isSameOriginWrite(method: string, header: (name: string) => string | undefined): boolean {
+  if (SAFE_METHODS.has(method.toUpperCase())) return true;
+  const site = header("sec-fetch-site");
+  if (site) return site === "same-origin" || site === "none";
+  const origin = header("origin");
+  if (!origin) return true;
+  let host = "";
+  try {
+    host = new URL(origin).host;
+  } catch {
+    return false;
+  }
+  return host !== "" && [header("host"), header("x-forwarded-host")].includes(host);
 }
