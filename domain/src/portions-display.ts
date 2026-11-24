@@ -4,7 +4,7 @@
  */
 
 const UNIT_WORD =
-  /^(kg|g|liter|l|dl|cl|ml|stk\.?|dåser?|glas|pakker?|pk\.?|flasker?|spsk\.?|tsk\.?|fed|bundter?|bundt|potter?|potte)(?=\s|$)\s*(.*)$/iu;
+  /^(kg|kilo|gram|gr\.?|g|liter|l|dl|cl|ml|stk\.?|dåser?|glas|pakker?|pk\.?|flasker?|spiseskeer?|spsk\.?|teskeer?|tsk\.?|fed|bundter?|bundt|potter?|potte)(?=\s|$)\s*(.*)$/iu;
 const PLURAL_UNITS: Record<string, [string, string]> = {
   dåse: ["dåse", "dåser"],
   pakke: ["pakke", "pakker"],
@@ -63,14 +63,14 @@ export function scaleIngredientForDisplay(ingredient: string, servings: number, 
   const join = (value: string, word: string | undefined): string =>
     `${lead}${value}${gap}${word ? `${word}${tail ? " " : ""}` : ""}${tail}`;
 
-  if (lower === "g" || lower === "ml") {
+  if (lower === "g" || lower === "ml" || lower === "gram" || lower?.startsWith("gr")) {
     return join(decimal(Math.max(5, roundTo(scaled, scaled < 100 ? 5 : 10))), unit);
   }
-  if (lower === "kg" || lower === "l" || lower === "liter") {
+  if (lower === "kg" || lower === "kilo" || lower === "l" || lower === "liter") {
     return join(decimal(Math.max(0.05, roundTo(scaled, 0.05))), unit);
   }
   if (lower === "cl") return join(decimal(Math.max(0.5, roundTo(scaled, 0.5))), unit);
-  if (lower?.startsWith("spsk") || lower?.startsWith("tsk")) {
+  if (lower?.startsWith("spsk") || lower?.startsWith("tsk") || lower?.startsWith("spiseske") || lower?.startsWith("teske")) {
     return join(formatFraction(Math.max(0.5, roundTo(scaled, 0.5))), unit);
   }
   const quarters = Math.max(0.25, roundTo(scaled, 0.25));

@@ -8,7 +8,7 @@ import { useStepTimers } from "@/hooks/use-step-timers";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { useBack } from "@/hooks/use-back";
 import { finishCooking, setCookStep, useCookSessions } from "@/lib/cook-session";
-import { clampServings, scaledLines } from "@/lib/cook-model";
+import { clampServings, ingredientsForStep, scaledLines } from "@/lib/cook-model";
 import { detectTimer } from "@/lib/step-timers";
 import { DishImage } from "@/components/ui/DishImage";
 import { ErrorState } from "@/components/ui/StatusViews";
@@ -88,6 +88,8 @@ export function CookView({ dishId }: { dishId: string }) {
 
   const current = steps[step] ?? "";
   const detected = detectTimer(current);
+  // Without the side panel, the step shows what it uses so the cook need not open the list.
+  const stepLines = wide ? [] : ingredientsForStep(current, lines);
   const ingredients = <IngredientList lines={lines} servings={servings} onServings={(value) => setChosenServings(clampServings(value))} />;
 
   const onPointerDown = (event: PointerEvent): void => {
@@ -161,6 +163,16 @@ export function CookView({ dishId }: { dishId: string }) {
               >
                 {current}
               </p>
+              {stepLines.length > 0 ? (
+                <ul aria-label="Det skal du bruge i dette trin" className="m-0 flex max-w-[780px] list-none flex-col gap-1.5 rounded-2xl bg-surface p-3.5">
+                  {stepLines.map((line, index) => (
+                    <li key={`${line.name}-${index}`} className="flex gap-3 text-[17px] leading-snug">
+                      <span className="w-[84px] shrink-0 font-semibold text-accent">{line.amount}</span>
+                      <span className="text-ink">{line.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {detected ? (
                 <TimerControl
                   detected={detected}
