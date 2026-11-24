@@ -1,5 +1,5 @@
 /** Imports a dish from the schema.org Recipe JSON-LD of a web page. Never invents missing data. */
-import type { Dish } from "@madplan/domain";
+import { cleanIngredientLine, type Dish } from "@madplan/domain";
 import { unprocessable } from "../errors.ts";
 
 const MAX_HTML = 2_000_000;
@@ -52,6 +52,19 @@ function imageOf(value: unknown): string | undefined {
   return undefined;
 }
 
+/** "4", 4, "4 personer", ["4", "4 portioner"] -> 4. Anything else is left out. */
+function servingsOf(value: unknown): number | undefined {
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const found = servingsOf(entry);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  const number = typeof value === "number" ? value : typeof value === "string" ? Number(/\d+(?:[.,]\d+)?/u.exec(value)?.[0]?.replace(",", ".")) : Number.NaN;
+  return Number.isFinite(number) && number >= 1 && number <= 30 ? number : undefined;
+}
+
 export type ParsedRecipe = Omit<Dish, "id">;
 
 export function parseRecipeHtml(html: string, sourceUrl: string): ParsedRecipe | null {
@@ -70,12 +83,12 @@ export function parseRecipeHtml(html: string, sourceUrl: string): ParsedRecipe |
     const ingredients = Array.isArray(node.recipeIngredient)
       ? node.recipeIngredient
           .filter((entry): entry is string => typeof entry === "string")
-          .map((entry) => entry.trim())
+          .map(cleanIngredientLine)
           .filter(Boolean)
           .slice(0, 100)
       : [];
-    const instructions = steps(node.recipeInstructions).slice(0, 60);
-    const name = typeof node.name === "string" ? node.name.trim().slice(0, 130) : "";
+    const instructions = steps(node.recipeInstructions).map(cleanIngredientLine).filter(Boolean).slice(0, 60);
+    const name = typeof node.name === "string" ? cleanIngredientLine(node.name).slice(0, 130) : "";
     if (ingredients.length < 2 || instructions.length < 1 || !name) continue;
     const recipe: ParsedRecipe = {
       name,
@@ -89,6 +102,8 @@ export function parseRecipeHtml(html: string, sourceUrl: string): ParsedRecipe |
       custom: true,
       sourceUrl,
     };
+    const servings = servingsOf(node.recipeYield);
+    if (servings) recipe.servings = servings;
     const image = imageOf(node.image);
     if (image?.startsWith("https://")) recipe.imageUrl = image;
     return recipe;

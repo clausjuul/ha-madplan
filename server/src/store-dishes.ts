@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { DISHES } from "@madplan/domain";
+import { DISHES, cleanIngredientLine } from "@madplan/domain";
 import type { Dish } from "@madplan/domain";
 import { all, flag, one, optNumeric, optText, parseJson, run, text, numeric, toJson } from "./repo.ts";
 import type { Row } from "./repo.ts";
@@ -89,4 +89,24 @@ export function saveDish(db: DatabaseSync, dish: Dish): void {
     dish.generated ? 1 : 0,
     dish.archivedAt ?? null,
   );
+}
+
+/**
+ * Tidies ingredient and step lines of dishes imported from the web (doubled parentheses, HTML
+ * entities) the same way new imports are cleaned. Idempotent; returns how many dishes changed.
+ */
+export function tidyImportedDishes(db: DatabaseSync): number {
+  let changed = 0;
+  for (const dish of storedDishes(db)) {
+    if (!dish.sourceUrl) continue;
+    const ingredients = dish.ingredients.map(cleanIngredientLine).filter(Boolean);
+    const instructions = dish.instructions?.map(cleanIngredientLine).filter(Boolean);
+    const same =
+      ingredients.join("\n") === dish.ingredients.join("\n") &&
+      (instructions ?? []).join("\n") === (dish.instructions ?? []).join("\n");
+    if (same) continue;
+    saveDish(db, { ...dish, ingredients, ...(instructions ? { instructions } : {}) });
+    changed += 1;
+  }
+  return changed;
 }

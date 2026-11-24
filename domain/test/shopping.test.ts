@@ -7,8 +7,11 @@ import {
   createShoppingList,
   extraItemId,
   formatQuantity,
+  cleanIngredientLine,
   ingredientsMatch,
+  isNotBought,
   parseIngredient,
+  shoppingName,
   parseOfferPrice,
   removeExtra,
   toggleChecked,
@@ -50,6 +53,30 @@ describe("ingredient parsing", () => {
     expect(parseIngredient("3 dåser tomater")).toEqual({ name: "tomater", amount: 3, unit: "can" });
     expect(parseIngredient("2 løg")).toEqual({ name: "løg", amount: 2, unit: "count" });
     expect(parseIngredient("salt efter smag")).toEqual({ name: "salt efter smag" });
+  });
+
+  it("understands the units and fractions recipe sites write", () => {
+    expect(parseIngredient("400 gr hakket oksekød")).toEqual({ name: "hakket oksekød", amount: 400, unit: "g" });
+    expect(parseIngredient("75 gr. revet ost")).toEqual({ name: "revet ost", amount: 75, unit: "g" });
+    expect(parseIngredient("200 gram smør")).toEqual({ name: "smør", amount: 200, unit: "g" });
+    expect(parseIngredient("1 kilo kartofler")).toEqual({ name: "kartofler", amount: 1000, unit: "g" });
+    expect(parseIngredient("2 spiseskeer olie")).toEqual({ name: "olie", amount: 2, unit: "tbsp" });
+    expect(parseIngredient("½ tsk salt")).toEqual({ name: "salt", amount: 0.5, unit: "tsp" });
+    expect(parseIngredient("1½ kg kartofler")).toEqual({ name: "kartofler", amount: 1500, unit: "g" });
+    expect(parseIngredient("1 1/2 dl fløde")).toEqual({ name: "fløde", amount: 150, unit: "ml" });
+    expect(parseIngredient("1 løg ((hakket))")).toEqual({ name: "løg (hakket)", amount: 1, unit: "count" });
+  });
+
+  it("tidies lines and tells what is not bought", () => {
+    expect(cleanIngredientLine("• 1 løg ((hakket))")).toBe("1 løg (hakket)");
+    expect(cleanIngredientLine("400 g tomater &amp; l&oslash;g")).toBe("400 g tomater & l&oslash;g");
+    expect(cleanIngredientLine("&frac12; l mælk")).toBe("½ l mælk");
+    expect(shoppingName("kartofler (skrællede og skåret i tynde skiver)")).toBe("kartofler");
+    expect(shoppingName("(valgfrit)")).toBe("(valgfrit)");
+    expect(isNotBought("kogevand fra pastaen")).toBe(true);
+    expect(isNotBought("lunkent vand")).toBe(true);
+    expect(isNotBought("vandmelon")).toBe(false);
+    expect(isNotBought("oksebouillon (evt. vand + bouillonterning)")).toBe(false);
   });
 
   it("treats fed, skiver, knivspids and nip as units, not part of the name", () => {

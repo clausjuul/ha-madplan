@@ -3,9 +3,11 @@ import {
   categorizeIngredient,
   formatQuantity,
   ingredientsMatch,
+  isNotBought,
   normalizeItem,
   parseIngredient,
   roundUpForPurchase,
+  shoppingName,
 } from "./ingredients.ts";
 import type { IngredientUnit, ShoppingCategory } from "./ingredients.ts";
 import { estimateItemPrice, formatPrice, parseOfferPrice } from "./pricing.ts";
@@ -120,6 +122,9 @@ export function createShoppingList(input: ShoppingListInput): ShoppingList {
       const sourceLabel = ingredient.trim();
       if (!sourceLabel) continue;
       const parsed = parseIngredient(sourceLabel);
+      // Preparation notes ("løg (hakket)") belong to the recipe, not the shopping list.
+      parsed.name = shoppingName(parsed.name);
+      if (!parsed.name || isNotBought(parsed.name)) continue;
       const swapped = variants
         .filter((variant) => ingredientsMatch(parsed.name, variant.replaces))
         .reduce((sum, variant) => sum + variantPortions(variant, input.profiles ?? []), 0);
