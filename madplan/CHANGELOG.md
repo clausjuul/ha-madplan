@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.23.0
+
+- feat(cook): the step shows how much of each ingredient it uses
+- feat(import): dishes imported before the recipe check get it once
+
 ## 0.22.0
 
 - feat(import): recipes are checked by AI before they are saved
