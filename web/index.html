@@ -8,6 +8,50 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Plain ES5 on purpose: shows why the app could not start (e.g. a browser too old to run
+      // the bundle) instead of a blank page. The app's own error boundary handles later errors.
+      (function () {
+        var errors = [];
+        function show() {
+          var root = document.getElementById("root");
+          if (!root || root.childNodes.length || !errors.length || document.getElementById("boot-error")) return;
+          var box = document.createElement("div");
+          box.id = "boot-error";
+          box.setAttribute("role", "alert");
+          box.style.cssText = "font:15px/1.5 system-ui,sans-serif;max-width:460px;margin:15vh auto;padding:0 24px;text-align:center;color:#e8e8ea";
+          document.body.style.background = "#0b0c0e";
+          var h = document.createElement("h1");
+          h.style.cssText = "font-size:22px;margin:0 0 8px";
+          h.textContent = "Madplan kunne ikke starte";
+          var p = document.createElement("p");
+          p.textContent = "Prøv at genindlæse. Bliver siden ved med at være tom, er browseren måske for gammel. Fejl:";
+          var code = document.createElement("code");
+          code.style.cssText = "display:block;word-break:break-word;background:#1c1d21;border-radius:10px;padding:8px 12px;text-align:left;font-size:13px";
+          code.textContent = errors.join("\n");
+          var button = document.createElement("button");
+          button.type = "button";
+          button.textContent = "Genindlæs";
+          button.style.cssText = "margin-top:16px;height:44px;padding:0 24px;border:0;border-radius:22px;background:#5b8def;color:#fff;font:600 15px system-ui,sans-serif";
+          button.onclick = function () { location.reload(); };
+          box.appendChild(h);
+          box.appendChild(p);
+          box.appendChild(code);
+          box.appendChild(button);
+          root.appendChild(box);
+        }
+        window.addEventListener("error", function (event) {
+          var target = event.target;
+          errors.push(target && target !== window && target.src ? "Kunne ikke hente " + target.src : event.message || "Ukendt fejl");
+          setTimeout(show, 1500);
+        }, true);
+        window.addEventListener("unhandledrejection", function (event) {
+          var reason = event.reason;
+          errors.push(reason && reason.message ? reason.message : String(reason));
+          setTimeout(show, 1500);
+        });
+      })();
+    </script>
     <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
