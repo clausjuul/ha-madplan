@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.22.0
+
+- feat(import): recipes are checked by AI before they are saved
+- fix(shopping): imported recipes give a correct list (gr, ½, notes, pasta water)
+
 ## 0.21.1
 
 - fix(server): app loads behind a kiosk app's proxy (blank page on Kiosk Satellite)
