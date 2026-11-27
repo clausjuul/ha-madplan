@@ -101,9 +101,16 @@ export type DishDraftInput = { name: string; note?: string };
 /**
  * A dish ready for the form, not saved yet. `how` says where it came from: the page's structured data
  * ("structured", then `review` tells what the recipe check corrected), read by AI from a page, text or
- * photo ("read": amounts should be checked), or written by AI from the name ("drafted").
+ * photo ("read": amounts should be checked), written by AI from the name ("drafted"), or written by
+ * AI for the dish it recognised on a photo of the food itself ("recognized").
+ * `photo` is the index of the uploaded image that shows the finished dish, for the dish's own picture.
  */
-export type DishPreview = { dish: DishInput; how: "structured" | "read" | "drafted"; review?: RecipeReview };
+export type DishPreview = {
+  dish: DishInput;
+  how: "structured" | "read" | "drafted" | "recognized";
+  review?: RecipeReview;
+  photo?: number;
+};
 /** The fields Assist may change on an existing dish. */
 export type DishChanges = Partial<Pick<Dish, "name" | "ingredients" | "instructions" | "prepMinutes" | "category" | "servings" | "favorite">>;
 /** What the recipe check did before an imported dish was saved. */

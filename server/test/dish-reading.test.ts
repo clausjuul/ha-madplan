@@ -39,6 +39,8 @@ function site() {
 const answer = (overrides: Record<string, unknown> = {}): string =>
   JSON.stringify({
     found: true,
+    recognized: false,
+    dishPhoto: null,
     name: "farmors gryde",
     category: "gryderet",
     prepMinutes: 150,
@@ -141,6 +143,28 @@ describe("reading a recipe from text or photos", () => {
     expect((await call("POST", "dishes/read", { images: ["https://example.dk/foto.jpg"] })).status).toBe(400);
     expect((await call("POST", "dishes/read", { text: "for kort" })).status).toBe(400);
     expect((await call("POST", "dishes/read", {})).status).toBe(400);
+  });
+
+  it("recognises the dish on a photo of the food and points out the photo for the dish's picture", async () => {
+    const ai = fakeAi();
+    ai.next(answer({ recognized: true, dishPhoto: 2, name: "spaghetti bolognese" }));
+    ai.next(answer({ recognized: true, dishPhoto: 7 }));
+    ai.next(answer({ recognized: false, dishPhoto: null }));
+    const { json } = setup({ openai: ai });
+    const photo = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==";
+
+    const food = await json<DishPreview>("POST", "dishes/read", { images: [photo, photo] });
+    expect(food).toMatchObject({ how: "recognized", photo: 1, dish: { name: "Spaghetti bolognese", generated: true } });
+    expect(ai.calls[0]?.instructions).toMatch(/genkend retten/u);
+
+    // A photo number that does not exist is ignored.
+    const outOfRange = await json<DishPreview>("POST", "dishes/read", { images: [photo] });
+    expect(outOfRange.photo).toBeUndefined();
+
+    const page = await json<DishPreview>("POST", "dishes/read", { images: [photo] });
+    expect(page.how).toBe("read");
+    expect(page.dish.generated).toBeUndefined();
+    expect(page.photo).toBeUndefined();
   });
 
   it("needs OpenAI for text and photos", async () => {

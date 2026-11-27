@@ -32,6 +32,18 @@ export const DISH_PHOTO: ImageBox = { maxWidth: MAX_IMAGE_WIDTH, maxHeight: MAX_
 /** A photo of a recipe (e.g. a cookbook page) for the AI to read: big enough for small print. */
 export const RECIPE_PHOTO: ImageBox = { maxWidth: 1600, maxHeight: 1600, quality: 0.85 };
 
+/** A data: URL as a Blob (e.g. to downscale a photo that was already read). */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const match = /^data:([^;,]+)(;base64)?,(.*)$/su.exec(dataUrl);
+  if (!match) throw new Error("Not a data URL");
+  const [, type, base64, data = ""] = match;
+  if (!base64) return new Blob([decodeURIComponent(data)], { type });
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new Blob([bytes], { type });
+}
+
 /** Downscales an image file to fit the box (default: a dish photo, 1000x700) and returns a JPEG data URL. */
 export async function downscaleImage(file: Blob, deps: ResizeDeps = browserDeps, box: ImageBox = DISH_PHOTO): Promise<string> {
   const source = await deps.decode(file);

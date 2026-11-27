@@ -4,7 +4,7 @@ import type { Dish, DishPreview, DishReadInput } from "@madplan/domain";
 import { errorMessage, useDishActions } from "@/api/library-mutations";
 import { Field, inputClass } from "@/components/ui/Field";
 import { Sheet } from "@/components/ui/Sheet";
-import { downscaleImage, RECIPE_PHOTO } from "@/lib/image-resize";
+import { dataUrlToBlob, downscaleImage, RECIPE_PHOTO } from "@/lib/image-resize";
 import { DishForm } from "./DishForm";
 
 type Props = {
@@ -94,7 +94,7 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
     fail(undefined);
     setStep({ kind: "reading", from, message });
     try {
-      const preview = await actions.read(input);
+      const preview = await withDishPhoto(await actions.read(input), "images" in input ? input.images : []);
       if (id === request.current) setStep({ kind: "form", from, preview });
     } catch (failure) {
       if (id !== request.current) return;
@@ -127,7 +127,7 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
   let subtitle: string | undefined;
   let onBack: (() => void) | undefined;
   if (step.kind === "photos") {
-    title = "Foto af opskrift";
+    title = "Foto";
     onBack = () => back("start");
   } else if (step.kind === "reading") {
     onBack = () => back(step.from);
@@ -205,7 +205,8 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
           </ul>
           {photoInput}
           <p className={`m-0 text-[13px] ${photoError ? "text-danger" : "text-muted"}`} role={photoError ? "alert" : undefined}>
-            {photoError ?? `Fylder opskriften flere sider, så tag op til ${MAX_PHOTOS} billeder. Sørg for, at hele ingredienslisten er skarp.`}
+            {photoError ??
+              `Tag et billede af opskriften, fx i en kogebog (op til ${MAX_PHOTOS} sider), eller af selve maden. Så genkender AI retten, skriver en opskrift og bruger billedet til retten.`}
           </p>
           <button
             type="button"
@@ -260,7 +261,7 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
             <Tile
               icon={<Camera size={20} aria-hidden="true" />}
               title="Foto"
-              text={aiAvailable ? "Kogebog eller håndskrevet" : "Kræver en OpenAI-nøgle"}
+              text={aiAvailable ? "Af opskriften eller af maden" : "Kræver en OpenAI-nøgle"}
               disabled={!aiAvailable}
               onClick={() => (photos.length ? setStep({ kind: "photos" }) : fileRef.current?.click())}
             />
@@ -277,6 +278,17 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
       )}
     </Sheet>
   );
+}
+
+/** A photo of the food itself becomes the dish's picture (downscaled like an uploaded dish photo). */
+async function withDishPhoto(preview: DishPreview, images: readonly string[]): Promise<DishPreview> {
+  const photo = preview.photo === undefined ? undefined : images[preview.photo];
+  if (!photo || preview.dish.imageUrl) return preview;
+  try {
+    return { ...preview, dish: { ...preview.dish, imageUrl: await downscaleImage(dataUrlToBlob(photo)) } };
+  } catch {
+    return preview;
+  }
 }
 
 function Tile({ icon, title, text, disabled, onClick }: { icon: ReactNode; title: string; text: string; disabled?: boolean; onClick: () => void }) {

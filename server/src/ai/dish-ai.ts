@@ -1,6 +1,7 @@
 /**
  * AI help for adding dishes: write a dish from its name ("Mormors frikadeller"), or read a recipe out
- * of pasted text, a recipe page without structured data, or photos of e.g. a cookbook page. Nothing
+ * of pasted text, a recipe page without structured data, or photos of e.g. a cookbook page; or
+ * recognise the dish on a photo of the food itself and write a recipe for it. Nothing
  * is saved here; the answer is checked and cleaned before it reaches the form.
  */
 import { cleanIngredientLine } from "@madplan/domain";
@@ -47,17 +48,30 @@ export function draftPrompt(name: string, note: string | undefined, context: Dis
 
 export function readPrompt(text: string | undefined, hasImages: boolean, context: DishAiContext, fence = newFence()): Prompt {
   const where = text && hasImages ? "en tekst og nogle billeder" : hasImages ? "et eller flere billeder (fx en side fra en kogebog)" : "en tekst (fx kopieret fra en hjemmeside, en besked eller en kogebog)";
+  const photoRules = hasImages
+    ? [
+        "Billederne kan også vise selve maden i stedet for en opskrift (fx et foto af en tallerken, en gryde eller et fad). Er der ingen opskrift, men en færdig ret, så genkend retten:",
+        `- sæt recognized til true, og skriv den almindelige, hjemmelavede danske udgave af retten til ${context.servings} personer med realistiske mængder og varer fra et almindeligt dansk supermarked. Tag ikke salt, peber, olie og vand med som ingredienser.`,
+        '- name: rettens almindelige danske navn (fx "Spaghetti bolognese", ikke "Pasta med kødsovs på en tallerken").',
+        "- Kan du ikke se, hvilken ret det er, eller er det ikke mad, så sæt found til false.",
+        "Er der en opskrift, så sæt recognized til false og følg reglerne for opskrifter herunder.",
+        "dishPhoto: nummeret (1, 2 eller 3) på det billede, der mest af alt er et foto af den færdige ret, så det kan bruges som rettens billede; ellers null. En side fra en kogebog er ikke et madbillede, selv om der er et billede på den.",
+      ]
+    : ["recognized: altid false. dishPhoto: altid null."];
   const instructions = [
     `Du læser en opskrift ud af ${where} og gør den klar til en dansk families madplan-app. Appen laver indkøbslister ud fra ingredienslinjerne.`,
-    "Tag kun det med, der står i opskriften. Opfind aldrig ingredienser eller mængder. Står der ingen mængde, så skriv linjen uden mængde.",
+    ...photoRules,
+    "Regler for opskrifter: Tag kun det med, der står i opskriften. Opfind aldrig ingredienser eller mængder. Står der ingen mængde, så skriv linjen uden mængde.",
     "Mængderne skal være de samme som i opskriften. Oversæt til dansk, hvis opskriften er på et andet sprog, og omregn amerikanske mål (cups, oz, lb) til g, dl eller ml.",
-    "Er der ingen opskrift (ingen ingrediensliste), så sæt found til false og lad resten være tomt.",
+    hasImages
+      ? "Er der hverken en opskrift eller en ret, du kan genkende, så sæt found til false og lad resten være tomt."
+      : "Er der ingen opskrift (ingen ingrediensliste), så sæt found til false og lad resten være tomt.",
     ...INGREDIENT_FORMAT,
     "- name: opskriftens navn. Finder du intet navn, så giv retten et kort, beskrivende dansk navn.",
     ...FIELDS,
     "- prepMinutes: brug opskriftens egen tid, hvis den står der; ellers dit bedste skøn.",
-    "- servings: antal personer eller portioner, hvis det står i opskriften; ellers null.",
-    "- instructions: opskriftens egne trin, kortet lidt ned hvis de er lange. Har opskriften ingen trin, så en tom liste.",
+    "- servings: antal personer eller portioner, hvis det står i opskriften; ellers null. For en genkendt ret: det antal personer, du skrev den til.",
+    "- instructions: opskriftens egne trin, kortet lidt ned hvis de er lange. Har opskriften ingen trin, så en tom liste. For en genkendt ret: dine egne korte trin.",
     FENCE_RULE(fence),
   ].join("\n");
   const parts = [fenced("Husstandens kategorier:", context.categories.slice(0, 40), fence)];
@@ -71,9 +85,11 @@ const schema = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["found", "name", "category", "prepMinutes", "servings", "ingredients", "instructions", "leftoverFriendly", "freezerFriendly"],
+    required: ["found", "recognized", "dishPhoto", "name", "category", "prepMinutes", "servings", "ingredients", "instructions", "leftoverFriendly", "freezerFriendly"],
     properties: {
       found: { type: "boolean" },
+      recognized: { type: "boolean" },
+      dishPhoto: { type: ["integer", "null"] },
       name: { type: "string" },
       category: { type: "string" },
       prepMinutes: { type: "integer" },
@@ -149,19 +165,43 @@ export async function draftDish(
   return { ...recipe, generated: true };
 }
 
-/** Reads a recipe out of text and/or photos. Throws a Danish 422 without OpenAI or when there is no recipe. */
+export type ReadRecipe = {
+  recipe: ParsedRecipe;
+  /** No recipe on the photos, but a dish the AI recognised and wrote a recipe for. */
+  recognized: boolean;
+  /** Index (0-based) of the image that shows the finished dish, for the dish's own picture. */
+  dishPhoto?: number;
+};
+
+/**
+ * Reads a recipe out of text and/or photos; a photo of the food itself gives a recipe for the dish
+ * on it. Throws a Danish 422 without OpenAI or when there is neither a recipe nor a dish.
+ */
 export async function readRecipe(
   client: OpenAiClient,
   model: string,
   source: { text?: string; images?: readonly string[] },
   context: DishAiContext,
   signal?: AbortSignal,
-): Promise<ParsedRecipe> {
+): Promise<ReadRecipe> {
   const images = source.images ?? [];
   const answer = await ask(client, model, readPrompt(source.text, images.length > 0, context), images, signal);
   const recipe = toRecipe(answer, context);
   if (!recipe) {
-    throw unprocessable(images.length ? "Jeg kunne ikke finde en opskrift på billedet. Prøv et skarpere foto af hele ingredienslisten." : "Jeg kunne ikke finde en opskrift i teksten.");
+    throw unprocessable(
+      images.length
+        ? "Jeg kunne hverken finde en opskrift eller genkende retten på billedet. Prøv et skarpere foto."
+        : "Jeg kunne ikke finde en opskrift i teksten.",
+    );
   }
-  return recipe;
+  const body = answer as Record<string, unknown>;
+  const recognized = images.length > 0 && body.recognized === true;
+  const number = body.dishPhoto;
+  const dishPhoto =
+    images.length > 0 && typeof number === "number" && Number.isInteger(number) && number >= 1 && number <= images.length ? number - 1 : undefined;
+  return {
+    recipe: recognized ? { ...recipe, generated: true } : recipe,
+    recognized,
+    ...(dishPhoto === undefined ? {} : { dishPhoto }),
+  };
 }

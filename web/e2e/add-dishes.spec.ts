@@ -92,7 +92,7 @@ test("uden OpenAI: kun link, ingen AI-knapper", async ({ page }) => {
 // A 2x2 PNG: enough for the browser to decode and downscale.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==", "base64");
 
-test("et foto af en kogebogsside læses af AI", async ({ page }) => {
+test("et foto af maden genkendes, kogebogssider læses af AI", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
@@ -100,7 +100,7 @@ test("et foto af en kogebogsside læses af AI", async ({ page }) => {
   const chooser = page.waitForEvent("filechooser");
   await sheet.getByRole("button", { name: /Foto/u }).click();
   await (await chooser).setFiles(file);
-  await expect(page.getByRole("dialog", { name: "Foto af opskrift" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Foto" })).toBeVisible();
   await expect(sheet.getByRole("img", { name: "Billede 1 af opskriften" })).toBeVisible();
   await noSeriousAxe(page, "foto");
   if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/foto.png` });
@@ -110,5 +110,18 @@ test("et foto af en kogebogsside læses af AI", async ({ page }) => {
   await sheet.getByRole("button", { name: "Tag eller vælg billede" }).click();
   await (await again).setFiles(file);
   await sheet.getByRole("button", { name: "Læs billedet" }).click();
+  // One photo is a photo of the food in the demo: the dish is recognised and the photo becomes its picture.
+  const form = page.getByRole("dialog", { name: "Se opskriften igennem" });
+  await expect(form.getByLabel("Navn")).toHaveValue("Demo: Ret fra billedet");
+  await expect(form.getByText(/genkendt retten på billedet/u)).toBeVisible();
+  await expect(form.getByRole("img", { name: "Billede af retten" })).toHaveAttribute("src", /^data:image\/jpeg/u);
+
+  // Two pages of a cookbook are read as a recipe.
+  await form.getByRole("button", { name: "Tilbage" }).click();
+  const more = page.getByRole("dialog", { name: "Foto" });
+  const third = page.waitForEvent("filechooser");
+  await more.getByRole("button", { name: "Næste side" }).click();
+  await (await third).setFiles(file);
+  await more.getByRole("button", { name: "Læs 2 billeder" }).click();
   await expect(page.getByRole("dialog", { name: "Se opskriften igennem" }).getByLabel("Navn")).toHaveValue("Demo: Ret fra kogebogen");
 });

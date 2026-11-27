@@ -8,7 +8,7 @@ import { unprocessable } from "../errors.ts";
 import { allDishes } from "../store-dishes.ts";
 import { getProfiles, getSettings } from "../store-household.ts";
 
-type Reading = { recipe: ParsedRecipe; how: DishPreview["how"]; review?: RecipeReview };
+type Reading = { recipe: ParsedRecipe; how: DishPreview["how"]; review?: RecipeReview; photo?: number };
 
 export function dishAiContext(deps: Pick<Deps, "repo">): DishAiContext {
   const { db } = deps.repo;
@@ -35,14 +35,19 @@ export async function recipeFromUrl(
   }
   const text = pageText(page.html);
   if (!deps.openai.configured || text.length < 80) throw unprocessable(NO_RECIPE_DATA);
-  const read = await readRecipe(deps.openai, deps.config.planModel, { text }, dishAiContext(deps), options.signal);
+  const { recipe: read } = await readRecipe(deps.openai, deps.config.planModel, { text }, dishAiContext(deps), options.signal);
   const image = pageImage(page.html);
   return { recipe: { ...read, sourceUrl: page.url, ...(image ? { imageUrl: image } : {}) }, how: "read" };
 }
 
 const toInput = ({ custom: _custom, archivedAt: _archived, ...dish }: ParsedRecipe): DishInput => dish;
 
-const preview = ({ recipe, how, review }: Reading): DishPreview => ({ dish: toInput(recipe), how, ...(review ? { review } : {}) });
+const preview = ({ recipe, how, review, photo }: Reading): DishPreview => ({
+  dish: toInput(recipe),
+  how,
+  ...(review ? { review } : {}),
+  ...(photo === undefined ? {} : { photo }),
+});
 
 export async function readDish(
   deps: Pick<Deps, "repo" | "openai" | "config" | "fetch">,
@@ -51,8 +56,8 @@ export async function readDish(
 ): Promise<DishPreview> {
   if ("url" in input) return preview(await recipeFromUrl(deps, input.url, { review: true, signal }));
   const source = "text" in input ? { text: input.text } : { images: input.images };
-  const recipe = await readRecipe(deps.openai, deps.config.planModel, source, dishAiContext(deps), signal);
-  return preview({ recipe, how: "read" });
+  const read = await readRecipe(deps.openai, deps.config.planModel, source, dishAiContext(deps), signal);
+  return preview({ recipe: read.recipe, how: read.recognized ? "recognized" : "read", photo: read.dishPhoto });
 }
 
 export async function draftDishPreview(

@@ -160,6 +160,10 @@ export function createFakeLibrary({ state, wait, emit, onImported, openai }: Con
         if (ingredients.length === 0) throw new ApiRequestError(422, "unprocessable", "Jeg kunne ikke finde en opskrift i teksten.");
         return { dish: { ...demo, name: lines[0] ?? "Ret fra tekst", ingredients, sourceUrl: undefined }, how: "read" };
       }
+      // In the demo one photo is a photo of the food, several are pages of a cookbook.
+      if (input.images.length === 1) {
+        return { dish: { ...demo, name: "Demo: Ret fra billedet", sourceUrl: undefined, imageUrl: undefined, generated: true }, how: "recognized", photo: 0 };
+      }
       return { dish: { ...demo, name: "Demo: Ret fra kogebogen", sourceUrl: undefined }, how: "read" };
     },
     async draftDish({ name }) {

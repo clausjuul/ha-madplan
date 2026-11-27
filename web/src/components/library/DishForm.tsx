@@ -259,11 +259,15 @@ export function DishForm({ dish, preview, dishes, aiAvailable, categories, onClo
 function PreviewNote({ preview }: { preview: DishPreview }) {
   const { how, review } = preview;
   const box = "m-0 flex items-start gap-2.5 rounded-2xl p-3.5 text-sm";
-  if (how === "read" || how === "drafted") {
+  if (how === "read" || how === "drafted" || how === "recognized") {
     return (
       <p className={`${box} bg-accent-soft text-ink`}>
         <Sparkles size={17} aria-hidden="true" className="mt-px shrink-0 text-accent" />
-        {how === "read" ? "AI har læst opskriften. Se især mængderne efter, før du gemmer." : "AI har skrevet opskriften. Ret den til, så den passer til jer."}
+        {how === "read"
+          ? "AI har læst opskriften. Se især mængderne efter, før du gemmer."
+          : how === "recognized"
+            ? "AI har genkendt retten på billedet og skrevet en opskrift. Tjek navnet, og ret opskriften til, så den passer til jer."
+            : "AI har skrevet opskriften. Ret den til, så den passer til jer."}
       </p>
     );
   }
