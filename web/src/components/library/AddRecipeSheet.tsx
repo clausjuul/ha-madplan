@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Camera, FileText, Link2, Trash2 } from "lucide-react";
+import { Camera, FileText, Link2, PenLine, Trash2 } from "lucide-react";
 import type { DishPreview, DishReadInput } from "@madplan/domain";
 import { errorMessage, useDishActions } from "@/api/library-mutations";
 import { Field, inputClass } from "@/components/ui/Field";
@@ -15,6 +15,8 @@ type Props = {
   onClose: () => void;
   /** The recipe was read; the caller opens it in the form so it can be checked and saved. */
   onPreview: (preview: DishPreview) => void;
+  /** "Skriv den selv": the caller opens an empty form. */
+  onWrite: () => void;
 };
 
 export const MAX_PHOTOS = 3;
@@ -32,7 +34,7 @@ const BUSY: Record<Source, string> = {
 };
 
 /** Reads a recipe from a link, pasted text or photos into a preview. Nothing is saved here. */
-export function AddRecipeSheet({ open, aiAvailable, onClose, onPreview }: Props) {
+export function AddRecipeSheet({ open, aiAvailable, onClose, onPreview, onWrite }: Props) {
   const actions = useDishActions();
   const fileRef = useRef<HTMLInputElement>(null);
   const [source, setSource] = useState<Source>("link");
@@ -108,7 +110,7 @@ export function AddRecipeSheet({ open, aiAvailable, onClose, onPreview }: Props)
         : "Fx en side i en kogebog eller en håndskrevet opskrift";
 
   return (
-    <Sheet open={open} onClose={onClose} title="Tilføj opskrift" subtitle={subtitle}>
+    <Sheet open={open} onClose={onClose} title="Tilføj ret" subtitle={subtitle}>
       <form onSubmit={(event) => void read(event)} noValidate className="flex flex-col gap-4 px-3 pb-2">
         <div role="radiogroup" aria-label="Hvor kommer opskriften fra?" className="grid grid-cols-3 gap-1 rounded-full bg-ground p-1">
           {SOURCES.map(({ key, label, icon: Icon }) => (
@@ -184,6 +186,15 @@ export function AddRecipeSheet({ open, aiAvailable, onClose, onPreview }: Props)
           </button>
         )}
         <p className="m-0 text-center text-[13px] text-muted">Du ser opskriften igennem, før den bliver gemt.</p>
+        <div className="flex items-center gap-3 text-[13px] text-muted" aria-hidden="true">
+          <span className="h-px flex-1 bg-line" />
+          eller
+          <span className="h-px flex-1 bg-line" />
+        </div>
+        <button type="button" onClick={onWrite} className="flex h-12 items-center justify-center gap-2 rounded-full border border-line text-[15px] font-semibold text-ink hover:bg-raised">
+          <PenLine size={17} aria-hidden="true" />
+          Skriv retten selv
+        </button>
       </form>
     </Sheet>
   );

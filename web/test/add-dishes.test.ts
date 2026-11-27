@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Dish, DishInput } from "@madplan/domain";
 import { createFakeClient } from "../src/api/fake-client";
-import { eachLimited, MAX_BULK_DISHES, parseDishNames } from "../src/lib/bulk-dishes";
 import { draftFromDish, draftToInput, emptyDraft, fillEmpty, findDuplicate, hasEmptyFields } from "../src/lib/dish-form";
 
 const aiDish: DishInput = {
@@ -68,39 +67,6 @@ describe("findDuplicate", () => {
     expect(findDuplicate("Lasagne", dishes, "c")?.id).toBe("a");
     expect(findDuplicate("Pizza", dishes)).toBeUndefined();
     expect(findDuplicate(" ", dishes)).toBeUndefined();
-  });
-});
-
-describe("parseDishNames", () => {
-  it("splits lines and lists, drops bullets, numbers and duplicates", () => {
-    expect(parseDishNames("1. Lasagne\n- kylling i karry, Tacos;  \n• Lasagne\n2) Mormors   frikadeller\nx")).toEqual([
-      "Lasagne",
-      "kylling i karry",
-      "Tacos",
-      "Mormors frikadeller",
-    ]);
-  });
-
-  it("does not cut the list itself, so the sheet can say it is too long", () => {
-    const many = Array.from({ length: MAX_BULK_DISHES + 2 }, (_, index) => `Ret ${index}`).join("\n");
-    expect(parseDishNames(many)).toHaveLength(MAX_BULK_DISHES + 2);
-  });
-});
-
-describe("eachLimited", () => {
-  it("never runs more than the limit at once and runs every item", async () => {
-    let running = 0;
-    let peak = 0;
-    const done: number[] = [];
-    await eachLimited([1, 2, 3, 4, 5, 6, 7], 3, async (item) => {
-      running += 1;
-      peak = Math.max(peak, running);
-      await new Promise((resolve) => setTimeout(resolve, item % 3));
-      running -= 1;
-      done.push(item);
-    });
-    expect(peak).toBe(3);
-    expect(done.sort()).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 });
 

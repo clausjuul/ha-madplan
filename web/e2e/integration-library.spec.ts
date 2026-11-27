@@ -21,7 +21,8 @@ test("@integration importerer v1, opretter, arkiverer og gendanner en ret", asyn
   await expect(page.getByRole("heading", { name: "Farmors gryderet" })).toBeVisible();
 
   // 3. Create a dish.
-  await page.getByRole("button", { name: "Ny ret" }).click();
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
+  await page.getByRole("button", { name: "Skriv retten selv" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Navn").fill("Integrationsgryde");
   await dialog.getByLabel("Kategori").fill("Gryderet");
@@ -33,7 +34,7 @@ test("@integration importerer v1, opretter, arkiverer og gendanner en ret", asyn
   //    built-in that no longer ships, so the import kept it as an archived dish.
   await page.getByRole("button", { name: "Arkivér" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Arkivér" }).click();
-  await expect(page.getByRole("button", { name: "Ny ret" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tilføj ret" })).toBeVisible();
   await page.getByRole("button", { name: /Arkiveret \(2\)/u }).click();
   await expect(page.getByRole("link", { name: "Integrationsgryde" })).toBeVisible();
 

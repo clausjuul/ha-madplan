@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { useMemo, useState } from "react";
-import { Link2, ListPlus, Plus, RotateCcw, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { createHistoryInsights, type BootstrapResponse } from "@madplan/domain";
 import { useDishActions } from "@/api/library-mutations";
 import { DishImage } from "@/components/ui/DishImage";
@@ -20,10 +20,8 @@ import { HistoryStrip } from "./HistoryStrip";
 type Props = {
   data: BootstrapResponse;
   today: string;
-  onCreate: () => void;
-  onAddRecipe: () => void;
-  /** Only when OpenAI is set up. */
-  onBulkAdd?: () => void;
+  /** Opens "Tilføj ret": from a link, text or photo, or written by hand. */
+  onAdd: () => void;
 };
 
 const chip = (active: boolean): string =>
@@ -31,7 +29,7 @@ const chip = (active: boolean): string =>
     active ? "bg-ink font-semibold text-ground" : "bg-surface text-ink-2 hover:text-ink"
   }`;
 
-export function OurDishes({ data, today, onCreate, onAddRecipe, onBulkAdd }: Props) {
+export function OurDishes({ data, today, onAdd }: Props) {
   const actions = useDishActions();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -68,20 +66,9 @@ export function OurDishes({ data, today, onCreate, onAddRecipe, onBulkAdd }: Pro
             className="h-12 w-full rounded-full border border-line bg-surface pl-11 pr-4 text-[15px] text-ink outline-none placeholder:text-muted focus:border-accent"
           />
         </label>
-        <button type="button" onClick={onAddRecipe} className="flex h-12 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3 text-[15px] font-semibold text-ink hover:bg-raised sm:flex-none sm:gap-2 sm:px-5">
-          <Link2 size={18} aria-hidden="true" />
-          Hent opskrift
-        </button>
-        {onBulkAdd ? (
-          <button type="button" onClick={onBulkAdd} className="flex h-12 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3 text-[15px] font-semibold text-ink hover:bg-raised sm:flex-none sm:gap-2 sm:px-5">
-            <ListPlus size={18} aria-hidden="true" />
-            Flere
-            <span className="sr-only">retter på én gang</span>
-          </button>
-        ) : null}
-        <button type="button" onClick={onCreate} className="flex h-12 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-accent px-3 text-[15px] font-semibold text-on-accent sm:flex-none sm:gap-2 sm:px-5">
+        <button type="button" onClick={onAdd} className="flex h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent sm:flex-none">
           <Plus size={18} aria-hidden="true" />
-          Ny ret
+          Tilføj ret
         </button>
       </div>
 
@@ -117,10 +104,8 @@ export function OurDishes({ data, today, onCreate, onAddRecipe, onBulkAdd }: Pro
       {visible.length === 0 ? (
         <p className="rounded-3xl bg-surface p-8 text-center text-[15px] text-ink-2">
           {active.length === 0
-            ? onBulkAdd
-              ? "I har ingen retter endnu. Skriv de retter, I plejer at lave, under Flere, så skriver AI opskrifterne. Eller hent en opskrift fra et link, en tekst eller et foto."
-              : "I har ingen retter endnu. Opret en ny ret, hent en opskrift fra et link, eller find idéer under Opdag."
-            : "Ingen retter matcher. Prøv en anden søgning, eller opret en ny ret."}
+            ? "I har ingen retter endnu. Tryk Tilføj ret for at hente en opskrift fra et link, en tekst eller et foto, eller skriv den selv. Du kan også finde idéer under Opdag."
+            : "Ingen retter matcher. Prøv en anden søgning, eller tilføj en ny ret."}
         </p>
       ) : (
         <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 md:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] md:gap-4">

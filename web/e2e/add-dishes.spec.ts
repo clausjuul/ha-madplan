@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { MOCK_NOW } from "./helpers";
 
-// Adding dishes in fake mode (OpenAI on unless ?noassist): link, text, AI fill and several at once.
+// Adding dishes in fake mode (OpenAI on unless ?noassist): one "Tilføj ret" button for link, text, photo or by hand.
 const PHONE = { width: 390, height: 844 };
 
 async function open(page: Page, query = ""): Promise<void> {
@@ -21,7 +21,7 @@ async function noSeriousAxe(page: Page, label: string): Promise<void> {
 
 test("en opskrift fra et link ses igennem og gemmes først ved Gem ret", async ({ page }) => {
   await open(page);
-  await page.getByRole("button", { name: "Hent opskrift" }).click();
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
   await noSeriousAxe(page, "tilføj opskrift");
   await sheet.getByLabel("Link til opskrift").fill("https://opskrifter.example.dk/linsesuppe");
@@ -38,7 +38,7 @@ test("en opskrift fra et link ses igennem og gemmes først ved Gem ret", async (
 
 test("en opskrift i tekst læses af AI", async ({ page }) => {
   await open(page);
-  await page.getByRole("button", { name: "Hent opskrift" }).click();
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
   await sheet.getByRole("radio", { name: "Tekst" }).click();
   await sheet.getByLabel("Opskriftens tekst").fill("Gulerodssuppe\n1 kg gulerødder\n1 l bouillon\nKog og blend.");
@@ -51,7 +51,8 @@ test("en opskrift i tekst læses af AI", async ({ page }) => {
 
 test("Ny ret: AI udfylder resten ud fra navnet og advarer om dubletter", async ({ page }) => {
   await open(page);
-  await page.getByRole("button", { name: "Ny ret" }).click();
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
+  await page.getByRole("button", { name: "Skriv retten selv" }).click();
   const form = page.getByRole("dialog", { name: "Ny ret" });
   await form.getByLabel("Navn").fill("lasagne");
   await expect(form.getByText(/Der findes allerede en ret, der hedder Lasagne/u)).toBeVisible();
@@ -66,32 +67,14 @@ test("Ny ret: AI udfylder resten ud fra navnet og advarer om dubletter", async (
   await expect(page.getByRole("heading", { level: 1, name: "Mormors gryde" })).toBeVisible();
 });
 
-test("flere retter på én gang: dubletter er fravalgt, resten gemmes", async ({ page }) => {
-  await open(page);
-  await page.getByRole("button", { name: /Flere/u }).click();
-  const sheet = page.getByRole("dialog", { name: "Flere retter på én gang" });
-  await sheet.getByLabel("Retter").fill("Lasagne\nFiskegratin\nFejlret\nPandekager");
-  await sheet.getByRole("button", { name: "Skriv 4 opskrifter" }).click();
-
-  await expect(sheet.getByText(/Findes allerede: Lasagne/u)).toBeVisible();
-  await expect(sheet.getByRole("checkbox", { name: /Lasagne/u })).not.toBeChecked();
-  await expect(sheet.getByRole("checkbox", { name: /Fiskegratin/u })).toBeChecked();
-  await expect(sheet.getByRole("button", { name: "Prøv igen" })).toBeVisible();
-  await noSeriousAxe(page, "flere retter");
-  await sheet.getByRole("button", { name: "Gem 2 retter" }).click();
-
-  await expect(page.getByRole("status").getByText("2 retter er tilføjet til jeres retter.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Fiskegratin" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Pandekager" })).toBeVisible();
-});
-
 test("uden OpenAI: kun link, ingen AI-knapper", async ({ page }) => {
   await open(page, "?noassist");
-  await expect(page.getByRole("button", { name: /Flere/u })).toHaveCount(0);
-  await page.getByRole("button", { name: "Ny ret" }).click();
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
+  await page.getByRole("button", { name: "Skriv retten selv" }).click();
+  await expect(page.getByRole("dialog", { name: "Ny ret" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Udfyld/u })).toHaveCount(0);
   await page.getByRole("button", { name: "Annullér" }).click();
-  await page.getByRole("button", { name: "Hent opskrift" }).click();
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
   await page.getByRole("radio", { name: "Foto" }).click();
   await expect(page.getByText(/kræver en OpenAI-nøgle/u)).toBeVisible();
   await expect(page.getByRole("button", { name: "Læs opskriften" })).toHaveCount(0);
@@ -102,7 +85,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR
 
 test("et foto af en kogebogsside læses af AI", async ({ page }) => {
   await open(page);
-  await page.getByRole("button", { name: "Hent opskrift" }).click();
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
   await sheet.getByRole("radio", { name: "Foto" }).click();
   await sheet.getByText("Tag eller vælg billede").locator("input").setInputFiles({ name: "side.png", mimeType: "image/png", buffer: PNG });

@@ -88,7 +88,8 @@ test("forhåndsvisning af import", async ({ page }) => {
 
 test("opret og arkivér en ret i demotilstand", async ({ page }) => {
   await open(page, "#/retter", TABLET);
-  await page.getByRole("button", { name: "Ny ret" }).click();
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
+  await page.getByRole("button", { name: "Skriv retten selv" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Gem ret" }).click();
   await expect(dialog.getByText("Giv retten et navn.")).toBeVisible();

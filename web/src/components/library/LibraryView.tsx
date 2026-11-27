@@ -8,7 +8,6 @@ import { categoriesOf } from "@/lib/library";
 import { routePath, type LibraryTab } from "@/lib/route";
 import { Discover } from "./Discover";
 import { AddRecipeSheet } from "./AddRecipeSheet";
-import { BulkAddSheet } from "./BulkAddSheet";
 import { DishFormSheet } from "./DishFormSheet";
 import { OurDishes } from "./OurDishes";
 import { RecipeDetail } from "./RecipeDetail";
@@ -18,7 +17,6 @@ import { WeeklyPlans } from "./WeeklyPlans";
 type Props = { dishId?: string; tab?: LibraryTab };
 /** The form: editing a dish, a new one (from scratch or from a read recipe), or closed. */
 type Editing = { dish?: Dish; preview?: DishPreview } | null;
-type Adding = "recipe" | "bulk" | null;
 
 const tabClass = (active: boolean): string =>
   `flex h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-[15px] no-underline sm:px-5 ${
@@ -30,7 +28,7 @@ export function LibraryView({ dishId, tab }: Props) {
   const bootstrap = useBootstrap();
   const data = bootstrap.data;
   const [editing, setEditing] = useState<Editing>(null);
-  const [adding, setAdding] = useState<Adding>(null);
+  const [adding, setAdding] = useState(false);
   const categories = useMemo(() => categoriesOf(data?.dishes ?? []), [data?.dishes]);
 
   if (bootstrap.isError && !data) return <ErrorState error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />;
@@ -72,13 +70,7 @@ export function LibraryView({ dishId, tab }: Props) {
         ) : tab === "gemt" ? (
           <SavedRecipes data={data} />
         ) : (
-          <OurDishes
-            data={data}
-            today={today}
-            onCreate={() => setEditing({})}
-            onAddRecipe={() => setAdding("recipe")}
-            {...(data.capabilities.openai ? { onBulkAdd: () => setAdding("bulk") } : {})}
-          />
+          <OurDishes data={data} today={today} onAdd={() => setAdding(true)} />
         )}
       </>
     );
@@ -97,15 +89,18 @@ export function LibraryView({ dishId, tab }: Props) {
         onClose={() => setEditing(null)}
       />
       <AddRecipeSheet
-        open={adding === "recipe"}
+        open={adding}
         aiAvailable={data.capabilities.openai}
-        onClose={() => setAdding(null)}
+        onClose={() => setAdding(false)}
         onPreview={(preview) => {
-          setAdding(null);
+          setAdding(false);
           setEditing({ preview });
         }}
+        onWrite={() => {
+          setAdding(false);
+          setEditing({});
+        }}
       />
-      <BulkAddSheet open={adding === "bulk"} dishes={data.dishes} onClose={() => setAdding(null)} />
     </div>
   );
 }
