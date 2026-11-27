@@ -150,7 +150,7 @@ export function RecipeDetail({ dish, data, today, onEdit }: Props) {
         <div className="flex flex-col gap-4 px-3 pb-2">
           <p className="m-0 text-[15px] leading-relaxed text-ink-2">
             Retten skjules fra forslag og planlægning. Historikken bevares: tidligere uger og hvor ofte I har spist
-            den ændres ikke, og du kan altid gendanne retten under Arkiveret.
+            den ændres ikke, og du kan altid gendanne retten under Indstillinger → Arkiv.
           </p>
           <div className="flex gap-2.5">
             <button type="button" onClick={() => setConfirmArchive(false)} className={`${action} flex-1`}>

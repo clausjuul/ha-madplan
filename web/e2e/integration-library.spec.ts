@@ -41,16 +41,20 @@ test("@integration importerer v1, opretter, arkiverer og gendanner en ret", asyn
   await expect(photo).toBeVisible();
   expect(await photo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
 
-  // 4. Archive it (history is kept) and find it under "Arkiveret", next to the fixture's lasagne: a
-  //    built-in that no longer ships, so the import kept it as an archived dish.
+  // 4. Archive it (history is kept): it leaves Retter and is found under Indstillinger → Arkiv, next to the
+  //    fixture's lasagne: a built-in that no longer ships, so the import kept it as an archived dish.
   await page.getByRole("button", { name: "Arkivér" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Arkivér" }).click();
   await expect(page.getByRole("button", { name: "Tilføj ret" })).toBeVisible();
-  await page.getByRole("button", { name: /Arkiveret \(2\)/u }).click();
+  await expect(page.getByRole("heading", { name: "Integrationsgryde" })).toHaveCount(0);
+  await expect(page.getByText(/Arkiveret/u)).toHaveCount(0);
+  await page.goto("/#/indstillinger/arkiv");
+  await expect(page.getByRole("heading", { name: "Arkiverede retter (2)" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Integrationsgryde" })).toBeVisible();
 
-  // 5. Restore it.
-  await page.getByRole("listitem").filter({ hasText: "Integrationsgryde" }).getByRole("button", { name: "Gendan" }).click();
+  // 5. Restore it: it is back under Retter.
+  await page.getByRole("button", { name: "Gendan Integrationsgryde" }).click();
+  await expect(page.getByRole("heading", { name: "Arkiverede retter (1)" })).toBeVisible();
+  await page.goto("/#/retter");
   await expect(page.getByRole("heading", { name: "Integrationsgryde" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Arkiveret \(1\)/u })).toBeVisible();
 });

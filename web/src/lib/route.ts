@@ -13,9 +13,9 @@ export type LibraryTab = "opdag" | "ugens" | "gemt";
 export type ShoppingTab = "tilbud";
 
 /** Settings tabs; undefined is "Familien". */
-export type SettingsTab = "mad" | "butikker" | "data";
+export type SettingsTab = "mad" | "butikker" | "arkiv" | "data";
 
-const SETTINGS_TABS: readonly string[] = ["mad", "butikker", "data"];
+const SETTINGS_TABS: readonly string[] = ["mad", "butikker", "arkiv", "data"];
 
 export type NavName = "uge" | "indkob" | "retter" | "planlaeg";
 

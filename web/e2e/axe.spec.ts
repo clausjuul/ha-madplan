@@ -45,6 +45,7 @@ for (const size of SIZES) {
       ["indstillinger", "#/indstillinger", (p) => p.getByRole("heading", { name: "Familien" }).waitFor()],
       ["indstillinger mad", "#/indstillinger/mad", (p) => p.getByRole("heading", { name: "Undgå altid" }).waitFor()],
       ["indstillinger butikker", "#/indstillinger/butikker", (p) => p.getByRole("heading", { name: "Butikker og tilbud" }).waitFor()],
+      ["indstillinger arkiv", "#/indstillinger/arkiv", (p) => p.getByRole("heading", { name: /Arkiverede retter/u }).waitFor()],
       ["indstillinger data", "#/indstillinger/data", (p) => p.getByRole("heading", { name: "Om appen" }).waitFor()],
       ["kogetilstand", "#/lav-mad/lasagne", (p) => p.getByRole("button").first().waitFor()],
     ];

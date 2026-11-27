@@ -4,6 +4,7 @@ import { useIsWide } from "@/hooks/use-media";
 import { useHouseholdActions } from "@/api/library-mutations";
 import { ErrorState } from "@/components/ui/StatusViews";
 import { routePath, type SettingsTab } from "@/lib/route";
+import { ArchiveSection } from "./ArchiveSection";
 import { AppInfoSection, DataSection } from "./DataSection";
 import { FamilySection } from "./FamilySection";
 import { ExclusionsSection, FridgeSection } from "./HouseholdSections";
@@ -13,6 +14,7 @@ const TABS: readonly { tab: SettingsTab | undefined; label: string }[] = [
   { tab: undefined, label: "Familien" },
   { tab: "mad", label: "Mad og køleskab" },
   { tab: "butikker", label: "Butikker" },
+  { tab: "arkiv", label: "Arkiv" },
   { tab: "data", label: "Data" },
 ];
 
@@ -21,7 +23,7 @@ const tabClass = (active: boolean): string =>
     active ? "bg-ink font-semibold text-ground" : "font-medium text-ink-2 hover:text-ink"
   }`;
 
-/** `#/indstillinger[/mad|/butikker|/data]`. */
+/** `#/indstillinger[/mad|/butikker|/arkiv|/data]`. */
 export function SettingsView({ tab }: { tab?: SettingsTab }) {
   const bootstrap = useBootstrap();
   const actions = useHouseholdActions();
@@ -46,6 +48,8 @@ export function SettingsView({ tab }: { tab?: SettingsTab }) {
     );
   } else if (tab === "butikker") {
     body = <StoresSection settings={data.settings} capabilities={data.capabilities} onChange={(settings) => void actions.saveSettings(settings)} />;
+  } else if (tab === "arkiv") {
+    body = <ArchiveSection dishes={data.dishes} />;
   } else if (tab === "data") {
     body = (
       <>

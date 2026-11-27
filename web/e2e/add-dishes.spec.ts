@@ -168,3 +168,22 @@ test("billedsøgning: kræver et navn og siger til, når intet blev fundet", asy
   await form.getByRole("button", { name: "Find et billede med AI" }).click();
   await expect(form.getByText(/fandt ingen billeder/u)).toBeVisible();
 });
+
+test("arkiverede retter ligger under Indstillinger → Arkiv, ikke under Retter", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.clock.install({ time: MOCK_NOW });
+  await page.goto("/#/retter/mormors-aebleflaesk");
+  await page.getByRole("button", { name: "Arkivér" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Arkivér" }).click();
+  await page.goto("/#/retter");
+  await page.getByRole("heading", { name: "Lasagne" }).first().waitFor();
+  await expect(page.getByRole("heading", { name: "Mormors æbleflæsk" })).toHaveCount(0);
+  await expect(page.getByText(/Arkiveret/u)).toHaveCount(0);
+
+  await page.goto("/#/indstillinger/arkiv");
+  await expect(page.getByRole("tab", { name: "Arkiv" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("button", { name: "Gendan Mormors æbleflæsk" }).click();
+  await expect(page.getByText("Der er ingen arkiverede retter.")).toBeVisible();
+  await page.goto("/#/retter");
+  await expect(page.getByRole("heading", { name: "Mormors æbleflæsk" })).toBeVisible();
+});

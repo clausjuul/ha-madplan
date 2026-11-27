@@ -13,6 +13,8 @@ Madplan er familiens madplan i Home Assistant: planlæg aftensmaden dag for dag,
   Mangler en ret et billede, kan du i formularen trykke **Find et billede med AI**. AI søger efter opskrifter på retten på nettet og viser op til tre af deres billeder, som du kan vælge imellem. Billedet bliver et link til opskriftssidens billede.
 
   Appen advarer, hvis en ret med samme navn findes i forvejen, også hvis den ligger i arkivet.
+
+  Arkiverede retter vises ikke under Retter. De ligger under **Indstillinger → Arkiv**, hvor I kan gendanne dem. Historikken er bevaret.
 - **Opdag:** inspiration fra en samling af kendte retter. Med en OpenAI-nøgle kan appen også finde nye opskrifter på nettet fra godkendte opskriftssider.
 - **Planlæg:** en guide, der laver et forslag til flere dage ad gangen. "Hurtigt forslag" vælger blandt jeres egne retter uden AI. "Assist" (kræver OpenAI) kan også finde nye retter. Du ser forslaget igennem, låser det, du kan lide, og gemmer. **Lav om** viser de tre bedste alternativer til dagen med en kort begrundelse. Varer i køleskabet, der snart udløber, prioriteres højt.
 - **Planlæggeren lærer af jer:** den kigger på dagene lige før og efter planen, så I ikke får samme slags ret to dage i træk hen over et ugeskifte eller omkring låste dage. Den finder jeres faste mønstre i historikken (f.eks. "fredag er ofte pizza", "søndag må gerne tage længere tid") og bruger dem som bløde ønsker. Når I bytter en ret ud i et forslag (**Lav om** eller et andet valg), bliver den foreslået lidt sjældnere en tid. Det går over efter to måneder. Med Assist får AI'en én chance til at rette sit forslag, hvis det brød reglerne. **Tjekket mod jeres regler** viser også, hvis samme kategori står to dage i træk.
@@ -59,7 +61,7 @@ Madplan starter uden retter, så det er jeres egne retter, der bliver planlagt m
 4. Tryk **Planlæg** og lav et forslag til ugen.
 5. Åbn **Indkøb**, når planen er gemt.
 
-Tidligere fulgte der 24 standardretter med appen (lasagne, tacos, frikadeller og så videre). Har I brugt Madplan før version 0.24, ligger de nu under **Retter → Arkiveret**. Jeres tidligere uger og historik viser dem stadig, og I kan trykke **Gendan** på dem, I vil beholde.
+Tidligere fulgte der 24 standardretter med appen (lasagne, tacos, frikadeller og så videre). Har I brugt Madplan før version 0.24, ligger de nu under **Indstillinger → Arkiv**. Jeres tidligere uger og historik viser dem stadig, og I kan trykke **Gendan** på dem, I vil beholde.
 
 ## Flyt data fra den gamle "Meal Planner (Development)"
 

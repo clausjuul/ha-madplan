@@ -12,6 +12,7 @@ describe("hash routing", () => {
     expect(parseHash("#/uge/2026-11-11")).toEqual({ name: "uge", week: "2026-11-09" });
     expect(parseHash("#/indkob")).toEqual({ name: "indkob" });
     expect(parseHash("#/indstillinger/butikker")).toEqual({ name: "indstillinger", tab: "butikker" });
+    expect(parseHash("#/indstillinger/arkiv")).toEqual({ name: "indstillinger", tab: "arkiv" });
     expect(parseHash("#/indstillinger/ukendt")).toEqual({ name: "indstillinger" });
     expect(parseHash("#/indkob/tilbud")).toEqual({ name: "indkob", tab: "tilbud" });
     expect(parseHash("#/lav-mad/tacos")).toEqual({ name: "lav-mad", dishId: "tacos" });
