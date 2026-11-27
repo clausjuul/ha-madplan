@@ -131,7 +131,8 @@ export function createHttpClient(): ApiClient {
     updateDish: (id, input) => request("PUT", `api/dishes/${enc(id)}`, input),
     archiveDish: (id) => request("POST", `api/dishes/${enc(id)}/archive`),
     restoreDish: (id) => request("POST", `api/dishes/${enc(id)}/restore`),
-    importDishFromUrl: (input) => request("POST", "api/dishes/import-url", input),
+    readDish: (input) => request("POST", "api/dishes/read", input),
+    draftDish: (input) => request("POST", "api/dishes/draft", input),
 
     getShopping: (query) => request("GET", shoppingPath(query)),
     toggleShoppingItem: (itemId) => request("POST", "api/shopping/toggle", { itemId }),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ImportedDish, ShoppingList } from "@madplan/domain";
+import type { Dish, DishPreview, ShoppingList } from "@madplan/domain";
 import { applyReview, markReviewed, reviewEarlierImports } from "../src/ai/recipe-review.ts";
 import { loadConfig } from "../src/config.ts";
 import { parseRecipeHtml, type ParsedRecipe } from "../src/ai/recipe-import.ts";
@@ -82,7 +82,7 @@ describe("recipe review guard", () => {
 describe("import with the review", () => {
   const fetchPage = (): Promise<Response> => Promise.resolve(new Response(page(), { headers: { "content-type": "text/html" } }));
 
-  it("saves the checked version and returns what was corrected", async () => {
+  it("previews the checked version with what was corrected, and saves nothing until asked", async () => {
     const ai = fakeAi();
     ai.next(
       JSON.stringify({
@@ -99,30 +99,38 @@ describe("import with the review", () => {
         changes: ["Gram er rettet fra gr til g", "ekstragon er rettet til estragon"],
       }),
     );
-    const { json } = setup({ openai: ai, fetch: fetchPage });
-    const dish = await json<ImportedDish>("POST", "dishes/import-url", { url: "https://opskrift.example.dk/bearnaise" });
+    const { json, deps } = setup({ openai: ai, fetch: fetchPage });
+    const before = (await json<{ dishes: Dish[] }>("GET", "bootstrap")).dishes.length;
+    const { dish, how, review } = await json<DishPreview>("POST", "dishes/read", { url: "https://opskrift.example.dk/bearnaise" });
+    expect(how).toBe("structured");
     expect(dish.ingredients[0]).toBe("400 g hakket oksekød");
     expect(dish.ingredients[4]).toBe("2 spsk. tørret estragon (eller frisk)");
-    expect(dish.review).toEqual({ checked: true, changes: ["Gram er rettet fra gr til g", "ekstragon er rettet til estragon"] });
+    expect(review).toEqual({ checked: true, changes: ["Gram er rettet fra gr til g", "ekstragon er rettet til estragon"] });
     expect(ai.calls[0]?.input).toContain("400 gr hakket oksekød");
-    const stored = (await json<{ dishes: ImportedDish[] }>("GET", "bootstrap")).dishes.find((d) => d.id === dish.id);
-    expect(stored?.review).toBeUndefined();
+    expect((await json<{ dishes: Dish[] }>("GET", "bootstrap")).dishes).toHaveLength(before);
+
+    // Saved from the form, it is not checked again by the startup pass for older imports.
+    const saved = await json<Dish>("POST", "dishes", dish);
+    expect(saved).toMatchObject({ name: dish.name, sourceUrl: "https://opskrift.example.dk/bearnaise", custom: true });
+    expect(await reviewEarlierImports({ repo: deps.repo, openai: ai, config: deps.config })).toEqual([]);
+    expect(ai.calls).toHaveLength(1);
   });
 
-  it("still imports, cleaned but unchecked, when the AI fails or is not set up", async () => {
+  it("still reads the recipe, cleaned but unchecked, when the AI fails or is not set up", async () => {
     const ai = fakeAi(); // no answer queued -> the call fails
     const { json } = setup({ openai: ai, fetch: fetchPage });
-    const dish = await json<ImportedDish>("POST", "dishes/import-url", { url: "https://opskrift.example.dk/bearnaise" });
-    expect(dish.review).toEqual({ checked: false, changes: [] });
+    const { dish, review } = await json<DishPreview>("POST", "dishes/read", { url: "https://opskrift.example.dk/bearnaise" });
+    expect(review).toEqual({ checked: false, changes: [] });
     expect(dish.ingredients[1]).toBe("1 løg (hakket)");
 
     const plain = setup({ fetch: fetchPage });
-    expect((await plain.json<ImportedDish>("POST", "dishes/import-url", { url: "https://opskrift.example.dk/b" })).review?.checked).toBe(false);
+    expect((await plain.json<DishPreview>("POST", "dishes/read", { url: "https://opskrift.example.dk/b" })).review?.checked).toBe(false);
   });
 
   it("puts the imported dish on the shopping list in grams, without notes or pasta water", async () => {
     const { json } = setup({ fetch: fetchPage });
-    const dish = await json<ImportedDish>("POST", "dishes/import-url", { url: "https://opskrift.example.dk/bearnaise" });
+    const { dish: preview } = await json<DishPreview>("POST", "dishes/read", { url: "https://opskrift.example.dk/bearnaise" });
+    const dish = await json<Dish>("POST", "dishes", preview);
     await json("PUT", "meals/2026-11-11", { dishId: dish.id });
     const list = await json<ShoppingList>("GET", "shopping?from=2026-11-11&to=2026-11-11");
     const items = list.items;

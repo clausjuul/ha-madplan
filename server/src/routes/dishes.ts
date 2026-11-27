@@ -1,14 +1,16 @@
 import { randomUUID } from "node:crypto";
 import type { Hono } from "hono";
-import type { Dish, ImportedDish } from "@madplan/domain";
-import { importRecipeFromUrl } from "../ai/recipe-import.ts";
-import { markReviewed, reviewRecipe } from "../ai/recipe-review.ts";
+import type { Dish } from "@madplan/domain";
+import { markReviewed } from "../ai/recipe-review.ts";
 import type { Deps } from "../deps.ts";
 import { notFound } from "../errors.ts";
 import { readJson } from "../http.ts";
+import { draftDishPreview, readDish } from "../services/dish-reading.ts";
 import { findDish, saveDish } from "../store-dishes.ts";
-import { dishInput } from "../validate.ts";
-import { rec, str } from "../validate-basic.ts";
+import { dishDraftInput, dishInput, dishReadInput } from "../validate.ts";
+
+/** Up to three downscaled photos as data: URLs. */
+const MAX_READ_BYTES = 16_000_000;
 
 export function dishRoutes(api: Hono, deps: Deps): void {
   const { repo } = deps;
@@ -24,17 +26,21 @@ export function dishRoutes(api: Hono, deps: Deps): void {
   api.post("/dishes", async (c) => {
     const input = dishInput(await readJson(c));
     const dish: Dish = { ...input, id: `custom-${randomUUID()}`, custom: true };
+    // A recipe from a link was checked (or read by AI) on the way in, and the family has seen it in the
+    // form since; the startup check of older imports must not rewrite it.
+    if (dish.sourceUrl) markReviewed(repo.db, dish.id);
     return c.json(store(dish));
   });
 
-  api.post("/dishes/import-url", async (c) => {
-    const body = rec(await readJson(c), "Import");
-    const url = str(body.url, "Link", { min: 8, max: 1000 });
-    const parsed = await importRecipeFromUrl(url, deps.fetch, AbortSignal.timeout(15_000));
-    const { recipe, review } = await reviewRecipe(deps.openai, deps.config.planModel, parsed, AbortSignal.timeout(45_000));
-    const imported: ImportedDish = { ...store({ ...recipe, id: `custom-${randomUUID()}`, custom: true }), review };
-    if (review.checked) markReviewed(repo.db, imported.id);
-    return c.json(imported);
+  // Previews for the form: nothing is saved until the family presses "Gem" (POST /dishes).
+  api.post("/dishes/read", async (c) => {
+    const input = dishReadInput(await readJson(c, MAX_READ_BYTES));
+    return c.json(await readDish(deps, input, AbortSignal.timeout(90_000)));
+  });
+
+  api.post("/dishes/draft", async (c) => {
+    const input = dishDraftInput(await readJson(c));
+    return c.json(await draftDishPreview(deps, input, AbortSignal.timeout(60_000)));
   });
 
   api.put("/dishes/:id", async (c) => {

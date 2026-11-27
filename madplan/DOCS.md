@@ -6,7 +6,12 @@ Madplan er familiens madplan i Home Assistant: planlæg aftensmaden dag for dag,
 
 - **Uge:** overblik over ugens aftensmad, "I aften" øverst, byt dage, lås dage, skriv noter, og spring dage over.
 - **Indkøb:** indkøbslisten bygges automatisk ud fra ugens retter, minus basisvarer og det, I har i køleskabet. Tilføj egne varer, afkryds i butikken, og se et prisoverslag. På telefonen er listen bygget til butikken: tryk på solen øverst for at holde skærmen tændt, mens listen er åben (huskes på telefonen, kræver HTTPS), en bjælke viser hvor langt I er, og "Fortryd" retter et forkert tryk. Det, I har i kurven, er foldet sammen nederst, og basisvarer og **Ny indkøbstur** ligger under **···**.
-- **Retter:** jeres egne retter med opskrift, billede og historik. Importér en opskrift fra et link, eller opret den selv.
+- **Retter:** jeres egne retter med opskrift, billede og historik. Der er tre måder at tilføje retter på:
+  - **Hent opskrift:** fra et link, eller (med OpenAI) fra en tekst, du indsætter, eller fra op til tre fotos af f.eks. en side i en kogebog. Har en opskriftsside ikke strukturerede opskriftsdata, læser AI siden i stedet. Du ser altid opskriften igennem og retter den til, før den bliver gemt.
+  - **Ny ret:** skriv den selv. Med OpenAI kan du nøjes med navnet og trykke **Udfyld resten med AI**, så foreslår AI kategori, tid, ingredienser og fremgangsmåde. Det, du selv har skrevet, bliver ikke ændret.
+  - **Flere** (kræver OpenAI): skriv de retter, I plejer at lave, én pr. linje (højst 15). AI skriver en opskrift til hver, og du vælger, hvilke der skal gemmes.
+
+  Appen advarer, hvis en ret med samme navn findes i forvejen, også hvis den ligger i arkivet.
 - **Opdag:** inspiration fra en samling af kendte retter. Med en OpenAI-nøgle kan appen også finde nye opskrifter på nettet fra godkendte opskriftssider.
 - **Planlæg:** en guide, der laver et forslag til flere dage ad gangen. "Hurtigt forslag" vælger blandt jeres egne retter uden AI. "Assist" (kræver OpenAI) kan også finde nye retter. Du ser forslaget igennem, låser det, du kan lide, og gemmer. **Lav om** viser de tre bedste alternativer til dagen med en kort begrundelse. Varer i køleskabet, der snart udløber, prioriteres højt.
 - **Planlæggeren lærer af jer:** den kigger på dagene lige før og efter planen, så I ikke får samme slags ret to dage i træk hen over et ugeskifte eller omkring låste dage. Den finder jeres faste mønstre i historikken (f.eks. "fredag er ofte pizza", "søndag må gerne tage længere tid") og bruger dem som bløde ønsker. Når I bytter en ret ud i et forslag (**Lav om** eller et andet valg), bliver den foreslået lidt sjældnere en tid. Det går over efter to måneder. Med Assist får AI'en én chance til at rette sit forslag, hvis det brød reglerne. **Tjekket mod jeres regler** viser også, hvis samme kategori står to dage i træk.
@@ -49,7 +54,7 @@ Madplan starter uden retter, så det er jeres egne retter, der bliver planlagt m
 
 1. Åbn **Indstillinger** (tandhjulet) og tilføj familiens medlemmer med kostønsker og fravalg.
 2. Vælg jeres butikker.
-3. Tilføj jeres retter under **Retter**: opret dem selv, importér en opskrift fra et link, eller find idéer under **Opdag**. Med en OpenAI-nøgle kan **Planlæg** med Assist også finde nye retter til jer.
+3. Tilføj jeres retter under **Retter**. Med en OpenAI-nøgle går det hurtigst med **Flere**: skriv de retter, I plejer at lave, så skriver AI opskrifterne. Du kan også hente opskrifter fra links, tekst og fotos, oprette dem selv eller finde idéer under **Opdag**.
 4. Tryk **Planlæg** og lav et forslag til ugen.
 5. Åbn **Indkøb**, når planen er gemt.
 
@@ -232,6 +237,7 @@ Skift `notify.notify` til jeres egen notify-tjeneste, fx `notify.mobile_app_...`
 
 - Alle data (retter, planer, familie, indkøb) ligger lokalt i appens database i din Home Assistant. Der er ingen konto og ingen sky.
 - Uden OpenAI-nøgle sendes **ingenting** ud af huset, ud over at du selv kan hente opskrifter fra et link, du indsætter, og at billeder kan hentes fra en adresse, du angiver.
+- Når du henter en opskrift fra en tekst eller et foto, eller lader AI skrive en ret, sendes teksten, billederne eller rettens navn til OpenAI sammen med jeres kategorier. Har en opskriftsside ikke strukturerede data, sendes sidens tekst.
 - Med en OpenAI-nøgle sendes der ved et AI-svar følgende til OpenAI: din besked eller dit ønske, ugens planlagte retter, retkataloget (navne, kategorier og ingredienser for relevante retter), køleskabets indhold, fælles fravalg og familieprofilerne (navne, kostønsker, præferencer og hvad de altid spiser). Der sendes ikke andre persondata. Opdag-søgninger sendes med websøgning slået til. Dataene sendes med `store: false`. Læs OpenAIs egne vilkår for, hvordan de behandler data.
 - Sensorerne sendes kun til din egen Home Assistant.
 

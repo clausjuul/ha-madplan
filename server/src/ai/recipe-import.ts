@@ -87,7 +87,7 @@ export function parseRecipeHtml(html: string, sourceUrl: string): ParsedRecipe |
           .filter(Boolean)
           .slice(0, 100)
       : [];
-    const instructions = steps(node.recipeInstructions).map(cleanIngredientLine).filter(Boolean).slice(0, 60);
+    const instructions = steps(node.recipeInstructions).map((step) => cleanIngredientLine(step).slice(0, 1000)).filter(Boolean).slice(0, 60);
     const name = typeof node.name === "string" ? cleanIngredientLine(node.name).slice(0, 130) : "";
     if (ingredients.length < 2 || instructions.length < 1 || !name) continue;
     const recipe: ParsedRecipe = {
@@ -150,11 +150,10 @@ export async function readLimited(response: Response, max = MAX_HTML): Promise<s
   }
 }
 
-export async function importRecipeFromUrl(
-  rawUrl: string,
-  fetcher: typeof fetch,
-  signal?: AbortSignal,
-): Promise<ParsedRecipe> {
+export type RecipePage = { html: string; url: string };
+
+/** Fetches a public recipe page (https, redirects checked, size limited). Throws a Danish 422 when it cannot. */
+export async function fetchRecipePage(rawUrl: string, fetcher: typeof fetch, signal?: AbortSignal): Promise<RecipePage> {
   let url = assertPublicHttpsUrl(rawUrl);
   let response: Response | undefined;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
@@ -180,9 +179,53 @@ export async function importRecipeFromUrl(
   }
   const html = await readLimited(response);
   if (html === null) throw unprocessable("Opskriftssiden er for stor eller kunne ikke læses.");
-  const recipe = parseRecipeHtml(html, url.href);
-  if (!recipe) {
-    throw unprocessable("Siden indeholder ikke komplette opskriftsdata. Du kan stadig åbne originalen.");
-  }
+  return { html, url: url.href };
+}
+
+export const NO_RECIPE_DATA = "Siden indeholder ikke komplette opskriftsdata. Du kan stadig åbne originalen.";
+
+/** The page's structured recipe data; never invents anything. */
+export async function importRecipeFromUrl(
+  rawUrl: string,
+  fetcher: typeof fetch,
+  signal?: AbortSignal,
+): Promise<ParsedRecipe> {
+  const page = await fetchRecipePage(rawUrl, fetcher, signal);
+  const recipe = parseRecipeHtml(page.html, page.url);
+  if (!recipe) throw unprocessable(NO_RECIPE_DATA);
   return recipe;
+}
+
+const MAX_PAGE_TEXT = 30_000;
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+/**
+ * The readable text of a page, for the AI to find a recipe in when there is no structured data:
+ * scripts, styles, menus and footers are dropped, block elements become line breaks.
+ */
+export function pageText(html: string): string {
+  return html
+    .replace(/<(script|style|noscript|svg|nav|footer|aside|form|iframe)\b[\s\S]*?<\/\1\s*>/giu, " ")
+    .replace(/<!--[\s\S]*?-->/gu, " ")
+    .replace(/<(br|\/p|\/div|\/li|\/h\d|\/tr|li|h\d)\b[^>]*>/giu, "\n")
+    .replace(/<[^>]+>/gu, " ")
+    .replace(/&(#x?[0-9a-f]+|[a-z]+);/giu, (whole, code: string) => {
+      if (code.startsWith("#")) {
+        const value = code[1]?.toLowerCase() === "x" ? Number.parseInt(code.slice(2), 16) : Number(code.slice(1));
+        return Number.isFinite(value) && value > 0 && value < 0x110000 ? String.fromCodePoint(value) : " ";
+      }
+      return ENTITIES[code.toLowerCase()] ?? whole;
+    })
+    .replace(/[ \t ]+/gu, " ")
+    .replace(/\s*\n\s*/gu, "\n")
+    .replace(/\n{2,}/gu, "\n")
+    .trim()
+    .slice(0, MAX_PAGE_TEXT);
+}
+
+/** The page's share image (og:image), when it is an https URL. */
+export function pageImage(html: string): string | undefined {
+  const tag = /<meta\b[^>]*(?:property|name)\s*=\s*["']og:image(?::secure_url)?["'][^>]*>/iu.exec(html)?.[0];
+  const url = tag ? /content\s*=\s*["']([^"']+)["']/iu.exec(tag)?.[1]?.replaceAll("&amp;", "&") : undefined;
+  return url?.startsWith("https://") ? url : undefined;
 }

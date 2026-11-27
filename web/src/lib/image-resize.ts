@@ -25,10 +25,17 @@ const browserDeps: ResizeDeps = {
   createCanvas: () => document.createElement("canvas"),
 };
 
-/** Downscales an image file to max 1000x700 and returns a JPEG data URL (quality 0.8). */
-export async function downscaleImage(file: Blob, deps: ResizeDeps = browserDeps): Promise<string> {
+export type ImageBox = { maxWidth: number; maxHeight: number; quality: number };
+
+/** A dish photo for the cards. */
+export const DISH_PHOTO: ImageBox = { maxWidth: MAX_IMAGE_WIDTH, maxHeight: MAX_IMAGE_HEIGHT, quality: IMAGE_QUALITY };
+/** A photo of a recipe (e.g. a cookbook page) for the AI to read: big enough for small print. */
+export const RECIPE_PHOTO: ImageBox = { maxWidth: 1600, maxHeight: 1600, quality: 0.85 };
+
+/** Downscales an image file to fit the box (default: a dish photo, 1000x700) and returns a JPEG data URL. */
+export async function downscaleImage(file: Blob, deps: ResizeDeps = browserDeps, box: ImageBox = DISH_PHOTO): Promise<string> {
   const source = await deps.decode(file);
-  const size = fitWithin(source.width, source.height);
+  const size = fitWithin(source.width, source.height, box.maxWidth, box.maxHeight);
   const canvas = deps.createCanvas();
   canvas.width = size.width;
   canvas.height = size.height;
@@ -38,5 +45,5 @@ export async function downscaleImage(file: Blob, deps: ResizeDeps = browserDeps)
   context.fillRect(0, 0, size.width, size.height);
   context.drawImage(source as CanvasImageSource, 0, 0, size.width, size.height);
   source.close?.();
-  return canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+  return canvas.toDataURL("image/jpeg", box.quality);
 }

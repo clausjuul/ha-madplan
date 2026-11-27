@@ -18,7 +18,8 @@ type LibraryMethods = Pick<
   | "updateDish"
   | "archiveDish"
   | "restoreDish"
-  | "importDishFromUrl"
+  | "readDish"
+  | "draftDish"
   | "discover"
   | "importInspiration"
   | "saveInspirations"
@@ -36,6 +37,8 @@ type Context = {
   emit: (topics: ChangeTopic[]) => void;
   /** Called after a successful v1 import, so `isEmpty` turns false. */
   onImported: () => void;
+  /** Whether the demo pretends OpenAI is configured (reading text and photos, writing dishes from a name). */
+  openai: boolean;
 };
 
 /** Clearly labelled demo results; the real server only answers when OpenAI is configured. */
@@ -89,7 +92,7 @@ const DEMO_IMPORT: Omit<Dish, "id"> = {
 let counter = 0;
 const newId = (): string => `custom-fake-${(counter += 1)}`;
 
-export function createFakeLibrary({ state, wait, emit, onImported }: Context): LibraryMethods {
+export function createFakeLibrary({ state, wait, emit, onImported, openai }: Context): LibraryMethods {
   const find = (id: string): Dish => {
     const dish = state.dishes.find((candidate) => candidate.id === id);
     if (!dish) throw new ApiRequestError(404, "not_found", "Retten findes ikke.");
@@ -128,23 +131,57 @@ export function createFakeLibrary({ state, wait, emit, onImported }: Context): L
       const { archivedAt: _removed, ...rest } = find(id);
       return replace(rest);
     },
-    async importDishFromUrl({ url }) {
+    async readDish(input) {
       await wait();
-      let host = "";
-      try {
-        host = new URL(url).hostname;
-      } catch {
-        throw new ApiRequestError(400, "bad_request", "Det ligner ikke et gyldigt link.");
+      const { custom: _custom, ...demo } = DEMO_IMPORT;
+      if ("url" in input) {
+        let host = "";
+        try {
+          host = new URL(input.url).hostname;
+        } catch {
+          throw new ApiRequestError(400, "bad_request", "Det ligner ikke et gyldigt link.");
+        }
+        if (host.includes("example")) {
+          return {
+            dish: { ...demo, sourceUrl: input.url },
+            how: "structured",
+            review: { checked: true, changes: ["400 gr er rettet til 400 g", "Dobbelte parenteser er fjernet"] },
+          };
+        }
+        if (!openai || !host.includes("blog")) {
+          throw new ApiRequestError(422, "unprocessable", "Siden indeholder ikke komplette opskriftsdata. Du kan stadig åbne originalen.");
+        }
+        return { dish: { ...demo, name: "Demo: Blogsuppe", sourceUrl: input.url }, how: "read" };
       }
-      if (!host.includes("example")) {
-        throw new ApiRequestError(
-          422,
-          "no_recipe",
-          "Jeg kunne ikke finde en opskrift på den side. Prøv en side med struktureret opskriftsdata, eller opret retten selv.",
-        );
+      if (!openai) throw new ApiRequestError(422, "unprocessable", "Det kræver en OpenAI-nøgle under appens indstillinger i Home Assistant.");
+      if ("text" in input) {
+        const lines = input.text.split(/\n+/u).map((line) => line.trim()).filter(Boolean);
+        const ingredients = lines.filter((line) => /^\d/u.test(line));
+        if (ingredients.length === 0) throw new ApiRequestError(422, "unprocessable", "Jeg kunne ikke finde en opskrift i teksten.");
+        return { dish: { ...demo, name: lines[0] ?? "Ret fra tekst", ingredients, sourceUrl: undefined }, how: "read" };
       }
-      const dish = replace({ ...DEMO_IMPORT, id: newId(), sourceUrl: url });
-      return { ...dish, review: { checked: true, changes: ["400 gr er rettet til 400 g", "Dobbelte parenteser er fjernet"] } };
+      return { dish: { ...demo, name: "Demo: Ret fra kogebogen", sourceUrl: undefined }, how: "read" };
+    },
+    async draftDish({ name }) {
+      await wait();
+      if (!openai) throw new ApiRequestError(422, "unprocessable", "Det kræver en OpenAI-nøgle under appens indstillinger i Home Assistant.");
+      if (/fejl/iu.test(name)) throw new ApiRequestError(422, "unprocessable", `Jeg kunne ikke lave en opskrift ud fra "${name}". Prøv et andet navn.`);
+      const title = name.trim().charAt(0).toLocaleUpperCase("da-DK") + name.trim().slice(1);
+      return {
+        dish: {
+          name: title,
+          category: "Hverdag",
+          prepMinutes: 40,
+          servings: 4,
+          ingredients: ["500 g hakket oksekød", "1 løg", "400 g kartofler", "2 dl fløde"],
+          instructions: [`Forbered ingredienserne til ${title.toLocaleLowerCase("da-DK")}.`, "Steg kødet og løget.", "Kog kartoflerne, og server det hele sammen."],
+          favorite: false,
+          leftoverFriendly: true,
+          freezerFriendly: false,
+          generated: true,
+        },
+        how: "drafted",
+      };
     },
 
     async discover(input) {

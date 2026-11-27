@@ -9,13 +9,15 @@ import type {
   DiscoverInput,
   WeeklyPlansResponse,
   Dish,
+  DishDraftInput,
   DishInput,
+  DishPreview,
+  DishReadInput,
   DraftDayPatch,
   ExportFile,
   FridgeItem,
   HealthResponse,
   ImportResult,
-  ImportUrlInput,
   ImportedDish,
   InspirationRecipe,
   Meal,
@@ -70,7 +72,10 @@ export interface ApiClient {
   updateDish(id: string, input: DishInput): Promise<Dish>;
   archiveDish(id: string): Promise<Dish>;
   restoreDish(id: string): Promise<Dish>;
-  importDishFromUrl(input: ImportUrlInput): Promise<ImportedDish>;
+  /** Reads a recipe from a link, text or photos into a preview; nothing is saved. */
+  readDish(input: DishReadInput): Promise<DishPreview>;
+  /** AI writes a dish from its name into a preview; nothing is saved. */
+  draftDish(input: DishDraftInput): Promise<DishPreview>;
 
   getShopping(query?: ShoppingQuery): Promise<ShoppingList>;
   toggleShoppingItem(itemId: string): Promise<ShoppingList>;

@@ -6,6 +6,8 @@ export type AiRequest = {
   instructions: string;
   /** The user part: untrusted data blocks and the concrete question. */
   input: string;
+  /** Photos sent with the input, as data: URLs (e.g. a cookbook page). Untrusted, like the input. */
+  images?: readonly string[];
   /** Let the model search the web (required for discovery). */
   webSearch?: boolean;
   maxOutputTokens?: number;
@@ -34,6 +36,21 @@ export const noOpenAi: OpenAiClient = {
   respond: () => Promise.reject(new AiError("OpenAI er ikke sat op.")),
 };
 
+function inputOf(request: AiRequest): unknown {
+  // json_object mode requires the word "json" in the input messages; instructions do not count.
+  const text = request.json || request.jsonSchema ? `${request.input}\n\nSvar med ét JSON-objekt (json).` : request.input;
+  if (!request.images?.length) return text;
+  return [
+    {
+      role: "user",
+      content: [
+        { type: "input_text", text },
+        ...request.images.map((url) => ({ type: "input_image", image_url: url, detail: "high" })),
+      ],
+    },
+  ];
+}
+
 type OutputItem = { type?: string; content?: { type?: string; text?: string }[] };
 
 export function createOpenAiClient(apiKey: string, fetcher: typeof fetch = fetch): OpenAiClient {
@@ -50,8 +67,7 @@ export function createOpenAiClient(apiKey: string, fetcher: typeof fetch = fetch
           body: JSON.stringify({
             model: request.model,
             instructions: request.instructions,
-            // json_object mode requires the word "json" in the input messages; instructions do not count.
-            input: request.json || request.jsonSchema ? `${request.input}\n\nSvar med ét JSON-objekt (json).` : request.input,
+            input: inputOf(request),
             store: false,
             ...(request.onText ? { stream: true } : {}),
             ...(request.maxOutputTokens ? { max_output_tokens: request.maxOutputTokens } : {}),

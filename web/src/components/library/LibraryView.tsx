@@ -1,21 +1,24 @@
 import { Link } from "react-router";
 import { useMemo, useState } from "react";
-import type { Dish } from "@madplan/domain";
+import type { Dish, DishPreview } from "@madplan/domain";
 import { useBootstrap } from "@/api/queries";
 import { ErrorState } from "@/components/ui/StatusViews";
 import { useToday } from "@/hooks/use-today";
 import { categoriesOf } from "@/lib/library";
 import { routePath, type LibraryTab } from "@/lib/route";
 import { Discover } from "./Discover";
+import { AddRecipeSheet } from "./AddRecipeSheet";
+import { BulkAddSheet } from "./BulkAddSheet";
 import { DishFormSheet } from "./DishFormSheet";
-import { ImportUrlSheet } from "./ImportUrlSheet";
 import { OurDishes } from "./OurDishes";
 import { RecipeDetail } from "./RecipeDetail";
 import { SavedRecipes } from "./SavedRecipes";
 import { WeeklyPlans } from "./WeeklyPlans";
 
 type Props = { dishId?: string; tab?: LibraryTab };
-type Editing = { dish?: Dish } | null;
+/** The form: editing a dish, a new one (from scratch or from a read recipe), or closed. */
+type Editing = { dish?: Dish; preview?: DishPreview } | null;
+type Adding = "recipe" | "bulk" | null;
 
 const tabClass = (active: boolean): string =>
   `flex h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-[15px] no-underline sm:px-5 ${
@@ -27,7 +30,7 @@ export function LibraryView({ dishId, tab }: Props) {
   const bootstrap = useBootstrap();
   const data = bootstrap.data;
   const [editing, setEditing] = useState<Editing>(null);
-  const [importing, setImporting] = useState(false);
+  const [adding, setAdding] = useState<Adding>(null);
   const categories = useMemo(() => categoriesOf(data?.dishes ?? []), [data?.dishes]);
 
   if (bootstrap.isError && !data) return <ErrorState error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />;
@@ -69,7 +72,13 @@ export function LibraryView({ dishId, tab }: Props) {
         ) : tab === "gemt" ? (
           <SavedRecipes data={data} />
         ) : (
-          <OurDishes data={data} today={today} onCreate={() => setEditing({})} onImportUrl={() => setImporting(true)} />
+          <OurDishes
+            data={data}
+            today={today}
+            onCreate={() => setEditing({})}
+            onAddRecipe={() => setAdding("recipe")}
+            {...(data.capabilities.openai ? { onBulkAdd: () => setAdding("bulk") } : {})}
+          />
         )}
       </>
     );
@@ -78,15 +87,25 @@ export function LibraryView({ dishId, tab }: Props) {
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-5 px-4 pb-8 pt-4 md:px-6 md:pt-6 lg:px-8">
       {body}
-      <DishFormSheet open={editing !== null} dish={editing?.dish} categories={categories} onClose={() => setEditing(null)} />
-      <ImportUrlSheet
-        open={importing}
-        onClose={() => setImporting(false)}
-        onEdit={(target) => {
-          setImporting(false);
-          setEditing({ dish: target });
+      <DishFormSheet
+        open={editing !== null}
+        dish={editing?.dish}
+        preview={editing?.preview}
+        dishes={data.dishes}
+        aiAvailable={data.capabilities.openai}
+        categories={categories}
+        onClose={() => setEditing(null)}
+      />
+      <AddRecipeSheet
+        open={adding === "recipe"}
+        aiAvailable={data.capabilities.openai}
+        onClose={() => setAdding(null)}
+        onPreview={(preview) => {
+          setAdding(null);
+          setEditing({ preview });
         }}
       />
+      <BulkAddSheet open={adding === "bulk"} dishes={data.dishes} onClose={() => setAdding(null)} />
     </div>
   );
 }

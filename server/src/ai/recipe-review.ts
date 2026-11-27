@@ -14,14 +14,20 @@ import type { ParsedRecipe } from "./recipe-import.ts";
 
 const MAX_CHANGES = 8;
 
+/** How the app wants an ingredient line written, so shopping lists can add amounts up. */
+export const INGREDIENT_FORMAT = [
+  "Hver ingredienslinje har formatet: <mængde> <enhed> <vare> (<note>).",
+  "- Enheder: g, kg, ml, dl, l, stk., dåse, glas, pakke, flaske, spsk., tsk., bundt, potte, fed. Skriv gram som g (\"400 gr\" → \"400 g\"). Skriv enheden lige efter mængden.",
+  "- <vare> er det, man køber i butikken, med små bogstaver og så kort som muligt (\"alm løg\" → \"løg\", \"gr revet ost, fx mozzarella\" → \"revet ost\"). Ret tydelige stavefejl (\"ekstragon\" → \"estragon\").",
+  "- Tilberedning og forslag kommer i ÉN parentes til sidst (\"løg (hakket)\", \"revet ost (fx mozzarella)\"). Aldrig dobbelte parenteser.",
+];
+
 export function reviewPrompt(recipe: ParsedRecipe, fence = newFence()): Prompt {
   const instructions = [
     "Du tjekker en opskrift, der er hentet fra en dansk opskriftsside, før den gemmes i en madplan-app. Appen laver indkøbslister ud fra ingredienslinjerne.",
-    "Omskriv HVER ingredienslinje til formatet: <mængde> <enhed> <vare> (<note>).",
-    "- Enheder: g, kg, ml, dl, l, stk., dåse, glas, pakke, flaske, spsk., tsk., bundt, potte, fed. Skriv gram som g (\"400 gr\" → \"400 g\"). Skriv enheden lige efter mængden.",
+    "Omskriv HVER ingredienslinje til appens format.",
+    ...INGREDIENT_FORMAT,
     "- Mængden skal være PRÆCIS den samme som i originalen (samme tal og samme mængde efter omregning). Opfind aldrig en mængde. En linje uden mængde forbliver uden mængde.",
-    "- <vare> er det, man køber i butikken, med små bogstaver og så kort som muligt (\"alm løg\" → \"løg\", \"gr revet ost, fx mozzarella\" → \"revet ost\"). Ret tydelige stavefejl (\"ekstragon\" → \"estragon\").",
-    "- Tilberedning og forslag kommer i ÉN parentes til sidst (\"løg (hakket)\", \"revet ost (fx mozzarella)\"). Aldrig dobbelte parenteser.",
     "- Bevar rækkefølgen. Tilføj, fjern, flet eller del aldrig linjer. Antallet af linjer skal være det samme som i originalen.",
     "Angiv portioner (antal personer) kun hvis det tydeligt fremgår af data, ellers null.",
     "I changes: højst 8 korte danske sætninger om det, du rettede (fx \"400 gr er rettet til 400 g\"). Tom liste hvis intet skulle rettes.",

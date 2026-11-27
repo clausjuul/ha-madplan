@@ -84,14 +84,28 @@ export type SuggestDayInput = { seed: number };
 
 // Dishes --------------------------------------------------------------------
 // POST api/dishes                 body DishInput -> Dish (new custom dish; server assigns id)
-// PUT  api/dishes/:id             body DishInput -> Dish (editing a built-in stores an override with the same id)
+// PUT  api/dishes/:id             body DishInput -> Dish
 // POST api/dishes/:id/archive                    -> Dish (sets archivedAt; meals and history are kept)
 // POST api/dishes/:id/restore                    -> Dish
-// POST api/dishes/import-url      body ImportUrlInput -> ImportedDish (structured Recipe data from the page; 422 if none)
+// POST api/dishes/read            body DishReadInput  -> DishPreview (nothing is saved; 422 if no recipe was found)
+// POST api/dishes/draft           body DishDraftInput -> DishPreview (AI; nothing is saved; 422 without OpenAI)
 export type DishInput = Omit<Dish, "id" | "archivedAt" | "custom">;
+/**
+ * A recipe to read: a link to a recipe page, pasted text, or photos (data: URLs, at most 3) of e.g.
+ * a cookbook page. Text and photos need OpenAI; a link is read by AI only when the page has no
+ * structured recipe data.
+ */
+export type DishReadInput = { url: string } | { text: string } | { images: string[] };
+/** Makes a dish from its name, e.g. "Mormors frikadeller". `note` is an optional wish ("med kartoffelmos"). */
+export type DishDraftInput = { name: string; note?: string };
+/**
+ * A dish ready for the form, not saved yet. `how` says where it came from: the page's structured data
+ * ("structured", then `review` tells what the recipe check corrected), read by AI from a page, text or
+ * photo ("read": amounts should be checked), or written by AI from the name ("drafted").
+ */
+export type DishPreview = { dish: DishInput; how: "structured" | "read" | "drafted"; review?: RecipeReview };
 /** The fields Assist may change on an existing dish. */
 export type DishChanges = Partial<Pick<Dish, "name" | "ingredients" | "instructions" | "prepMinutes" | "category" | "servings" | "favorite">>;
-export type ImportUrlInput = { url: string };
 /** What the recipe check did before an imported dish was saved. */
 export type RecipeReview = {
   /** True when the AI check ran; false when it was skipped (no OpenAI key) or failed. */
@@ -99,7 +113,7 @@ export type RecipeReview = {
   /** Short Danish notes on what was corrected, e.g. "400 gr er rettet til 400 g". Empty when nothing changed. */
   changes: string[];
 };
-/** The saved dish plus the review. `review` is not part of the stored dish. */
+/** A saved dish plus the review (discovery import). `review` is not part of the stored dish. */
 export type ImportedDish = Dish & { review?: RecipeReview };
 
 // Shopping — ONE current list ("the next shopping trip") ----------------------

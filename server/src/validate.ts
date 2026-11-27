@@ -2,7 +2,9 @@
 import { INSPIRATION_CUISINES, isDateKey, WATCH_NAME_MAX, WATCHLIST_MAX } from "@madplan/domain";
 import type {
   DiscoverInput,
+  DishDraftInput,
   DishInput,
+  DishReadInput,
   DraftDayPatch,
   FridgeItem,
   InspirationRecipe,
@@ -83,6 +85,35 @@ export function variantList(value: unknown): MealVariant[] {
   }, 10);
 }
 
+/** Longest step of a recipe's method (imported recipes can have long steps). */
+export const MAX_STEP = 1000;
+const MAX_IMAGES = 3;
+/** A downscaled phone photo is well below this; the whole request is capped by the route. */
+const MAX_IMAGE_CHARS = 5_000_000;
+const IMAGE_DATA_URL = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/u;
+
+export function dishReadInput(value: unknown): DishReadInput {
+  const o = rec(value, "Opskrift");
+  if (o.url !== undefined) return { url: str(o.url, "Link", { min: 8, max: 1000 }) };
+  if (o.text !== undefined) return { text: str(o.text, "Tekst", { min: 20, max: 30_000 }) };
+  if (o.images !== undefined) {
+    const images = list(o.images, "Billeder", (entry) => {
+      if (typeof entry !== "string" || entry.length > MAX_IMAGE_CHARS || !IMAGE_DATA_URL.test(entry)) {
+        throw badRequest("Billederne skal være JPEG-, PNG- eller WebP-billeder.");
+      }
+      return entry;
+    }, MAX_IMAGES);
+    if (images.length === 0) throw badRequest("Vælg mindst ét billede.");
+    return { images };
+  }
+  throw badRequest("Giv et link, en tekst eller billeder.");
+}
+
+export function dishDraftInput(value: unknown): DishDraftInput {
+  const o = rec(value, "Ret");
+  return compact({ name: str(o.name, "Navn", { min: 2, max: 130 }), note: optStr(o.note, "Ønske", 300) });
+}
+
 export function dishInput(value: unknown): DishInput {
   const o = rec(value, "Ret");
   return compact({
@@ -97,7 +128,7 @@ export function dishInput(value: unknown): DishInput {
     imageKey: optStr(o.imageKey, "Billednøgle", 100),
     imageUrl: optStr(o.imageUrl, "Billedlink", 1000),
     sourceUrl: optStr(o.sourceUrl, "Kildelink", 1000),
-    instructions: optStrList(o.instructions, "Fremgangsmåde", 80),
+    instructions: o.instructions === undefined ? undefined : strList(o.instructions, "Fremgangsmåde", 80, MAX_STEP),
     generated: optBool(o.generated, "Genereret"),
   });
 }

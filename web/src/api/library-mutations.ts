@@ -2,7 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import type {
   BootstrapResponse,
   Dish,
+  DishDraftInput,
   DishInput,
+  DishPreview,
+  DishReadInput,
   ImportedDish,
   FridgeItem,
   InspirationRecipe,
@@ -29,7 +32,9 @@ export function useDishActions() {
     update: (id: string, input: DishInput): Promise<Dish> => after(api.updateDish(id, input)),
     archive: (id: string): Promise<Dish> => after(api.archiveDish(id)),
     restore: (id: string): Promise<Dish> => after(api.restoreDish(id)),
-    importUrl: (url: string): Promise<ImportedDish> => after(api.importDishFromUrl({ url })),
+    // Previews only: nothing changes until `create`.
+    read: (input: DishReadInput): Promise<DishPreview> => api.readDish(input),
+    draft: (input: DishDraftInput): Promise<DishPreview> => api.draftDish(input),
     importInspiration: (recipe: InspirationRecipe): Promise<ImportedDish> => after(api.importInspiration(recipe)),
     saveInspirations: (recipes: InspirationRecipe[]): Promise<InspirationRecipe[]> =>
       after(api.saveInspirations(recipes)),

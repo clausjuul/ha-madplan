@@ -275,7 +275,7 @@ export function createFakeClient(options: FakeClientOptions = {}): ApiClient {
         }
       },
     }),
-    ...createFakeLibrary({ state, wait, emit, onImported: () => (isEmptyDb = false) }),
+    ...createFakeLibrary({ state, wait, emit, openai: options.openai === true, onImported: () => (isEmptyDb = false) }),
     ...createFakeDrafts({ state, today, openai: options.openai === true, wait, emit, aiDelayMs: options.aiDelayMs ?? 1500 }),
 
     subscribe(handlers) {

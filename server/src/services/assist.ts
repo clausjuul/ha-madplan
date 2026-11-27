@@ -8,7 +8,7 @@ import type {
 } from "@madplan/domain";
 import { AiError } from "../ai/openai.ts";
 import { findDishImage } from "../ai/dish-image.ts";
-import { importRecipeFromUrl } from "../ai/recipe-import.ts";
+import { recipeFromUrl } from "./dish-reading.ts";
 import { askAssistModel, assistPrompt, assistSchema, correctionPrompt } from "../ai/assist-ai.ts";
 import type { AssistModelAnswer } from "../ai/assist-ai.ts";
 import type { Deps } from "../deps.ts";
@@ -99,7 +99,7 @@ export async function resolveImageRequests(
       if (raw.type === "importDishFromUrl") {
         if (typeof raw.url !== "string") return null;
         try {
-          const recipe = await importRecipeFromUrl(raw.url, deps.fetch, signal);
+          const { recipe } = await recipeFromUrl(deps, raw.url, { review: false, signal });
           return { type: "createDish", dish: recipe };
         } catch (error) {
           notes.push(`Opskriften kunne ikke hentes: ${error instanceof Error ? error.message : "ukendt fejl"}`);

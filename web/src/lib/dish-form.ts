@@ -34,7 +34,8 @@ export const emptyDraft = (): DishDraft => ({
   freezerFriendly: false,
 });
 
-export const draftFromDish = (dish: Dish): DishDraft => ({
+/** Form state from a saved dish or from a preview (link, text, photo or AI). */
+export const draftFromDish = (dish: DishInput): DishDraft => ({
   name: dish.name,
   category: dish.category,
   prepMinutes: String(dish.prepMinutes),
@@ -79,7 +80,7 @@ export function validateDraft(draft: DishDraft): DishErrors {
 }
 
 /** Builds the API payload; keeps a bundled `imageKey` when the image was not replaced. */
-export function draftToInput(draft: DishDraft, original?: Dish): DishInput {
+export function draftToInput(draft: DishDraft, original?: Pick<DishInput, "imageKey" | "generated">): DishInput {
   const steps = parseLines(draft.steps);
   const imageUrl = draft.imageUrl.trim();
   const imageKey = original?.imageKey && !imageUrl ? original.imageKey : undefined;
@@ -98,4 +99,42 @@ export function draftToInput(draft: DishDraft, original?: Dish): DishInput {
     ...(steps.length > 0 ? { instructions: steps } : {}),
     ...(original?.generated ? { generated: true } : {}),
   };
+}
+
+const DEFAULT_MINUTES = emptyDraft().prepMinutes;
+
+/**
+ * "Udfyld med AI": takes the AI's dish into the fields the user has not filled in yet. The name and
+ * anything typed by hand stay; the minutes count as empty while they are still the default.
+ */
+export function fillEmpty(draft: DishDraft, dish: DishInput): DishDraft {
+  const from = draftFromDish(dish);
+  const empty = (value: string): boolean => value.trim() === "";
+  return {
+    ...draft,
+    category: empty(draft.category) ? from.category : draft.category,
+    prepMinutes: empty(draft.prepMinutes) || draft.prepMinutes === DEFAULT_MINUTES ? from.prepMinutes : draft.prepMinutes,
+    servings: empty(draft.servings) ? from.servings : draft.servings,
+    imageUrl: empty(draft.imageUrl) ? from.imageUrl : draft.imageUrl,
+    ingredients: empty(draft.ingredients) ? from.ingredients : draft.ingredients,
+    steps: empty(draft.steps) ? from.steps : draft.steps,
+    sourceUrl: empty(draft.sourceUrl) ? from.sourceUrl : draft.sourceUrl,
+    leftoverFriendly: draft.leftoverFriendly || from.leftoverFriendly,
+    freezerFriendly: draft.freezerFriendly || from.freezerFriendly,
+  };
+}
+
+/** True when the AI's dish would fill at least one field (so the button is worth showing as an action). */
+export const hasEmptyFields = (draft: DishDraft): boolean =>
+  [draft.category, draft.ingredients, draft.steps].some((value) => value.trim() === "");
+
+const nameKey = (name: string): string =>
+  name.trim().toLocaleLowerCase("da-DK").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/** Another dish with the same name (case, spaces and punctuation ignored), active ones first. */
+export function findDuplicate(name: string, dishes: readonly Dish[], exceptId?: string): Dish | undefined {
+  const key = nameKey(name);
+  if (!key) return undefined;
+  const same = dishes.filter((dish) => dish.id !== exceptId && nameKey(dish.name) === key);
+  return same.find((dish) => !dish.archivedAt) ?? same[0];
 }

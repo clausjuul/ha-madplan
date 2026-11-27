@@ -12,19 +12,6 @@ const newDish = {
   freezerFriendly: false,
 };
 
-const RECIPE_HTML = `<html><head><script type="application/ld+json">${JSON.stringify({
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Recipe",
-      name: "Bedste boller",
-      totalTime: "PT1H15M",
-      recipeIngredient: ["500 g mel", "3 dl mælk"],
-      recipeInstructions: [{ "@type": "HowToStep", text: "Ælt dejen." }, { "@type": "HowToStep", text: "Bag." }],
-    },
-  ],
-})}</script></head><body></body></html>`;
-
 describe("dishes", () => {
   it("creates and edits dishes, and archives/restores them", async () => {
     const { json, call } = setup();
@@ -48,28 +35,6 @@ describe("dishes", () => {
     expect((await call("POST", "dishes", { name: "" })).status).toBe(400);
     expect((await call("PUT", "dishes/findes-ikke", newDish)).status).toBe(404);
     expect((await call("POST", "dishes/findes-ikke/archive")).status).toBe(404);
-  });
-
-  it("imports a dish from a URL's JSON-LD and refuses unusable pages", async () => {
-    const fetched: string[] = [];
-    const { json, call } = setup({
-      fetch: (input) => {
-        const url = String(input);
-        fetched.push(url);
-        const html = url.includes("tom") ? "<html></html>" : RECIPE_HTML;
-        return Promise.resolve(new Response(html, { headers: { "content-type": "text/html" } }));
-      },
-    });
-    const dish = await json<Dish>("POST", "dishes/import-url", { url: "https://opskrifter.example.dk/boller" });
-    expect(dish).toMatchObject({ name: "Bedste boller", prepMinutes: 75, custom: true });
-    expect(dish.instructions).toEqual(["Ælt dejen.", "Bag."]);
-    expect(dish.sourceUrl).toBe("https://opskrifter.example.dk/boller");
-
-    const empty = await call("POST", "dishes/import-url", { url: "https://opskrifter.example.dk/tom" });
-    expect(empty.status).toBe(422);
-    expect((await call("POST", "dishes/import-url", { url: "http://opskrifter.example.dk/x" })).status).toBe(422);
-    expect((await call("POST", "dishes/import-url", { url: "https://192.168.1.1/x" })).status).toBe(422);
-    expect(fetched).toHaveLength(2);
   });
 });
 
