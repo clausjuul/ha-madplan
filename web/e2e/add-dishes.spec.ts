@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { MOCK_NOW } from "./helpers";
 
-// Adding dishes in fake mode (OpenAI on unless ?noassist): one "Tilføj ret" button for link, text, photo or by hand.
+// Adding dishes in fake mode (OpenAI on unless ?noassist): one "Tilføj ret" sheet for a link, pasted text, photos or by hand.
 const PHONE = { width: 390, height: 844 };
 
 async function open(page: Page, query = ""): Promise<void> {
@@ -24,8 +24,9 @@ test("en opskrift fra et link ses igennem og gemmes først ved Gem ret", async (
   await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
   await noSeriousAxe(page, "tilføj opskrift");
-  await sheet.getByLabel("Link til opskrift").fill("https://opskrifter.example.dk/linsesuppe");
-  await sheet.getByRole("button", { name: "Læs opskriften" }).click();
+  await sheet.getByLabel("Link eller opskrift").fill("https://opskrifter.example.dk/linsesuppe");
+  await expect(sheet.getByText("Link til opskrifter.example.dk")).toBeVisible();
+  await sheet.getByRole("button", { name: "Hent opskrift" }).click();
 
   const form = page.getByRole("dialog", { name: "Se opskriften igennem" });
   await expect(form.getByText("Opskriften er tjekket og rettet")).toBeVisible();
@@ -40,19 +41,23 @@ test("en opskrift i tekst læses af AI", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
-  await sheet.getByRole("radio", { name: "Tekst" }).click();
-  await sheet.getByLabel("Opskriftens tekst").fill("Gulerodssuppe\n1 kg gulerødder\n1 l bouillon\nKog og blend.");
-  await sheet.getByRole("button", { name: "Læs opskriften" }).click();
+  const recipe = "Gulerodssuppe\n1 kg gulerødder\n1 l bouillon\nKog og blend.";
+  await sheet.getByLabel("Link eller opskrift").fill(recipe);
+  await expect(sheet.getByText(/Tekst på 4 linjer/u)).toBeVisible();
+  await sheet.getByRole("button", { name: "Hent opskrift" }).click();
   const form = page.getByRole("dialog", { name: "Se opskriften igennem" });
   await expect(form.getByText(/AI har læst opskriften/u)).toBeVisible();
   await expect(form.getByLabel("Navn")).toHaveValue("Gulerodssuppe");
   await expect(form.getByLabel("Ingredienser")).toHaveValue("1 kg gulerødder\n1 l bouillon");
+  // Back to the start, with the pasted text still there.
+  await form.getByRole("button", { name: "Tilbage" }).click();
+  await expect(page.getByRole("dialog", { name: "Tilføj ret" }).getByLabel("Link eller opskrift")).toHaveValue(recipe);
 });
 
 test("Ny ret: AI udfylder resten ud fra navnet og advarer om dubletter", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "Tilføj ret" }).click();
-  await page.getByRole("button", { name: "Skriv retten selv" }).click();
+  await page.getByRole("button", { name: /Skriv selv/u }).click();
   const form = page.getByRole("dialog", { name: "Ny ret" });
   await form.getByLabel("Navn").fill("lasagne");
   await expect(form.getByText(/Der findes allerede en ret, der hedder Lasagne/u)).toBeVisible();
@@ -62,6 +67,8 @@ test("Ny ret: AI udfylder resten ud fra navnet og advarer om dubletter", async (
   await expect(form.getByText(/AI har udfyldt de tomme felter/u)).toBeVisible();
   await expect(form.getByLabel("Kategori")).toHaveValue("Hverdag");
   await expect(form.getByLabel("Ingredienser")).not.toHaveValue("");
+  await form.getByText("Kan fryses").click();
+  await expect(form.getByLabel("Kan fryses")).toBeChecked();
   await noSeriousAxe(page, "ny ret udfyldt");
   await form.getByRole("button", { name: "Gem ret" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Mormors gryde" })).toBeVisible();
@@ -70,14 +77,16 @@ test("Ny ret: AI udfylder resten ud fra navnet og advarer om dubletter", async (
 test("uden OpenAI: kun link, ingen AI-knapper", async ({ page }) => {
   await open(page, "?noassist");
   await page.getByRole("button", { name: "Tilføj ret" }).click();
-  await page.getByRole("button", { name: "Skriv retten selv" }).click();
+  await expect(page.getByRole("button", { name: /Foto/u })).toBeDisabled();
+  await expect(page.getByText("Kræver en OpenAI-nøgle")).toBeVisible();
+  await page.getByLabel("Link til opskrift").fill("Bare noget tekst");
+  await page.getByRole("button", { name: "Hent opskrift" }).click();
+  await expect(page.getByText(/Tekst kan kun læses med en OpenAI-nøgle/u)).toBeVisible();
+  await page.getByRole("button", { name: /Skriv selv/u }).click();
   await expect(page.getByRole("dialog", { name: "Ny ret" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Udfyld/u })).toHaveCount(0);
   await page.getByRole("button", { name: "Annullér" }).click();
-  await page.getByRole("button", { name: "Tilføj ret" }).click();
-  await page.getByRole("radio", { name: "Foto" }).click();
-  await expect(page.getByText(/kræver en OpenAI-nøgle/u)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Læs opskriften" })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 // A 2x2 PNG: enough for the browser to decode and downscale.
@@ -87,14 +96,19 @@ test("et foto af en kogebogsside læses af AI", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
-  await sheet.getByRole("radio", { name: "Foto" }).click();
-  await sheet.getByText("Tag eller vælg billede").locator("input").setInputFiles({ name: "side.png", mimeType: "image/png", buffer: PNG });
+  const file = { name: "side.png", mimeType: "image/png", buffer: PNG };
+  const chooser = page.waitForEvent("filechooser");
+  await sheet.getByRole("button", { name: /Foto/u }).click();
+  await (await chooser).setFiles(file);
+  await expect(page.getByRole("dialog", { name: "Foto af opskrift" })).toBeVisible();
   await expect(sheet.getByRole("img", { name: "Billede 1 af opskriften" })).toBeVisible();
   await noSeriousAxe(page, "foto");
   if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/foto.png` });
   await sheet.getByRole("button", { name: "Fjern billede 1" }).click();
   await expect(sheet.getByRole("img")).toHaveCount(0);
-  await sheet.getByText("Tag eller vælg billede").locator("input").setInputFiles({ name: "side.png", mimeType: "image/png", buffer: PNG });
-  await sheet.getByRole("button", { name: "Læs opskriften" }).click();
+  const again = page.waitForEvent("filechooser");
+  await sheet.getByRole("button", { name: "Tag eller vælg billede" }).click();
+  await (await again).setFiles(file);
+  await sheet.getByRole("button", { name: "Læs billedet" }).click();
   await expect(page.getByRole("dialog", { name: "Se opskriften igennem" }).getByLabel("Navn")).toHaveValue("Demo: Ret fra kogebogen");
 });

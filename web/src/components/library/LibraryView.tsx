@@ -1,13 +1,13 @@
 import { Link } from "react-router";
 import { useMemo, useState } from "react";
-import type { Dish, DishPreview } from "@madplan/domain";
+import type { Dish } from "@madplan/domain";
 import { useBootstrap } from "@/api/queries";
 import { ErrorState } from "@/components/ui/StatusViews";
 import { useToday } from "@/hooks/use-today";
 import { categoriesOf } from "@/lib/library";
 import { routePath, type LibraryTab } from "@/lib/route";
 import { Discover } from "./Discover";
-import { AddRecipeSheet } from "./AddRecipeSheet";
+import { AddDishSheet } from "./AddDishSheet";
 import { DishFormSheet } from "./DishFormSheet";
 import { OurDishes } from "./OurDishes";
 import { RecipeDetail } from "./RecipeDetail";
@@ -15,8 +15,6 @@ import { SavedRecipes } from "./SavedRecipes";
 import { WeeklyPlans } from "./WeeklyPlans";
 
 type Props = { dishId?: string; tab?: LibraryTab };
-/** The form: editing a dish, a new one (from scratch or from a read recipe), or closed. */
-type Editing = { dish?: Dish; preview?: DishPreview } | null;
 
 const tabClass = (active: boolean): string =>
   `flex h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-[15px] no-underline sm:px-5 ${
@@ -27,7 +25,7 @@ export function LibraryView({ dishId, tab }: Props) {
   const today = useToday();
   const bootstrap = useBootstrap();
   const data = bootstrap.data;
-  const [editing, setEditing] = useState<Editing>(null);
+  const [editing, setEditing] = useState<Dish | null>(null);
   const [adding, setAdding] = useState(false);
   const categories = useMemo(() => categoriesOf(data?.dishes ?? []), [data?.dishes]);
 
@@ -39,7 +37,7 @@ export function LibraryView({ dishId, tab }: Props) {
   let body;
   if (dishId) {
     body = dish ? (
-      <RecipeDetail dish={dish} data={data} today={today} onEdit={(target) => setEditing({ dish: target })} />
+      <RecipeDetail dish={dish} data={data} today={today} onEdit={setEditing} />
     ) : (
       <div className="rounded-3xl bg-surface p-10 text-center">
         <p className="mb-4 text-[15px] text-ink-2">Retten findes ikke (længere).</p>
@@ -81,25 +79,18 @@ export function LibraryView({ dishId, tab }: Props) {
       {body}
       <DishFormSheet
         open={editing !== null}
-        dish={editing?.dish}
-        preview={editing?.preview}
+        dish={editing ?? undefined}
         dishes={data.dishes}
         aiAvailable={data.capabilities.openai}
         categories={categories}
         onClose={() => setEditing(null)}
       />
-      <AddRecipeSheet
+      <AddDishSheet
         open={adding}
+        dishes={data.dishes}
+        categories={categories}
         aiAvailable={data.capabilities.openai}
         onClose={() => setAdding(false)}
-        onPreview={(preview) => {
-          setAdding(false);
-          setEditing({ preview });
-        }}
-        onWrite={() => {
-          setAdding(false);
-          setEditing({});
-        }}
       />
     </div>
   );

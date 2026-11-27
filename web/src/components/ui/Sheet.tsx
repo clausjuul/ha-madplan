@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -10,13 +10,17 @@ type Props = {
   children: ReactNode;
   /** Tall sheets (pickers) take most of the screen. */
   tall?: boolean;
+  /** Shows a back arrow before the title (multi-step sheets). */
+  onBack?: () => void;
+  /** The children handle their own scrolling (e.g. a form with a fixed footer). */
+  fill?: boolean;
 };
 
 /**
  * Modal sheet on a native <dialog>: focus is trapped by the browser, Escape closes it,
  * a tap on the backdrop closes it. Bottom sheet on phones, centred panel on tablets.
  */
-export function Sheet({ open, onClose, title, subtitle, children, tall }: Props) {
+export function Sheet({ open, onClose, title, subtitle, children, tall, onBack, fill }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -58,7 +62,17 @@ export function Sheet({ open, onClose, title, subtitle, children, tall }: Props)
           }`}
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          <header className="flex items-start gap-3 px-6 pb-3 pt-5">
+          <header className={`flex items-start gap-3 pb-3 pt-5 ${onBack ? "pl-3 pr-6" : "px-6"}`}>
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="Tilbage"
+                className="-mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-raised"
+              >
+                <ArrowLeft size={20} aria-hidden="true" />
+              </button>
+            ) : null}
             <div className="min-w-0 flex-1">
               <h2 id={titleId} className="font-display text-[22px] font-bold leading-tight">
                 {title}
@@ -74,7 +88,11 @@ export function Sheet({ open, onClose, title, subtitle, children, tall }: Props)
               <X size={20} aria-hidden="true" />
             </button>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 md:px-4">{children}</div>
+          {fill ? (
+            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 md:px-4">{children}</div>
+          )}
         </div>
       </div>
     </dialog>

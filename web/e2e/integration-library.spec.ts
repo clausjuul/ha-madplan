@@ -22,7 +22,7 @@ test("@integration importerer v1, opretter, arkiverer og gendanner en ret", asyn
 
   // 3. Create a dish.
   await page.getByRole("button", { name: "Tilføj ret" }).click();
-  await page.getByRole("button", { name: "Skriv retten selv" }).click();
+  await page.getByRole("button", { name: /Skriv selv/u }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Navn").fill("Integrationsgryde");
   await dialog.getByLabel("Kategori").fill("Gryderet");

@@ -7,8 +7,8 @@ Madplan er familiens madplan i Home Assistant: planlæg aftensmaden dag for dag,
 - **Uge:** overblik over ugens aftensmad, "I aften" øverst, byt dage, lås dage, skriv noter, og spring dage over.
 - **Indkøb:** indkøbslisten bygges automatisk ud fra ugens retter, minus basisvarer og det, I har i køleskabet. Tilføj egne varer, afkryds i butikken, og se et prisoverslag. På telefonen er listen bygget til butikken: tryk på solen øverst for at holde skærmen tændt, mens listen er åben (huskes på telefonen, kræver HTTPS), en bjælke viser hvor langt I er, og "Fortryd" retter et forkert tryk. Det, I har i kurven, er foldet sammen nederst, og basisvarer og **Ny indkøbstur** ligger under **···**.
 - **Retter:** jeres egne retter med opskrift, billede og historik. Tryk **Tilføj ret** for at:
-  - **hente en opskrift** fra et link, eller (med OpenAI) fra en tekst, du indsætter, eller fra op til tre fotos af f.eks. en side i en kogebog. Har en opskriftsside ikke strukturerede opskriftsdata, læser AI siden i stedet. Du ser altid opskriften igennem og retter den til, før den bliver gemt.
-  - **skrive retten selv**. Med OpenAI kan du nøjes med navnet og trykke **Udfyld resten med AI**, så foreslår AI kategori, tid, ingredienser og fremgangsmåde. Det, du selv har skrevet, bliver ikke ændret.
+  - **hente en opskrift**: indsæt et link i feltet, eller (med OpenAI) hele opskriftens tekst. Appen kan selv se, om det er et link eller en tekst. Med OpenAI kan du også trykke **Foto** og tage op til tre billeder af f.eks. en side i en kogebog. Har en opskriftsside ikke strukturerede opskriftsdata, læser AI siden i stedet. Du ser altid opskriften igennem og retter den til, før den bliver gemt, og pilen øverst fører dig tilbage.
+  - **Skriv selv**. Med OpenAI kan du nøjes med navnet og trykke **Udfyld resten med AI**, så foreslår AI kategori, tid, ingredienser og fremgangsmåde. Det, du selv har skrevet, bliver ikke ændret.
 
   Appen advarer, hvis en ret med samme navn findes i forvejen, også hvis den ligger i arkivet.
 - **Opdag:** inspiration fra en samling af kendte retter. Med en OpenAI-nøgle kan appen også finde nye opskrifter på nettet fra godkendte opskriftssider.

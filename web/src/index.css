@@ -182,3 +182,18 @@ dialog.sheet::backdrop {
 .sheet-panel {
   animation: sheet-up 0.22s ease-out;
 }
+
+/* A new step inside a sheet. */
+@keyframes step-in {
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.step-in {
+  animation: step-in 0.2s ease-out;
+}
