@@ -143,6 +143,14 @@ const MIGRATIONS: readonly string[] = [
     date TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE photos (
+    id TEXT PRIMARY KEY,
+    mime TEXT NOT NULL,
+    data BLOB NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export function migrate(db: DatabaseSync): void {

@@ -1,5 +1,6 @@
 /** Validators for the request bodies in the API contract (domain/src/api.ts). */
 import { INSPIRATION_CUISINES, isDateKey, WATCH_NAME_MAX, WATCHLIST_MAX } from "@madplan/domain";
+import { PHOTO_DATA_URL } from "./store-photos.ts";
 import type {
   DiscoverInput,
   DishDraftInput,
@@ -114,6 +115,18 @@ export function dishDraftInput(value: unknown): DishDraftInput {
   return compact({ name: str(o.name, "Navn", { min: 2, max: 130 }), note: optStr(o.note, "Ønske", 300) });
 }
 
+/** Generous for a photo downscaled in the browser; the store checks the decoded size. */
+const MAX_PHOTO_CHARS = 2_800_000;
+
+/** A link to a picture, or a photo uploaded from the device as a data: URL (stored separately on save). */
+function dishImage(value: unknown): string | undefined {
+  if (typeof value === "string" && value.startsWith("data:")) {
+    if (value.length > MAX_PHOTO_CHARS || !PHOTO_DATA_URL.test(value)) throw badRequest("Billedet kunne ikke bruges. Prøv et andet (JPEG eller PNG).");
+    return value;
+  }
+  return optStr(value, "Billedlink", 1000);
+}
+
 export function dishInput(value: unknown): DishInput {
   const o = rec(value, "Ret");
   return compact({
@@ -126,7 +139,7 @@ export function dishInput(value: unknown): DishInput {
     leftoverFriendly: o.leftoverFriendly === undefined ? false : bool(o.leftoverFriendly, "Rester"),
     freezerFriendly: o.freezerFriendly === undefined ? false : bool(o.freezerFriendly, "Fryser"),
     imageKey: optStr(o.imageKey, "Billednøgle", 100),
-    imageUrl: optStr(o.imageUrl, "Billedlink", 1000),
+    imageUrl: dishImage(o.imageUrl),
     sourceUrl: optStr(o.sourceUrl, "Kildelink", 1000),
     instructions: o.instructions === undefined ? undefined : strList(o.instructions, "Fremgangsmåde", 80, MAX_STEP),
     generated: optBool(o.generated, "Genereret"),

@@ -7,10 +7,13 @@ import { notFound } from "../errors.ts";
 import { readJson } from "../http.ts";
 import { draftDishPreview, readDish } from "../services/dish-reading.ts";
 import { findDish, saveDish } from "../store-dishes.ts";
+import { deletePhotoAt, getPhoto, savePhoto } from "../store-photos.ts";
 import { dishDraftInput, dishInput, dishReadInput } from "../validate.ts";
 
 /** Up to three downscaled photos as data: URLs. */
 const MAX_READ_BYTES = 16_000_000;
+/** A dish with an uploaded photo (a data: URL). */
+const MAX_DISH_BYTES = 4_000_000;
 
 export function dishRoutes(api: Hono, deps: Deps): void {
   const { repo } = deps;
@@ -23,13 +26,32 @@ export function dishRoutes(api: Hono, deps: Deps): void {
 
   const store = (dish: Dish): Dish => repo.mutate(["dishes", "shopping"], () => (saveDish(repo.db, dish), dish));
 
+  /** Saves the dish; an uploaded photo is stored on its own and replaced by its link. */
+  const storeWithPhoto = (dish: Dish, previousImage?: string): Dish =>
+    repo.mutate(["dishes", "shopping"], () => {
+      const saved = dish.imageUrl?.startsWith("data:") ? { ...dish, imageUrl: savePhoto(repo.db, dish.imageUrl, deps.now().toISOString()) } : dish;
+      if (previousImage !== saved.imageUrl) deletePhotoAt(repo.db, previousImage);
+      saveDish(repo.db, saved);
+      return saved;
+    });
+
+  api.get("/photos/:id", (c) => {
+    const photo = getPhoto(repo.db, c.req.param("id"));
+    if (!photo) throw notFound("Billedet findes ikke.");
+    return c.body(new Uint8Array(photo.data), 200, {
+      "Content-Type": photo.mime,
+      // A photo never changes: a new one gets a new id.
+      "Cache-Control": "private, max-age=31536000, immutable",
+    });
+  });
+
   api.post("/dishes", async (c) => {
-    const input = dishInput(await readJson(c));
+    const input = dishInput(await readJson(c, MAX_DISH_BYTES));
     const dish: Dish = { ...input, id: `custom-${randomUUID()}`, custom: true };
     // A recipe from a link was checked (or read by AI) on the way in, and the family has seen it in the
     // form since; the startup check of older imports must not rewrite it.
     if (dish.sourceUrl) markReviewed(repo.db, dish.id);
-    return c.json(store(dish));
+    return c.json(storeWithPhoto(dish));
   });
 
   // Previews for the form: nothing is saved until the family presses "Gem" (POST /dishes).
@@ -45,10 +67,10 @@ export function dishRoutes(api: Hono, deps: Deps): void {
 
   api.put("/dishes/:id", async (c) => {
     const existing = need(c.req.param("id"));
-    const input = dishInput(await readJson(c));
+    const input = dishInput(await readJson(c, MAX_DISH_BYTES));
     const dish: Dish = { ...input, id: existing.id, custom: true };
     if (existing.archivedAt) dish.archivedAt = existing.archivedAt;
-    return c.json(store(dish));
+    return c.json(storeWithPhoto(dish, existing.imageUrl));
   });
 
   api.post("/dishes/:id/archive", (c) => {

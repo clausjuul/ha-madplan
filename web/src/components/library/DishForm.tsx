@@ -63,6 +63,7 @@ export function DishForm({ dish, preview, dishes, aiAvailable, categories, onClo
   const [filling, setFilling] = useState(false);
   const [fillError, setFillError] = useState<string | undefined>();
   const [filled, setFilled] = useState<DishPreview | undefined>();
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     setDraft(dish ? draftFromDish(dish) : preview ? draftFromDish(preview.dish) : emptyDraft());
@@ -104,7 +105,15 @@ export function DishForm({ dish, preview, dishes, aiAvailable, categories, onClo
     event.preventDefault();
     const found = validateDraft(draft);
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      // The field may be scrolled out of sight: show it, or the button seems to do nothing.
+      requestAnimationFrame(() => {
+        const field = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+        field?.scrollIntoView({ block: "center", behavior: "smooth" });
+        field?.focus({ preventScroll: true });
+      });
+      return;
+    }
     setSaving(true);
     setServerError(undefined);
     try {
@@ -123,7 +132,7 @@ export function DishForm({ dish, preview, dishes, aiAvailable, categories, onClo
   const showFill = !dish && !preview && aiAvailable;
 
   return (
-    <form onSubmit={(event) => void submit(event)} noValidate className="flex min-h-0 flex-1 flex-col">
+    <form ref={formRef} onSubmit={(event) => void submit(event)} noValidate className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
         <div className="flex flex-col gap-5">
           {preview ? <PreviewNote preview={preview} /> : null}
@@ -230,13 +239,13 @@ export function DishForm({ dish, preview, dishes, aiAvailable, categories, onClo
             <input type="url" inputMode="url" value={draft.sourceUrl} onChange={(event) => set("sourceUrl", event.target.value)} className={inputClass} placeholder="https://…" />
           </Field>
 
-          {serverError ? (
-            <p role="alert" className="m-0 rounded-2xl bg-offer-soft p-3 text-[15px] text-offer">
-              {serverError}
-            </p>
-          ) : null}
         </div>
       </div>
+      {serverError ? (
+        <p role="alert" className="m-0 border-t border-hairline bg-offer-soft px-6 py-3 text-[15px] text-offer">
+          {serverError}
+        </p>
+      ) : null}
       <div className="flex gap-2.5 border-t border-hairline px-6 pb-4 pt-3">
         <button type="button" onClick={onClose} className="h-12 flex-1 rounded-full border border-line text-[15px] font-semibold text-ink hover:bg-raised">
           Annullér

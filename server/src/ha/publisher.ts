@@ -3,6 +3,7 @@ import { msUntilMidnightInZone } from "../timezone.ts";
 import { addDaysToKey, offerPriceLabel, STORE_NAMES, watchlistHits, weekdayName } from "@madplan/domain";
 import type { ChangeTopic, Dish } from "@madplan/domain";
 import type { Deps } from "../deps.ts";
+import { PHOTO_PATH } from "../store-photos.ts";
 import { currentShoppingList, snapshot } from "../state.ts";
 
 const STATES_URL = "http://supervisor/core/api/states/";
@@ -14,9 +15,10 @@ export type EntityState = { entityId: string; state: string; attributes: Record<
 export const UPCOMING_DAYS = 14;
 
 function pictureOf(deps: Deps, dish: Dish | undefined): string | undefined {
-  return dish?.imageKey && deps.config.publicImageBase
-    ? `${deps.config.publicImageBase}/images/dishes/${dish.imageKey}.jpg`
-    : dish?.imageUrl;
+  if (dish?.imageKey && deps.config.publicImageBase) return `${deps.config.publicImageBase}/images/dishes/${dish.imageKey}.jpg`;
+  // An uploaded photo is a link relative to the app, which Home Assistant can only reach through the public base.
+  if (dish?.imageUrl?.startsWith(PHOTO_PATH)) return deps.config.publicImageBase ? `${deps.config.publicImageBase}/${dish.imageUrl}` : undefined;
+  return dish?.imageUrl;
 }
 
 export function buildEntities(deps: Deps): EntityState[] {
