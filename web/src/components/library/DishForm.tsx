@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, ChevronDown, Heart, Repeat2, Snowflake, Sparkles } from "lucide-react";
 import type { Dish, DishPreview } from "@madplan/domain";
 import { errorMessage, useDishActions } from "@/api/library-mutations";
@@ -131,13 +131,7 @@ export function DishForm({ dish, preview, dishes, aiAvailable, categories, onClo
 
           <div className="flex flex-col gap-2">
             <Field label="Navn" error={errors.name}>
-              <input
-                value={draft.name}
-                onChange={(event) => set("name", event.target.value)}
-                className={`${inputClass} h-14 text-[17px] font-semibold`}
-                autoComplete="off"
-                placeholder="Fx Mormors frikadeller"
-              />
+              <NameInput value={draft.name} onChange={(value) => set("name", value)} />
             </Field>
             {duplicate ? (
               <p role="status" className="m-0 flex items-start gap-2 rounded-2xl bg-offer-soft px-3 py-2.5 text-sm text-ink">
@@ -252,6 +246,38 @@ export function DishForm({ dish, preview, dishes, aiAvailable, categories, onClo
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * The dish name on as many lines as it needs (a long name is never cut off on a phone). It stays one
+ * line of text: Enter does not add a line break, and pasted line breaks become spaces.
+ */
+type FieldWiring = { id?: string; "aria-invalid"?: boolean; "aria-describedby"?: string };
+
+function NameInput({ value, onChange, ...aria }: FieldWiring & { value: string; onChange: (value: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const field = ref.current;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = `${field.scrollHeight + 2}px`;
+  }, [value]);
+  return (
+    <textarea
+      {...aria}
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(event) => onChange(event.target.value.replace(/\s*\n\s*/gu, " "))}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.preventDefault();
+      }}
+      autoComplete="off"
+      enterKeyHint="done"
+      placeholder="Fx Mormors frikadeller"
+      className={`${inputClass} h-auto min-h-14 resize-none overflow-hidden py-3.5 text-[17px] font-semibold leading-snug`}
+    />
   );
 }
 

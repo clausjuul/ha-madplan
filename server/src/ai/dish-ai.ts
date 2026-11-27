@@ -52,7 +52,7 @@ export function readPrompt(text: string | undefined, hasImages: boolean, context
     ? [
         "Billederne kan også vise selve maden i stedet for en opskrift (fx et foto af en tallerken, en gryde eller et fad). Er der ingen opskrift, men en færdig ret, så genkend retten:",
         `- sæt recognized til true, og skriv den almindelige, hjemmelavede danske udgave af retten til ${context.servings} personer med realistiske mængder og varer fra et almindeligt dansk supermarked. Tag ikke salt, peber, olie og vand med som ingredienser.`,
-        '- name: rettens almindelige danske navn (fx "Spaghetti bolognese", ikke "Pasta med kødsovs på en tallerken").',
+        '- name: rettens almindelige danske navn, kort, som man ville skrive det på en madplan: højst 4-5 ord, og nævn kun hovedtingene, ikke hvert tilbehør (fx "Kylling med pasta og flødesovs", ikke "Kylling med pastaskruer, blomkålssovs og dampede grøntsager").',
         "- Kan du ikke se, hvilken ret det er, eller er det ikke mad, så sæt found til false.",
         "Er der en opskrift, så sæt recognized til false og følg reglerne for opskrifter herunder.",
         "dishPhoto: nummeret (1, 2 eller 3) på det billede, der mest af alt er et foto af den færdige ret, så det kan bruges som rettens billede; ellers null. En side fra en kogebog er ikke et madbillede, selv om der er et billede på den.",
