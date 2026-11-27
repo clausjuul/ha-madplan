@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.26.0
+
+- feat(dishes): redesigned "Tilføj ret" flow in one sheet
+
 ## 0.25.0
 
 - feat(dishes): one "Tilføj ret" button; adding several at once is gone
