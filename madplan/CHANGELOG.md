@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.29.0
+
+- feat(dishes): the add button says what it will do
+
 ## 0.28.0
 
 - feat(dishes): describe a dish in your own words and AI writes the recipe
