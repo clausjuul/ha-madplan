@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.30.0
+
+- feat(dishes): find a photo for a dish with AI
+
 ## 0.29.0
 
 - feat(dishes): the add button says what it will do
