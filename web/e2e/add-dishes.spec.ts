@@ -24,6 +24,7 @@ test("en opskrift fra et link ses igennem og gemmes først ved Gem ret", async (
   await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
   await noSeriousAxe(page, "tilføj opskrift");
+  await expect(sheet.getByRole("button", { name: "Fortsæt" })).toBeVisible();
   await sheet.getByLabel("Link, opskrift eller beskrivelse").fill("https://opskrifter.example.dk/linsesuppe");
   await expect(sheet.getByText("Link til opskrifter.example.dk")).toBeVisible();
   await sheet.getByRole("button", { name: "Hent opskrift" }).click();
@@ -44,7 +45,7 @@ test("en opskrift i tekst læses af AI", async ({ page }) => {
   const recipe = "Gulerodssuppe\n1 kg gulerødder\n1 l bouillon\nKog og blend.";
   await sheet.getByLabel("Link, opskrift eller beskrivelse").fill(recipe);
   await expect(sheet.getByText(/Tekst på 4 linjer/u)).toBeVisible();
-  await sheet.getByRole("button", { name: "Hent opskrift" }).click();
+  await sheet.getByRole("button", { name: "Læs opskriften" }).click();
   const form = page.getByRole("dialog", { name: "Se opskriften igennem" });
   await expect(form.getByText(/AI har læst opskriften/u)).toBeVisible();
   await expect(form.getByLabel("Navn")).toHaveValue("Gulerodssuppe");
@@ -60,7 +61,7 @@ test("en beskrivelse af en ret bliver til en opskrift", async ({ page }) => {
   const sheet = page.getByRole("dialog");
   await sheet.getByLabel("Link, opskrift eller beskrivelse").fill("kyllingegryde med kokosmælk, gerne hurtig");
   await expect(sheet.getByText(/AI skriver en opskrift ud fra beskrivelsen/u)).toBeVisible();
-  await sheet.getByRole("button", { name: "Hent opskrift" }).click();
+  await sheet.getByRole("button", { name: "Skriv opskrift med AI" }).click();
   const form = page.getByRole("dialog", { name: "Se opskriften igennem" });
   await expect(form.getByText(/AI har skrevet opskriften/u)).toBeVisible();
   await expect(form.getByLabel("Navn")).toHaveValue("Kyllingegryde med kokosmælk");

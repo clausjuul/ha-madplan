@@ -68,6 +68,15 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
   }, [open]);
 
   const what = classifyPaste(pasted);
+  /** The button says what will happen with what is in the field. */
+  const action =
+    what.kind === "url" || !aiAvailable
+      ? { label: "Hent opskrift", icon: <Link2 size={17} aria-hidden="true" /> }
+      : what.kind === "empty"
+        ? { label: "Fortsæt", icon: null }
+        : what.lines > 2
+          ? { label: "Læs opskriften", icon: <FileText size={17} aria-hidden="true" /> }
+          : { label: "Skriv opskrift med AI", icon: <Sparkles size={17} aria-hidden="true" /> };
 
   const addPhotos = async (files: FileList | null): Promise<void> => {
     if (!files?.length) return;
@@ -249,8 +258,8 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
             )}
           </Field>
           <button type="submit" className="flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-on-accent">
-            {what.kind === "text" ? <FileText size={17} aria-hidden="true" /> : <Link2 size={17} aria-hidden="true" />}
-            Hent opskrift
+            {action.icon}
+            {action.label}
           </button>
 
           <div className="flex items-center gap-3 text-[13px] text-muted" aria-hidden="true">
