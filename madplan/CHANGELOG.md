@@ -1,5 +1,10 @@
 # Ændringer
 
+## 0.24.0
+
+- feat(dishes): add recipes from text and photos, AI fill, several at once
+- feat(dishes): the app no longer ships built-in dishes
+
 ## 0.23.0
 
 - feat(cook): the step shows how much of each ingredient it uses
