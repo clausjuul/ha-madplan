@@ -133,6 +133,7 @@ export function createHttpClient(): ApiClient {
     restoreDish: (id) => request("POST", `api/dishes/${enc(id)}/restore`),
     readDish: (input) => request("POST", "api/dishes/read", input),
     draftDish: (input) => request("POST", "api/dishes/draft", input),
+    findDishImages: (input) => request("POST", "api/dishes/images", input),
 
     getShopping: (query) => request("GET", shoppingPath(query)),
     toggleShoppingItem: (itemId) => request("POST", "api/shopping/toggle", { itemId }),

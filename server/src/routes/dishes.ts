@@ -3,12 +3,14 @@ import type { Hono } from "hono";
 import type { Dish } from "@madplan/domain";
 import { markReviewed } from "../ai/recipe-review.ts";
 import type { Deps } from "../deps.ts";
-import { notFound } from "../errors.ts";
+import { notFound, unprocessable } from "../errors.ts";
 import { readJson } from "../http.ts";
 import { draftDishPreview, readDish } from "../services/dish-reading.ts";
 import { findDish, saveDish } from "../store-dishes.ts";
 import { deletePhotoAt, getPhoto, savePhoto } from "../store-photos.ts";
-import { dishDraftInput, dishInput, dishReadInput } from "../validate.ts";
+import { dishDraftInput, dishImagesInput, dishInput, dishReadInput } from "../validate.ts";
+import { findDishImages } from "../ai/dish-image.ts";
+import { AiError } from "../ai/openai.ts";
 
 /** Up to three downscaled photos as data: URLs. */
 const MAX_READ_BYTES = 16_000_000;
@@ -63,6 +65,18 @@ export function dishRoutes(api: Hono, deps: Deps): void {
   api.post("/dishes/draft", async (c) => {
     const input = dishDraftInput(await readJson(c));
     return c.json(await draftDishPreview(deps, input, AbortSignal.timeout(60_000)));
+  });
+
+  // Photos to choose from for a dish without one; nothing is saved until the form is.
+  api.post("/dishes/images", async (c) => {
+    const { name } = dishImagesInput(await readJson(c));
+    if (!deps.openai.configured) throw unprocessable("Det kræver en OpenAI-nøgle under appens indstillinger i Home Assistant.");
+    try {
+      const images = await findDishImages(deps.openai, deps.config.planModel, deps.fetch, name, AbortSignal.timeout(90_000));
+      return c.json({ images });
+    } catch (error) {
+      throw unprocessable(error instanceof AiError ? error.message : "Billedsøgningen svarede ikke. Prøv igen.");
+    }
   });
 
   api.put("/dishes/:id", async (c) => {

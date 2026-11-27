@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
-import { ImagePlus, Link2, RefreshCw, Trash2 } from "lucide-react";
+import { ImagePlus, Link2, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import type { DishImageSuggestion } from "@madplan/domain";
+import { errorMessage } from "@/api/library-mutations";
 import { Field, inputClass } from "@/components/ui/Field";
 import { downscaleImage } from "@/lib/image-resize";
 
@@ -8,18 +10,54 @@ type Props = {
   onChange: (value: string) => void;
   /** A bundled photo shown while no own image is set; it can be replaced but not removed. */
   fallback?: string;
+  /** AI web search for photos of the dish (only with OpenAI). */
+  onFind?: () => Promise<DishImageSuggestion[]>;
+  /** The dish has a name to search for. */
+  canFind?: boolean;
+};
+
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./u, "");
+  } catch {
+    return url;
+  }
 };
 
 /**
  * The dish photo at the top of the form: shown large when there is one, otherwise a tile to upload one
  * (with a link field as the alternative). Uploads are downscaled in the browser and sent as a data URL.
  */
-export function ImageField({ value, onChange, fallback }: Props) {
+export function ImageField({ value, onChange, fallback, onFind, canFind = true }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | undefined>();
   const [byLink, setByLink] = useState(false);
   const [broken, setBroken] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [found, setFound] = useState<DishImageSuggestion[] | undefined>();
+  const [findError, setFindError] = useState<string | undefined>();
+
+  const find = async (): Promise<void> => {
+    if (!onFind) return;
+    setFinding(true);
+    setFindError(undefined);
+    setFound(undefined);
+    try {
+      setFound(await onFind());
+    } catch (error) {
+      setFindError(errorMessage(error));
+    } finally {
+      setFinding(false);
+    }
+  };
+
+  const choose = (image: DishImageSuggestion): void => {
+    onChange(image.imageUrl);
+    setBroken(false);
+    setByLink(false);
+    setFound(undefined);
+  };
 
   const onFile = async (file: File | undefined): Promise<void> => {
     if (!file) return;
@@ -128,6 +166,53 @@ export function ImageField({ value, onChange, fallback }: Props) {
         </Field>
       ) : problem ? (
         <p className="m-0 text-[13px] text-danger">{problem}</p>
+      ) : null}
+      {onFind ? (
+        found && found.length > 0 ? (
+          <div className="flex flex-col gap-2 rounded-2xl bg-raised p-3">
+            <p className="m-0 text-sm font-semibold text-ink">Vælg et billede</p>
+            <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0">
+              {found.map((image, index) => (
+                <li key={image.imageUrl} className="flex min-w-0 flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => choose(image)}
+                    aria-label={`Brug billede ${index + 1} fra ${hostOf(image.sourceUrl)}`}
+                    className="overflow-hidden rounded-xl outline-offset-2 hover:opacity-90"
+                  >
+                    <img src={image.imageUrl} alt="" className="aspect-[4/3] w-full object-cover" />
+                  </button>
+                  <span className="truncate text-[12px] text-muted">{hostOf(image.sourceUrl)}</span>
+                </li>
+              ))}
+            </ul>
+            <button type="button" onClick={() => setFound(undefined)} className="flex h-11 items-center self-center px-3 text-sm text-ink-2 hover:text-ink">
+              Ingen af dem
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => void find()}
+              disabled={finding || !canFind}
+              className="flex h-11 items-center justify-center gap-2 rounded-full border border-line px-4 text-sm font-semibold text-accent hover:bg-raised disabled:opacity-55"
+            >
+              <Sparkles size={16} aria-hidden="true" />
+              {finding ? "Leder efter billeder på nettet…" : "Find et billede med AI"}
+            </button>
+            <p className={`m-0 text-center text-[13px] ${findError ? "text-danger" : "text-muted"}`} role={findError ? "alert" : found ? "status" : undefined}>
+              {findError ??
+                (found
+                  ? "Jeg fandt ingen billeder af retten. Prøv igen, eller tag et selv."
+                  : !canFind
+                    ? "Skriv rettens navn først."
+                    : finding
+                      ? "Det kan tage op til et halvt minut."
+                      : "Søger efter opskrifter på retten og viser deres billeder.")}
+            </p>
+          </div>
+        )
       ) : null}
     </div>
   );

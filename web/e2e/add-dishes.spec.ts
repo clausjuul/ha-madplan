@@ -139,3 +139,32 @@ test("et foto af maden genkendes, kogebogssider læses af AI", async ({ page }) 
   await more.getByRole("button", { name: "Læs 2 billeder" }).click();
   await expect(page.getByRole("dialog", { name: "Se opskriften igennem" }).getByLabel("Navn")).toHaveValue("Demo: Ret fra kogebogen");
 });
+
+test("redigér en ret uden billede: AI finder billeder at vælge imellem", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.clock.install({ time: MOCK_NOW });
+  await page.goto("/#/retter/mormors-aebleflaesk");
+  await page.getByRole("button", { name: "Redigér" }).click();
+  const form = page.getByRole("dialog", { name: "Redigér ret" });
+  await form.getByRole("button", { name: "Find et billede med AI" }).click();
+  await expect(form.getByText("Vælg et billede")).toBeVisible();
+  await noSeriousAxe(page, "billedforslag");
+  if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/find-image.png` });
+  await form.getByRole("button", { name: /Brug billede 2 fra opskrifter\.example\.dk/u }).click();
+  await expect(form.getByRole("img", { name: "Billede af retten" })).toHaveAttribute("src", "images/dishes/chili-con-carne.jpg");
+  await form.getByRole("button", { name: "Gem ret" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator('img[src="images/dishes/chili-con-carne.jpg"]').first()).toBeVisible();
+});
+
+test("billedsøgning: kræver et navn og siger til, når intet blev fundet", async ({ page }) => {
+  await open(page);
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
+  await page.getByRole("button", { name: /Skriv selv/u }).click();
+  const form = page.getByRole("dialog", { name: "Ny ret" });
+  await expect(form.getByRole("button", { name: "Find et billede med AI" })).toBeDisabled();
+  await expect(form.getByText("Skriv rettens navn først.")).toBeVisible();
+  await form.getByLabel("Navn").fill("Ingen kender den");
+  await form.getByRole("button", { name: "Find et billede med AI" }).click();
+  await expect(form.getByText(/fandt ingen billeder/u)).toBeVisible();
+});

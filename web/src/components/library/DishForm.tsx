@@ -136,7 +136,13 @@ export function DishForm({ dish, preview, dishes, aiAvailable, categories, onClo
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
         <div className="flex flex-col gap-5">
           {preview ? <PreviewNote preview={preview} /> : null}
-          <ImageField value={draft.imageUrl} onChange={(value) => set("imageUrl", value)} fallback={dish?.imageKey ? dishImageSrc(dish) : undefined} />
+          <ImageField
+            value={draft.imageUrl}
+            onChange={(value) => set("imageUrl", value)}
+            fallback={dish?.imageKey ? dishImageSrc(dish) : undefined}
+            onFind={aiAvailable ? () => actions.images(draft.name.trim()) : undefined}
+            canFind={draft.name.trim().length >= 2}
+          />
 
           <div className="flex flex-col gap-2">
             <Field label="Navn" error={errors.name}>

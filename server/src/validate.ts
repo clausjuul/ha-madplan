@@ -4,6 +4,7 @@ import { PHOTO_DATA_URL } from "./store-photos.ts";
 import type {
   DiscoverInput,
   DishDraftInput,
+  DishImagesInput,
   DishInput,
   DishReadInput,
   DraftDayPatch,
@@ -109,6 +110,11 @@ export function dishReadInput(value: unknown): DishReadInput {
     return { images };
   }
   throw badRequest("Giv et link, en tekst eller billeder.");
+}
+
+export function dishImagesInput(value: unknown): DishImagesInput {
+  const o = rec(value, "Ret");
+  return { name: str(o.name, "Navn", { min: 2, max: 130 }) };
 }
 
 export function dishDraftInput(value: unknown): DishDraftInput {

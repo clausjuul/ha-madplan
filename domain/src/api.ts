@@ -89,6 +89,7 @@ export type SuggestDayInput = { seed: number };
 // POST api/dishes/:id/restore                    -> Dish
 // POST api/dishes/read            body DishReadInput  -> DishPreview (nothing is saved; 422 if no recipe was found)
 // POST api/dishes/draft           body DishDraftInput -> DishPreview (AI; nothing is saved; 422 without OpenAI)
+// POST api/dishes/images          body DishImagesInput -> DishImagesResult (AI web search; 422 without OpenAI)
 export type DishInput = Omit<Dish, "id" | "archivedAt" | "custom">;
 /**
  * A recipe to read: a link to a recipe page, pasted text, or photos (data: URLs, at most 3) of e.g.
@@ -98,6 +99,11 @@ export type DishInput = Omit<Dish, "id" | "archivedAt" | "custom">;
 export type DishReadInput = { url: string } | { text: string } | { images: string[] };
 /** Makes a dish from its name, e.g. "Mormors frikadeller". `note` is an optional wish ("med kartoffelmos"). */
 export type DishDraftInput = { name: string; note?: string };
+/** Photos to choose from for a dish without one, found on recipe pages on the web. */
+export type DishImagesInput = { name: string };
+/** `imageUrl` is the photo from the recipe data of `sourceUrl`, a page the server fetched itself. */
+export type DishImageSuggestion = { imageUrl: string; sourceUrl: string };
+export type DishImagesResult = { images: DishImageSuggestion[] };
 /**
  * A dish ready for the form, not saved yet. `how` says where it came from: the page's structured data
  * ("structured", then `review` tells what the recipe check corrected), read by AI from a page, text or

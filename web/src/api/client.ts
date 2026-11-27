@@ -10,6 +10,8 @@ import type {
   WeeklyPlansResponse,
   Dish,
   DishDraftInput,
+  DishImagesInput,
+  DishImagesResult,
   DishInput,
   DishPreview,
   DishReadInput,
@@ -76,6 +78,8 @@ export interface ApiClient {
   readDish(input: DishReadInput): Promise<DishPreview>;
   /** AI writes a dish from its name into a preview; nothing is saved. */
   draftDish(input: DishDraftInput): Promise<DishPreview>;
+  /** AI web search for photos of a dish, to choose from; nothing is saved. */
+  findDishImages(input: DishImagesInput): Promise<DishImagesResult>;
 
   getShopping(query?: ShoppingQuery): Promise<ShoppingList>;
   toggleShoppingItem(itemId: string): Promise<ShoppingList>;

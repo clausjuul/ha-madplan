@@ -3,6 +3,7 @@ import type {
   BootstrapResponse,
   Dish,
   DishDraftInput,
+  DishImageSuggestion,
   DishInput,
   DishPreview,
   DishReadInput,
@@ -35,6 +36,7 @@ export function useDishActions() {
     // Previews only: nothing changes until `create`.
     read: (input: DishReadInput): Promise<DishPreview> => api.readDish(input),
     draft: (input: DishDraftInput): Promise<DishPreview> => api.draftDish(input),
+    images: async (name: string): Promise<DishImageSuggestion[]> => (await api.findDishImages({ name })).images,
     importInspiration: (recipe: InspirationRecipe): Promise<ImportedDish> => after(api.importInspiration(recipe)),
     saveInspirations: (recipes: InspirationRecipe[]): Promise<InspirationRecipe[]> =>
       after(api.saveInspirations(recipes)),

@@ -20,6 +20,7 @@ type LibraryMethods = Pick<
   | "restoreDish"
   | "readDish"
   | "draftDish"
+  | "findDishImages"
   | "discover"
   | "importInspiration"
   | "saveInspirations"
@@ -173,6 +174,18 @@ export function createFakeLibrary({ state, wait, emit, onImported, openai }: Con
         return { dish: { ...demo, name: "Demo: Ret fra billedet", sourceUrl: undefined, imageUrl: undefined, generated: true }, how: "recognized", photo: 0 };
       }
       return { dish: { ...demo, name: "Demo: Ret fra kogebogen", sourceUrl: undefined }, how: "read" };
+    },
+    async findDishImages({ name }) {
+      await wait();
+      if (!openai) throw new ApiRequestError(422, "unprocessable", "Det kræver en OpenAI-nøgle under appens indstillinger i Home Assistant.");
+      // "ingen" in the name finds nothing in the demo.
+      if (/ingen/iu.test(name)) return { images: [] };
+      return {
+        images: ["carbonara", "chili-con-carne", "burgere"].map((key) => ({
+          imageUrl: `images/dishes/${key}.jpg`,
+          sourceUrl: `https://opskrifter.example.dk/${key}`,
+        })),
+      };
     },
     async draftDish({ name }) {
       await wait();
