@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.25.0
+
+- feat(dishes): one "Tilføj ret" button; adding several at once is gone
+
 ## 0.24.0
 
 - feat(dishes): add recipes from text and photos, AI fill, several at once
