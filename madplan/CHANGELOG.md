@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.27.0
+
+- feat(dishes): a photo of the food itself becomes a dish
+
 ## 0.26.0
 
 - feat(dishes): redesigned "Tilføj ret" flow in one sheet
