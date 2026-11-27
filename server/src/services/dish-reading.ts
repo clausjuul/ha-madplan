@@ -57,7 +57,9 @@ export async function readDish(
   if ("url" in input) return preview(await recipeFromUrl(deps, input.url, { review: true, signal }));
   const source = "text" in input ? { text: input.text } : { images: input.images };
   const read = await readRecipe(deps.openai, deps.config.planModel, source, dishAiContext(deps), signal);
-  return preview({ recipe: read.recipe, how: read.recognized ? "recognized" : "read", photo: read.dishPhoto });
+  // A recipe the AI wrote itself: for the dish on a photo, or from a description in the text.
+  const how = !read.recognized ? "read" : "images" in input ? "recognized" : "drafted";
+  return preview({ recipe: read.recipe, how, photo: read.dishPhoto });
 }
 
 export async function draftDishPreview(

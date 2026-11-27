@@ -96,7 +96,8 @@ const IMAGE_DATA_URL = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/
 export function dishReadInput(value: unknown): DishReadInput {
   const o = rec(value, "Opskrift");
   if (o.url !== undefined) return { url: str(o.url, "Link", { min: 8, max: 1000 }) };
-  if (o.text !== undefined) return { text: str(o.text, "Tekst", { min: 20, max: 30_000 }) };
+  // A whole recipe, or just a description of a dish ("lasagne med spinat").
+  if (o.text !== undefined) return { text: str(o.text, "Tekst", { min: 3, max: 30_000 }) };
   if (o.images !== undefined) {
     const images = list(o.images, "Billeder", (entry) => {
       if (typeof entry !== "string" || entry.length > MAX_IMAGE_CHARS || !IMAGE_DATA_URL.test(entry)) {

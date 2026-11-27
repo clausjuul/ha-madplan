@@ -77,6 +77,7 @@ describe("fake client: reading and writing dishes", () => {
     expect((await client.readDish({ url: "https://opskrifter.example.dk/x" })).how).toBe("structured");
     expect((await client.readDish({ url: "https://blog.dk/x" })).how).toBe("read");
     expect((await client.readDish({ text: "Suppe\n1 l bouillon\n2 gulerødder" })).dish.ingredients).toEqual(["1 l bouillon", "2 gulerødder"]);
+    expect(await client.readDish({ text: "linsesuppe, gerne stærk" })).toMatchObject({ how: "drafted", dish: { name: "Linsesuppe", generated: true } });
     expect(await client.readDish({ images: ["data:image/jpeg;base64,AA=="] })).toMatchObject({ how: "recognized", photo: 0, dish: { generated: true } });
     expect((await client.readDish({ images: ["data:image/jpeg;base64,AA==", "data:image/jpeg;base64,AA=="] })).how).toBe("read");
     expect((await client.draftDish({ name: "frikadeller" })).dish).toMatchObject({ name: "Frikadeller", generated: true });

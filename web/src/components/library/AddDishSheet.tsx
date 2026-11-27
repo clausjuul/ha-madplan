@@ -111,8 +111,8 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
       void read({ url: pasted.trim() }, "start", `Henter opskriften fra ${what.host}…`);
     } else if (!aiAvailable) {
       setError("Det ligner ikke et link. Tekst kan kun læses med en OpenAI-nøgle.");
-    } else if (pasted.trim().length < 20) {
-      setError("Indsæt hele opskriften med ingredienser.");
+    } else if (pasted.trim().length < 3) {
+      setError("Skriv lidt mere om retten.");
     } else {
       void read({ text: pasted.trim() }, "start", "Læser opskriften…");
     }
@@ -221,15 +221,17 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
       ) : (
         <form key="start" onSubmit={fetchPasted} noValidate className="step-in flex flex-col gap-4 px-3 pb-2">
           <Field
-            label={aiAvailable ? "Link eller opskrift" : "Link til opskrift"}
+            label={aiAvailable ? "Link, opskrift eller beskrivelse" : "Link til opskrift"}
             error={error}
             hint={
               what.kind === "url"
                 ? `Link til ${what.host}`
                 : what.kind === "text"
-                  ? `Tekst på ${what.lines} ${what.lines === 1 ? "linje" : "linjer"}. AI finder navn, ingredienser og fremgangsmåde.`
+                  ? what.lines > 2
+                    ? `Tekst på ${what.lines} linjer. AI læser opskriften.`
+                    : "AI skriver en opskrift ud fra beskrivelsen, eller læser opskriften, hvis det er en."
                   : aiAvailable
-                    ? "Indsæt et link til en opskriftsside, eller kopiér hele opskriften ind."
+                    ? "Indsæt et link eller en hel opskrift, eller beskriv retten med dine egne ord."
                     : "Virker med opskriftssider, der har struktureret opskriftsdata."
             }
           >
@@ -239,7 +241,7 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
                 onChange={(event) => setPasted(event.target.value)}
                 rows={what.kind === "text" ? 8 : 3}
                 maxLength={30_000}
-                placeholder="https://… eller hele opskriften"
+                placeholder="Et link, en hel opskrift, eller fx “kyllingegryde med kokosmælk, hurtig”"
                 className={`${inputClass} h-auto resize-none py-3 leading-relaxed`}
               />
             ) : (

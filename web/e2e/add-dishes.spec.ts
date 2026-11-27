@@ -24,7 +24,7 @@ test("en opskrift fra et link ses igennem og gemmes først ved Gem ret", async (
   await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
   await noSeriousAxe(page, "tilføj opskrift");
-  await sheet.getByLabel("Link eller opskrift").fill("https://opskrifter.example.dk/linsesuppe");
+  await sheet.getByLabel("Link, opskrift eller beskrivelse").fill("https://opskrifter.example.dk/linsesuppe");
   await expect(sheet.getByText("Link til opskrifter.example.dk")).toBeVisible();
   await sheet.getByRole("button", { name: "Hent opskrift" }).click();
 
@@ -42,7 +42,7 @@ test("en opskrift i tekst læses af AI", async ({ page }) => {
   await page.getByRole("button", { name: "Tilføj ret" }).click();
   const sheet = page.getByRole("dialog");
   const recipe = "Gulerodssuppe\n1 kg gulerødder\n1 l bouillon\nKog og blend.";
-  await sheet.getByLabel("Link eller opskrift").fill(recipe);
+  await sheet.getByLabel("Link, opskrift eller beskrivelse").fill(recipe);
   await expect(sheet.getByText(/Tekst på 4 linjer/u)).toBeVisible();
   await sheet.getByRole("button", { name: "Hent opskrift" }).click();
   const form = page.getByRole("dialog", { name: "Se opskriften igennem" });
@@ -51,7 +51,20 @@ test("en opskrift i tekst læses af AI", async ({ page }) => {
   await expect(form.getByLabel("Ingredienser")).toHaveValue("1 kg gulerødder\n1 l bouillon");
   // Back to the start, with the pasted text still there.
   await form.getByRole("button", { name: "Tilbage" }).click();
-  await expect(page.getByRole("dialog", { name: "Tilføj ret" }).getByLabel("Link eller opskrift")).toHaveValue(recipe);
+  await expect(page.getByRole("dialog", { name: "Tilføj ret" }).getByLabel("Link, opskrift eller beskrivelse")).toHaveValue(recipe);
+});
+
+test("en beskrivelse af en ret bliver til en opskrift", async ({ page }) => {
+  await open(page);
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
+  const sheet = page.getByRole("dialog");
+  await sheet.getByLabel("Link, opskrift eller beskrivelse").fill("kyllingegryde med kokosmælk, gerne hurtig");
+  await expect(sheet.getByText(/AI skriver en opskrift ud fra beskrivelsen/u)).toBeVisible();
+  await sheet.getByRole("button", { name: "Hent opskrift" }).click();
+  const form = page.getByRole("dialog", { name: "Se opskriften igennem" });
+  await expect(form.getByText(/AI har skrevet opskriften/u)).toBeVisible();
+  await expect(form.getByLabel("Navn")).toHaveValue("Kyllingegryde med kokosmælk");
+  await expect(form.getByLabel("Ingredienser")).not.toHaveValue("");
 });
 
 test("Ny ret: AI udfylder resten ud fra navnet og advarer om dubletter", async ({ page }) => {

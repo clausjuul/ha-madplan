@@ -157,7 +157,15 @@ export function createFakeLibrary({ state, wait, emit, onImported, openai }: Con
       if ("text" in input) {
         const lines = input.text.split(/\n+/u).map((line) => line.trim()).filter(Boolean);
         const ingredients = lines.filter((line) => /^\d/u.test(line));
-        if (ingredients.length === 0) throw new ApiRequestError(422, "unprocessable", "Jeg kunne ikke finde en opskrift i teksten.");
+        if (ingredients.length === 0) {
+          // A description of a dish: the AI writes a recipe for it.
+          if (/fejl/iu.test(input.text)) throw new ApiRequestError(422, "unprocessable", "Jeg kunne hverken finde en opskrift i teksten eller skrive en ud fra den. Beskriv retten lidt nærmere.");
+          const name = input.text.trim().split(/[,.\n]/u)[0] ?? input.text.trim();
+          return {
+            dish: { ...demo, name: name.charAt(0).toLocaleUpperCase("da-DK") + name.slice(1), sourceUrl: undefined, generated: true },
+            how: "drafted",
+          };
+        }
         return { dish: { ...demo, name: lines[0] ?? "Ret fra tekst", ingredients, sourceUrl: undefined }, how: "read" };
       }
       // In the demo one photo is a photo of the food, several are pages of a cookbook.

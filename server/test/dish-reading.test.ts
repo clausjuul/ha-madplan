@@ -141,7 +141,7 @@ describe("reading a recipe from text or photos", () => {
     expect((await call("POST", "dishes/read", { images: [photo, photo, photo, photo] })).status).toBe(400);
     expect((await call("POST", "dishes/read", { images: ["data:image/svg+xml;base64,PHN2Zz4="] })).status).toBe(400);
     expect((await call("POST", "dishes/read", { images: ["https://example.dk/foto.jpg"] })).status).toBe(400);
-    expect((await call("POST", "dishes/read", { text: "for kort" })).status).toBe(400);
+    expect((await call("POST", "dishes/read", { text: "ab" })).status).toBe(400);
     expect((await call("POST", "dishes/read", {})).status).toBe(400);
   });
 
@@ -165,6 +165,23 @@ describe("reading a recipe from text or photos", () => {
     expect(page.how).toBe("read");
     expect(page.dish.generated).toBeUndefined();
     expect(page.photo).toBeUndefined();
+  });
+
+  it("writes a recipe from a description of a dish", async () => {
+    const ai = fakeAi();
+    ai.next(answer({ recognized: true, name: "kyllingegryde med kokosmælk" }));
+    ai.next(answer({ found: false, ingredients: [] }));
+    const { json, call } = setup({ openai: ai });
+
+    const preview = await json<DishPreview>("POST", "dishes/read", { text: "kyllingegryde med kokosmælk, hurtig" });
+    expect(preview).toMatchObject({ how: "drafted", dish: { name: "Kyllingegryde med kokosmælk", generated: true } });
+    expect(preview.photo).toBeUndefined();
+    expect(ai.calls[0]?.instructions).toMatch(/kort beskrivelse af en ret/u);
+    expect(ai.calls[0]?.input).toContain("kokosmælk, hurtig");
+
+    const nothing = await call("POST", "dishes/read", { text: "hvad er klokken" });
+    expect(nothing.status).toBe(422);
+    expect(((await nothing.json()) as { message: string }).message).toMatch(/Beskriv retten/u);
   });
 
   it("needs OpenAI for text and photos", async () => {
