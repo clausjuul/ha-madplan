@@ -135,7 +135,7 @@ const v1 = {
 
 describe("import/export", () => {
   it("imports a v1 state into an empty database and exposes it", async () => {
-    const { json } = setup();
+    const { json } = setup({ noDishes: true });
     const result = await json<ImportResult>("POST", "import/v1", v1);
     expect(result.counts).toMatchObject({ meals: 2, profiles: 1 });
     expect(result.counts.dishes).toBeGreaterThanOrEqual(2);
@@ -145,6 +145,9 @@ describe("import/export", () => {
     expect(boot.meals["2026-11-02"]).toMatchObject({ locked: true, note: "Mums" });
     expect(boot.dishes.find((d) => d.id === "own-1")?.name).toBe("Familiens gryde");
     expect(boot.dishes.find((d) => d.id === "tacos")?.archivedAt).toBeTruthy();
+    // A retired built-in that a v1 meal used comes along as an archived dish of the household.
+    expect(boot.dishes.find((d) => d.id === "lasagne")).toMatchObject({ name: "Lasagne", custom: true });
+    expect(boot.dishes.find((d) => d.id === "lasagne")?.archivedAt).toBeTruthy();
     expect(boot.fridge).toEqual([{ name: "tomater", quantity: "3 stk.", useFirst: true }]);
     expect(boot.pantry).toEqual(["salt"]);
     expect(boot.settings.globalExclusions).toEqual(["rejer", "nødder"]);
@@ -154,7 +157,7 @@ describe("import/export", () => {
   });
 
   it("refuses import into a non-empty database (409) and malformed input (422)", async () => {
-    const { json, call, app } = setup();
+    const { json, call, app } = setup({ noDishes: true });
     const bad = await call("POST", "import/v1", { hej: "verden" });
     expect(bad.status).toBe(422);
     expect(((await bad.json()) as ApiError).message).toMatch(/format/u);
@@ -167,7 +170,7 @@ describe("import/export", () => {
   });
 
   it("rolls back the whole import when something fails midway", async () => {
-    const { call, repo } = setup();
+    const { call, repo } = setup({ noDishes: true });
     repo.db.exec("CREATE TRIGGER fail_pantry BEFORE INSERT ON pantry BEGIN SELECT RAISE(ABORT, 'boom'); END");
     const response = await call("POST", "import/v1", v1);
     expect(response.status).toBe(500);

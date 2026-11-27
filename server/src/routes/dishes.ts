@@ -6,7 +6,7 @@ import { markReviewed, reviewRecipe } from "../ai/recipe-review.ts";
 import type { Deps } from "../deps.ts";
 import { notFound } from "../errors.ts";
 import { readJson } from "../http.ts";
-import { findDish, isBuiltinDish, saveDish } from "../store-dishes.ts";
+import { findDish, saveDish } from "../store-dishes.ts";
 import { dishInput } from "../validate.ts";
 import { rec, str } from "../validate-basic.ts";
 
@@ -40,8 +40,7 @@ export function dishRoutes(api: Hono, deps: Deps): void {
   api.put("/dishes/:id", async (c) => {
     const existing = need(c.req.param("id"));
     const input = dishInput(await readJson(c));
-    const dish: Dish = { ...input, id: existing.id };
-    if (existing.custom || !isBuiltinDish(existing.id)) dish.custom = true;
+    const dish: Dish = { ...input, id: existing.id, custom: true };
     if (existing.archivedAt) dish.archivedAt = existing.archivedAt;
     return c.json(store(dish));
   });

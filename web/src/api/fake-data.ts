@@ -1,5 +1,5 @@
 import {
-  DISHES,
+  LEGACY_DISHES,
   addDaysToKey,
   dateKey,
   parseDateKey,
@@ -117,7 +117,7 @@ export function seedFakeState(today: string): FakeState {
 
   return {
     meals,
-    dishes: [...DISHES, GENERATED_DISH, HOME_DISH],
+    dishes: [...LEGACY_DISHES, GENERATED_DISH, HOME_DISH],
     profiles: [profile("p1", "Mor"), profile("p2", "Far"), profile("p3", "Alexander")],
     fridge,
     pantry: ["salt", "peber", "olie", "mel"],

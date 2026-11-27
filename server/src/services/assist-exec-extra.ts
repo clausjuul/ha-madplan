@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { addDaysToKey, daysBetween, extraItemId, normalizeItem } from "@madplan/domain";
 import type { AssistAction, ChangeTopic, Dish, Meal, Profile } from "@madplan/domain";
 import type { DatabaseSync } from "node:sqlite";
-import { findDish, isBuiltinDish, saveDish } from "../store-dishes.ts";
+import { findDish, saveDish } from "../store-dishes.ts";
 import {
   getPantry,
   getProfiles,
@@ -111,7 +111,7 @@ export function writeExtra(db: DatabaseSync, action: ExtraAction, nowIso: string
     case "updateDish": {
       const dish = findDish(db, action.dishId);
       if (!dish) return;
-      saveDish(db, { ...dish, ...action.changes, ...(isBuiltinDish(dish.id) && !dish.custom ? {} : { custom: true }) });
+      saveDish(db, { ...dish, ...action.changes, custom: true });
       return;
     }
     case "archiveDish": {

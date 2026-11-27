@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISHES, DISH_BY_ID, INSPIRATION_CUISINES, INSPIRATION_RECIPES } from "../src/index.ts";
+import { LEGACY_DISHES, LEGACY_DISH_BY_ID, INSPIRATION_CUISINES, INSPIRATION_RECIPES } from "../src/index.ts";
 
 const TRUSTED_DOMAINS = new Set([
   "arla.dk",
@@ -42,21 +42,21 @@ describe("inspiration catalog", () => {
   });
 });
 
-describe("dish catalog", () => {
+describe("legacy dish catalog", () => {
   it("has unique ids and complete, well-formed dishes", () => {
-    expect(DISHES.length).toBeGreaterThanOrEqual(25);
-    expect(new Set(DISHES.map((d) => d.id)).size).toBe(DISHES.length);
-    for (const d of DISHES) {
+    expect(LEGACY_DISHES.length).toBeGreaterThanOrEqual(25);
+    expect(new Set(LEGACY_DISHES.map((d) => d.id)).size).toBe(LEGACY_DISHES.length);
+    for (const d of LEGACY_DISHES) {
       expect(d.name, d.id).not.toBe("");
       expect(d.prepMinutes, d.id).toBeGreaterThan(0);
       expect(d.imageKey, d.id).toBe(d.id);
       expect(d.imageUrl, d.id).toBeUndefined();
       expect(d.archivedAt, d.id).toBeUndefined();
     }
-    expect(DISH_BY_ID.get("lasagne")?.name).toBe("Lasagne");
+    expect(LEGACY_DISH_BY_ID.get("lasagne")?.name).toBe("Lasagne");
   });
 
   it("carries cooking steps for the classic dishes", () => {
-    expect(DISH_BY_ID.get("lasagne")?.instructions?.length).toBeGreaterThan(3);
+    expect(LEGACY_DISH_BY_ID.get("lasagne")?.instructions?.length).toBeGreaterThan(3);
   });
 });

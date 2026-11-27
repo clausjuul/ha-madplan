@@ -107,7 +107,9 @@ export function OurDishes({ data, today, onCreate, onImportUrl }: Props) {
 
       {visible.length === 0 ? (
         <p className="rounded-3xl bg-surface p-8 text-center text-[15px] text-ink-2">
-          Ingen retter matcher. Prøv en anden søgning, eller opret en ny ret.
+          {active.length === 0
+            ? "I har ingen retter endnu. Opret en ny ret, importér en opskrift fra et link, eller find idéer under Opdag."
+            : "Ingen retter matcher. Prøv en anden søgning, eller opret en ny ret."}
         </p>
       ) : (
         <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 md:grid-cols-[repeat(auto-fill,minmax(210px,1fr))] md:gap-4">

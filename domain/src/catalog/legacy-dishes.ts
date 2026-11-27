@@ -1,7 +1,13 @@
 import type { Dish } from "../types.ts";
-import { DISH_INSTRUCTIONS } from "./dish-instructions.ts";
+import { DISH_INSTRUCTIONS } from "./legacy-dish-instructions.ts";
 
-export const DISHES: readonly Dish[] = [
+/**
+ * The dishes the app used to ship as a built-in catalogue (until v0.23). The app no longer offers
+ * them: households keep their own dishes in the database. They remain only so installations from
+ * before the change keep them as archived dishes (see server retireBuiltinDishes), and so v1 imports
+ * that point at their ids still resolve.
+ */
+export const LEGACY_DISHES: readonly Dish[] = [
   dish(
     "pasta-bolognese",
     "Pasta bolognese",
@@ -375,6 +381,6 @@ function dish(
   };
 }
 
-export const DISH_BY_ID: ReadonlyMap<string, Dish> = new Map(
-  DISHES.map((dishItem) => [dishItem.id, dishItem]),
+export const LEGACY_DISH_BY_ID: ReadonlyMap<string, Dish> = new Map(
+  LEGACY_DISHES.map((dishItem) => [dishItem.id, dishItem]),
 );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISHES } from "@madplan/domain";
+import { LEGACY_DISHES } from "@madplan/domain";
 import type { ApiError, BootstrapResponse, PlanDraftRecord, PlanRequest } from "@madplan/domain";
 import { AiError } from "../src/ai/openai.ts";
 import { addSwapOuts, getSwapOuts } from "../src/store-drafts.ts";
@@ -112,7 +112,7 @@ describe("local plan drafts", () => {
     await json("POST", `plan-drafts/${draft.id}/regenerate`, { dates: [day0.date] });
     expect(swaps()).toEqual([current.days[0]?.dishId]);
 
-    const picked = DISHES.find((dish) => !current.days.some((day) => day.dishId === dish.id))!;
+    const picked = LEGACY_DISHES.find((dish) => !current.days.some((day) => day.dishId === dish.id))!;
     await json("PATCH", `plan-drafts/${draft.id}/days/${day1.date}`, { dishId: picked.id });
     expect(swaps()).toEqual([current.days[0]?.dishId, current.days[1]?.dishId]);
 
@@ -132,7 +132,7 @@ describe("local plan drafts", () => {
   it("saves new dishes proposed by a draft as custom dishes on apply, and never overwrites locked meals", async () => {
     const { json, repo } = setup();
     const draft = await json<PlanDraftRecord>("POST", "plan-drafts", request({ dayCount: 2 }));
-    const newDish = { ...DISHES[0]!, id: "ai-ny-ret", name: "Ny ret", custom: undefined };
+    const newDish = { ...LEGACY_DISHES[0]!, id: "ai-ny-ret", name: "Ny ret", custom: undefined };
     const stored: PlanDraftRecord = {
       ...draft,
       days: [{ date: "2026-11-09", newDish, reason: "Ny", locked: false, source: "ai" }, ...draft.days.slice(1)],
@@ -301,7 +301,7 @@ describe("god tid and variants in drafts", () => {
       request({ maxPrepMinutes: 30, relaxedDates: [relaxed] }),
     );
     expect(draft.request.relaxedDates).toEqual([relaxed]);
-    const prep = (id: string | undefined) => DISHES.find((dish) => dish.id === id)?.prepMinutes ?? 0;
+    const prep = (id: string | undefined) => LEGACY_DISHES.find((dish) => dish.id === id)?.prepMinutes ?? 0;
     for (const day of draft.days) if (day.date !== relaxed) expect(prep(day.dishId)).toBeLessThanOrEqual(30);
     expect(draft.review?.checks.find((check) => check.id === "prepTime")?.status).toBe("ok");
   });

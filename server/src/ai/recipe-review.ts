@@ -7,7 +7,7 @@
 import { cleanIngredientLine, parseIngredient, type RecipeReview } from "@madplan/domain";
 import type { DatabaseSync } from "node:sqlite";
 import type { Deps } from "../deps.ts";
-import { findDish, saveDish, storedDishes } from "../store-dishes.ts";
+import { allDishes, findDish, saveDish } from "../store-dishes.ts";
 import type { OpenAiClient } from "./openai.ts";
 import { FENCE_RULE, fenced, newFence, type Prompt } from "./prompt.ts";
 import type { ParsedRecipe } from "./recipe-import.ts";
@@ -138,7 +138,7 @@ export async function reviewEarlierImports(deps: Pick<Deps, "repo" | "openai" | 
   const { db } = deps.repo;
   const done = reviewedIds(db);
   const changed: string[] = [];
-  for (const dish of storedDishes(db)) {
+  for (const dish of allDishes(db)) {
     if (!dish.sourceUrl || dish.archivedAt || done.has(dish.id)) continue;
     const { id, ...parsed } = dish;
     const { recipe, review } = await reviewRecipe(deps.openai, deps.config.planModel, parsed, AbortSignal.timeout(60_000));

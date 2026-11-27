@@ -51,7 +51,7 @@ describe("household collections", () => {
   });
 
   it("rolls back a failed mutation completely", async () => {
-    const { repo } = setup();
+    const { repo } = setup({ noDishes: true });
     expect(() =>
       repo.mutate(["meals"], () => {
         repo.db.prepare("INSERT INTO pantry (position, name) VALUES (1, 'x')").run();

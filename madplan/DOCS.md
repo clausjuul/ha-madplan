@@ -45,12 +45,15 @@ Uden OpenAI kan du stadig bruge alt andet. Hvis Home Assistant har en samtaleage
 
 ## Første start
 
-Madplan starter med et bibliotek af almindelige retter, så du kan komme i gang med det samme:
+Madplan starter uden retter, så det er jeres egne retter, der bliver planlagt med:
 
 1. Åbn **Indstillinger** (tandhjulet) og tilføj familiens medlemmer med kostønsker og fravalg.
 2. Vælg jeres butikker.
-3. Tryk **Planlæg** og lav et forslag til ugen.
-4. Åbn **Indkøb**, når planen er gemt.
+3. Tilføj jeres retter under **Retter**: opret dem selv, importér en opskrift fra et link, eller find idéer under **Opdag**. Med en OpenAI-nøgle kan **Planlæg** med Assist også finde nye retter til jer.
+4. Tryk **Planlæg** og lav et forslag til ugen.
+5. Åbn **Indkøb**, når planen er gemt.
+
+Tidligere fulgte der 24 standardretter med appen (lasagne, tacos, frikadeller og så videre). Har I brugt Madplan før version 0.24, ligger de nu under **Retter → Arkiveret**. Jeres tidligere uger og historik viser dem stadig, og I kan trykke **Gendan** på dem, I vil beholde.
 
 ## Flyt data fra den gamle "Meal Planner (Development)"
 

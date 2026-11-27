@@ -26,7 +26,7 @@ const RECIPE_HTML = `<html><head><script type="application/ld+json">${JSON.strin
 })}</script></head><body></body></html>`;
 
 describe("dishes", () => {
-  it("creates custom dishes, overrides built-ins and archives/restores", async () => {
+  it("creates and edits dishes, and archives/restores them", async () => {
     const { json, call } = setup();
     const created = await json<Dish>("POST", "dishes", newDish);
     expect(created.id).toMatch(/^custom-/u);

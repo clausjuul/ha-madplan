@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DISHES, containsTerm, createLocalSuggestions, daysInRange, matchingFridgeItems, rankAlternatives, eatenHistory, lastEatenByDish } from "../src/index.ts";
+import { LEGACY_DISHES, containsTerm, createLocalSuggestions, daysInRange, matchingFridgeItems, rankAlternatives, eatenHistory, lastEatenByDish } from "../src/index.ts";
 import type { MealMap, SuggestionInput } from "../src/index.ts";
 import { dish, meal, profile } from "./fixtures.ts";
 
 const days = daysInRange("2026-11-09", "2026-11-15");
-const base: SuggestionInput = { days, meals: {}, fridge: [], lastEaten: new Map(), seed: 1 };
+const base: SuggestionInput = { days, meals: {}, fridge: [], lastEaten: new Map(), seed: 1, dishes: LEGACY_DISHES };
 const ids = (result: { dishId?: string }[]) => result.map((item) => item.dishId);
 
 describe("createLocalSuggestions", () => {
@@ -115,7 +115,7 @@ describe("createLocalSuggestions", () => {
 
   it("honours a day-specific quick wish", () => {
     const result = createLocalSuggestions({ ...base, days: ["2026-11-09"], dayRequests: { "2026-11-09": "hurtig" } });
-    const chosen = DISHES.find((d) => d.id === result[0]?.dishId);
+    const chosen = LEGACY_DISHES.find((d) => d.id === result[0]?.dishId);
     expect(chosen?.prepMinutes).toBeLessThanOrEqual(30);
     expect(result[0]?.reason).toBe("Matcher ønsket til denne dag.");
   });
@@ -123,7 +123,7 @@ describe("createLocalSuggestions", () => {
   it("honours free text requests", () => {
     const result = createLocalSuggestions({ ...base, days: ["2026-11-09"], userRequest: "gerne noget med kebab" });
     expect(result[0]?.reason).toBe("Matcher ønsket, du skrev til madplanen.");
-    const chosen = DISHES.find((d) => d.id === result[0]?.dishId);
+    const chosen = LEGACY_DISHES.find((d) => d.id === result[0]?.dishId);
     expect([chosen?.name, ...(chosen?.ingredients ?? [])].join(" ").toLowerCase()).toContain("kebab");
   });
 

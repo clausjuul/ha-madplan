@@ -4,12 +4,12 @@ import { loadConfig } from "../src/config.ts";
 import { setup } from "./helpers.ts";
 
 describe("bootstrap and health", () => {
-  it("serves the built-in catalog on an empty database", async () => {
-    const { json } = setup();
+  it("starts without dishes on an empty database", async () => {
+    const { json } = setup({ noDishes: true });
     const data = await json<BootstrapResponse>("GET", "bootstrap");
     expect(data.isEmpty).toBe(true);
     expect(data.revision).toBe(0);
-    expect(data.dishes.length).toBeGreaterThan(20);
+    expect(data.dishes).toEqual([]);
     expect(data.capabilities).toEqual({ openai: false, homeAssistantAgent: false, offers: false });
     expect(await json("GET", "health")).toEqual({ ok: true, version: loadConfig({}, "./none.json").version });
   });

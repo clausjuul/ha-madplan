@@ -15,7 +15,7 @@ import { dirname, join } from "node:path";
 import { createPublisher } from "./ha/publisher.ts";
 import { offerSyncFor } from "./offers/sync.ts";
 import { Repo } from "./repo.ts";
-import { tidyImportedDishes } from "./store-dishes.ts";
+import { retireBuiltinDishes, tidyImportedDishes } from "./store-dishes.ts";
 import { reviewEarlierImports } from "./ai/recipe-review.ts";
 import { failInterruptedDrafts } from "./services/drafts.ts";
 import { fetchSupervisorTimeZone } from "./timezone.ts";
@@ -35,6 +35,8 @@ void setupVoice(config);
 const db = openDatabase(config.dbPath);
 const repo = new Repo(db);
 if (failInterruptedDrafts(repo) > 0) console.warn("Et afbrudt planudkast blev markeret som fejlet.");
+const retired = repo.mutate(["dishes", "shopping"], () => retireBuiltinDishes(db, new Date().toISOString()));
+if (retired > 0) console.log(`De ${retired} indbyggede retter er flyttet til arkivet under Vores retter.`);
 const tidied = repo.mutate(["dishes", "shopping"], () => tidyImportedDishes(db));
 if (tidied > 0) console.log(`Ryddede op i ${tidied} importerede opskrifter.`);
 const deps: Deps = {

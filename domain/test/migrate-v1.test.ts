@@ -226,7 +226,9 @@ describe("migrateV1: tolerated legacy shapes and problems", () => {
   it("accepts a sparse early v1 record", () => {
     const result = migrate({ version: 1, meals: { "2026-10-20": { dishId: "lasagne", status: "planned", note: "", locked: false } } });
     expect(result.data.meals["2026-10-20"]).toEqual({ dishId: "lasagne", locked: false, note: "", source: "manual" });
-    expect(result.data).toMatchObject({ dishes: [], profiles: [], fridge: [], pantry: [], shoppingLists: {}, savedInspirations: [] });
+    expect(result.data).toMatchObject({ profiles: [], fridge: [], pantry: [], shoppingLists: {}, savedInspirations: [] });
+    // The meal's dish was a built-in that no longer ships, so it comes along as an archived dish.
+    expect(result.data.dishes).toEqual([expect.objectContaining({ id: "lasagne", name: "Lasagne", custom: true, archivedAt: NOW })]);
     expect(result.data.settings).toEqual({ globalExclusions: [], preferredStores: [] });
     expect(result.warnings).toEqual([]);
   });

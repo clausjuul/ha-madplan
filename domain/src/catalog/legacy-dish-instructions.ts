@@ -1,4 +1,4 @@
-/** Cooking steps for the built-in dishes, keyed by dish id. */
+/** Cooking steps for the retired built-in dishes (see legacy-dishes.ts), keyed by dish id. */
 export const DISH_INSTRUCTIONS: Record<string, string[]> = {
   "pasta-bolognese": [
     "Hak løg og gulerødder fint, og steg dem bløde i lidt olie.",

@@ -16,7 +16,7 @@ export * from "./plan-signals.ts";
 export * from "./suggest.ts";
 export * from "./variants.ts";
 export * from "./migrate-v1.ts";
-export { DISHES, DISH_BY_ID } from "./catalog/dishes.ts";
+export { LEGACY_DISHES, LEGACY_DISH_BY_ID } from "./catalog/legacy-dishes.ts";
 export { INSPIRATION_RECIPES } from "./catalog/inspiration.ts";
 export type * from "./api.ts";
 export * from "./offers.ts";

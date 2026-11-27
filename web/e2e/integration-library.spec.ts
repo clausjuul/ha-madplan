@@ -29,15 +29,16 @@ test("@integration importerer v1, opretter, arkiverer og gendanner en ret", asyn
   await dialog.getByRole("button", { name: "Gem ret" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Integrationsgryde" })).toBeVisible();
 
-  // 4. Archive it (history is kept) and find it under "Arkiveret".
+  // 4. Archive it (history is kept) and find it under "Arkiveret", next to the fixture's lasagne: a
+  //    built-in that no longer ships, so the import kept it as an archived dish.
   await page.getByRole("button", { name: "Arkivér" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Arkivér" }).click();
   await expect(page.getByRole("button", { name: "Ny ret" })).toBeVisible();
-  await page.getByRole("button", { name: /Arkiveret \(1\)/u }).click();
+  await page.getByRole("button", { name: /Arkiveret \(2\)/u }).click();
   await expect(page.getByRole("link", { name: "Integrationsgryde" })).toBeVisible();
 
   // 5. Restore it.
-  await page.getByRole("button", { name: "Gendan" }).click();
+  await page.getByRole("listitem").filter({ hasText: "Integrationsgryde" }).getByRole("button", { name: "Gendan" }).click();
   await expect(page.getByRole("heading", { name: "Integrationsgryde" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Arkiveret/u })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Arkiveret \(1\)/u })).toBeVisible();
 });

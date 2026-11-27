@@ -3,10 +3,13 @@ import { AiError, noOpenAi } from "../src/ai/openai.ts";
 import type { AiRequest, AiResponse, OpenAiClient } from "../src/ai/openai.ts";
 import { loadConfig } from "../src/config.ts";
 import type { Config } from "../src/config.ts";
+import type { DatabaseSync } from "node:sqlite";
 import { openDatabase } from "../src/db.ts";
 import { Jobs } from "../src/deps.ts";
 import type { Deps } from "../src/deps.ts";
 import { Repo } from "../src/repo.ts";
+import { saveDish } from "../src/store-dishes.ts";
+import { LEGACY_DISHES } from "@madplan/domain";
 
 /** Monday 9 November 2026, noon in Copenhagen (11:00 UTC), independent of the machine's own zone. */
 export const NOW = new Date(Date.UTC(2026, 10, 9, 11, 0, 0));
@@ -51,14 +54,23 @@ export type TestOptions = {
   now?: Date;
   /** Reuse an existing repo (simulates a server restart on the same database). */
   repo?: Repo;
+  /** Start without the seeded dishes, like a new installation. */
+  noDishes?: boolean;
 };
+
+/** An in-memory database holding the old built-in dishes as the household's own, which most tests plan with. */
+export function testDatabase(options: { dishes?: boolean } = {}): DatabaseSync {
+  const db = openDatabase(":memory:");
+  if (options.dishes !== false) for (const dish of LEGACY_DISHES) saveDish(db, dish);
+  return db;
+}
 
 export function setup(options: TestOptions = {}) {
   const config: Config = {
     ...loadConfig({ MADPLAN_ALLOW_ANY_ORIGIN: "1", TZ: "Europe/Copenhagen", MADPLAN_WEB_DIR: "./does-not-exist", ...options.env }, "./no-options.json"),
     ...options.config,
   };
-  const repo = options.repo ?? new Repo(openDatabase(":memory:"));
+  const repo = options.repo ?? new Repo(testDatabase({ dishes: !options.noDishes }));
   const deps: Deps = {
     repo,
     config,

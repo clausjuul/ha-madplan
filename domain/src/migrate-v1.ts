@@ -3,7 +3,7 @@
  * Tolerates the sparse/legacy shapes accepted by the old normalizeMealPlanState/readState, and reports
  * everything that has no place in v2 as a Danish warning instead of failing.
  */
-import { DISH_BY_ID } from "./catalog/dishes.ts";
+import { LEGACY_DISH_BY_ID } from "./catalog/legacy-dishes.ts";
 import { INSPIRATION_RECIPES } from "./catalog/inspiration.ts";
 import { isDateKey } from "./dates.ts";
 import { parseExclusionTerms } from "./exclusions.ts";
@@ -57,10 +57,11 @@ export function migrateV1(input: unknown, options: MigrationOptions): MigrationR
   }
   const warnings: string[] = [];
   const dishes = migrateDishes(input, options.now, warnings);
-  const known = new Set([...DISH_BY_ID.keys(), ...dishes.map((dish) => dish.id)]);
+  const known = new Set([...LEGACY_DISH_BY_ID.keys(), ...dishes.map((dish) => dish.id)]);
+  const meals = migrateMeals(input, known, warnings);
   const data: MadplanData = {
-    meals: migrateMeals(input, known, warnings),
-    dishes,
+    meals,
+    dishes: [...dishes, ...retiredDishesIn(meals, dishes, options.now)],
     profiles: migrateProfiles(input.household, warnings),
     fridge: migrateFridge(input, warnings),
     pantry: dedupe(strings(input.pantryStaples).map((item) => item.trim()).filter(Boolean)),
@@ -138,12 +139,35 @@ function migrateDishes(input: Rec, now: string, warnings: string[]): Dish[] {
   }
   for (const id of dedupe(strings(input.hiddenDishIds))) {
     const custom = result.get(id);
-    const builtIn = DISH_BY_ID.get(id);
+    const builtIn = LEGACY_DISH_BY_ID.get(id);
     if (custom) result.set(id, { ...custom, archivedAt: now });
-    else if (builtIn) result.set(id, { ...builtIn, ingredients: [...builtIn.ingredients], archivedAt: now });
+    else if (builtIn) result.set(id, retired(builtIn, now));
     else warnings.push(`Skjult ret "${id}" findes ikke længere og blev ignoreret.`);
   }
   return [...result.values()];
+}
+
+/** v1 shipped built-in dishes that no longer exist; meals that used one keep it as an archived dish. */
+function retiredDishesIn(meals: MealMap, dishes: readonly Dish[], now: string): Dish[] {
+  const have = new Set(dishes.map((dish) => dish.id));
+  const result: Dish[] = [];
+  for (const meal of Object.values(meals)) {
+    const builtIn = LEGACY_DISH_BY_ID.get(meal.dishId);
+    if (!builtIn || have.has(builtIn.id)) continue;
+    have.add(builtIn.id);
+    result.push(retired(builtIn, now));
+  }
+  return result;
+}
+
+function retired(dish: Dish, now: string): Dish {
+  return {
+    ...dish,
+    ingredients: [...dish.ingredients],
+    ...(dish.instructions ? { instructions: [...dish.instructions] } : {}),
+    custom: true,
+    archivedAt: now,
+  };
 }
 
 function migrateMeals(input: Rec, known: ReadonlySet<string>, warnings: string[]): MealMap {

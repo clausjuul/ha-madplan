@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { DISHES, cleanIngredientLine } from "@madplan/domain";
+import { LEGACY_DISHES, cleanIngredientLine } from "@madplan/domain";
 import type { Dish } from "@madplan/domain";
 import { all, flag, one, optNumeric, optText, parseJson, run, text, numeric, toJson } from "./repo.ts";
 import type { Row } from "./repo.ts";
@@ -32,30 +32,14 @@ function toDish(row: Row): Dish {
   return dish;
 }
 
-/** Rows only: custom dishes plus overrides of built-ins. */
-export function storedDishes(db: DatabaseSync): Dish[] {
-  return all(db, "SELECT * FROM dishes ORDER BY rowid").map(toDish);
-}
-
-/** Built-in catalog with stored overrides applied, followed by custom dishes. */
+/** The household's dishes, in the order they were added. */
 export function allDishes(db: DatabaseSync): Dish[] {
-  const stored = storedDishes(db);
-  const overrides = new Map(stored.map((dish) => [dish.id, dish]));
-  const builtinIds = new Set(DISHES.map((dish) => dish.id));
-  return [
-    ...DISHES.map((dish) => overrides.get(dish.id) ?? dish),
-    ...stored.filter((dish) => !builtinIds.has(dish.id)),
-  ];
+  return all(db, "SELECT * FROM dishes ORDER BY rowid").map(toDish);
 }
 
 export function findDish(db: DatabaseSync, id: string): Dish | undefined {
   const row = one(db, "SELECT * FROM dishes WHERE id = ?", id);
-  if (row) return toDish(row);
-  return DISHES.find((dish) => dish.id === id);
-}
-
-export function isBuiltinDish(id: string): boolean {
-  return DISHES.some((dish) => dish.id === id);
+  return row ? toDish(row) : undefined;
 }
 
 export function saveDish(db: DatabaseSync, dish: Dish): void {
@@ -97,7 +81,7 @@ export function saveDish(db: DatabaseSync, dish: Dish): void {
  */
 export function tidyImportedDishes(db: DatabaseSync): number {
   let changed = 0;
-  for (const dish of storedDishes(db)) {
+  for (const dish of allDishes(db)) {
     if (!dish.sourceUrl) continue;
     const ingredients = dish.ingredients.map(cleanIngredientLine).filter(Boolean);
     const instructions = dish.instructions?.map(cleanIngredientLine).filter(Boolean);
@@ -109,4 +93,28 @@ export function tidyImportedDishes(db: DatabaseSync): number {
     changed += 1;
   }
   return changed;
+}
+
+const RETIRED_KEY = "builtin_dishes_retired";
+
+/**
+ * The app used to ship built-in dishes that lived in code, not in the database. Once per database:
+ * an installation that was already in use gets every one of them stored as an archived dish of its
+ * own (keeping any edits), so meals, history and favourites that point at them still resolve and the
+ * household can restore the ones it wants. A new, empty database starts without dishes. Returns how
+ * many dishes were archived.
+ */
+export function retireBuiltinDishes(db: DatabaseSync, now: string): number {
+  if (one(db, "SELECT 1 FROM meta WHERE key = ?", RETIRED_KEY)) return 0;
+  const inUse = ["meals", "dishes", "profiles", "fridge_items", "pantry", "saved_inspirations"].some((table) => one(db, `SELECT 1 FROM ${table} LIMIT 1`));
+  let archived = 0;
+  if (inUse) {
+    for (const builtIn of LEGACY_DISHES) {
+      const dish = findDish(db, builtIn.id) ?? builtIn;
+      saveDish(db, { ...dish, custom: true, archivedAt: dish.archivedAt ?? now });
+      archived += 1;
+    }
+  }
+  run(db, "INSERT INTO meta (key, value) VALUES (?, ?)", RETIRED_KEY, now);
+  return archived;
 }

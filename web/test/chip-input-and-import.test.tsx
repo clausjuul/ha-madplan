@@ -42,7 +42,7 @@ describe("v1 import preview", () => {
     if (preview.ok) {
       expect(preview.counts.profiles).toBe(2);
       expect(preview.counts.meals).toBe(4); // 2 planned + 2 eaten from history
-      expect(preview.counts.dishes).toBe(1); // only custom dishes are stored; the catalog is built in
+      expect(preview.counts.dishes).toBe(2); // the custom dish, plus a retired built-in that a meal used
     }
     expect(previewV1("{nope").ok).toBe(false);
     expect(previewV1(JSON.stringify({ version: 2 }))).toMatchObject({ ok: false });

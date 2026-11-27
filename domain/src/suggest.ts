@@ -1,5 +1,4 @@
 /** Local (non-AI) suggestions. Deterministic: the same inputs and seed always give the same plan. */
-import { DISHES } from "./catalog/dishes.ts";
 import { daysBetween, isDateKey, parseDateKey } from "./dates.ts";
 import { dishContent, parseExclusionTerms } from "./exclusions.ts";
 import { participatingProfiles, preferenceScore } from "./profiles.ts";
@@ -25,7 +24,7 @@ export type SuggestionInput = {
   lastEaten: ReadonlyMap<string, string>;
   /** Replaces Math.random: change it to get a different but reproducible plan. */
   seed: number;
-  dishes?: readonly Dish[];
+  dishes: readonly Dish[];
   requiredDishIds?: readonly string[];
   userRequest?: string;
   dayRequests?: Readonly<Record<string, string>>;
@@ -52,7 +51,7 @@ function createRanker(input: SuggestionInput) {
   const ratings = input.ratingScores ?? new Map<string, number>();
   const offerBonus = input.offerScores ?? new Map<string, number>();
   const profiles = participatingProfiles(input.profiles ?? []);
-  const dishes = (input.dishes ?? DISHES).filter((dish) => !dish.archivedAt);
+  const dishes = input.dishes.filter((dish) => !dish.archivedAt);
   const dishById = new Map(dishes.map((dish) => [dish.id, dish]));
   const usedDishIds = new Set<string>();
   const usedCategories = new Map<string, number>();

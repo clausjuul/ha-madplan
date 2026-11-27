@@ -126,7 +126,9 @@ export function DishPickerSheet({ open, dayLabel, dishes, meals, today, onPick, 
           ) : null}
           {visible.map((dish) => row(dish))}
           {visible.length === 0 ? (
-            <li className="px-4 py-10 text-center text-[15px] text-muted">Ingen retter matcher “{query}”.</li>
+            <li className="px-4 py-10 text-center text-[15px] text-muted">
+              {query.trim() ? `Ingen retter matcher “${query}”.` : "I har ingen retter endnu. Tilføj dem under Retter."}
+            </li>
           ) : null}
         </ul>
       </div>
