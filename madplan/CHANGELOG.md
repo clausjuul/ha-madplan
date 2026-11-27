@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.31.0
+
+- feat(settings): archived dishes move to Indstillinger → Arkiv
+
 ## 0.30.0
 
 - feat(dishes): find a photo for a dish with AI
