@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.27.2
+
+- fix(dishes): saving a dish with an uploaded photo works
+
 ## 0.27.1
 
 - fix(dishes): long dish names wrap instead of being cut off
