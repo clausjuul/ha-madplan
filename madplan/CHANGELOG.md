@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.27.1
+
+- fix(dishes): long dish names wrap instead of being cut off
+
 ## 0.27.0
 
 - feat(dishes): a photo of the food itself becomes a dish
