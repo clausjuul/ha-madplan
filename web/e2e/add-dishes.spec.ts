@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { MOCK_NOW } from "./helpers";
@@ -186,4 +188,32 @@ test("arkiverede retter ligger under Indstillinger → Arkiv, ikke under Retter"
   await expect(page.getByText("Der er ingen arkiverede retter.")).toBeVisible();
   await page.goto("/#/retter");
   await expect(page.getByRole("heading", { name: "Mormors æbleflæsk" })).toBeVisible();
+});
+
+// A HEIC photo, as Samsung (and iPhone) cameras save them. Chromium cannot read HEIC itself, like Chrome on Android.
+const HEIC = readFileSync(resolve(import.meta.dirname, "fixtures/photo.heic"));
+
+test("et HEIC-billede fra telefonen kan bruges, også uden filtype", async ({ page }) => {
+  await open(page);
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
+  await page.getByRole("button", { name: /Skriv selv/u }).click();
+  const form = page.getByRole("dialog", { name: "Ny ret" });
+  const chooser = page.waitForEvent("filechooser");
+  await form.getByRole("button", { name: "Tilføj billede" }).click();
+  // Samsung often sends the photo without a type; the file header shows it is HEIC.
+  await (await chooser).setFiles({ name: "20261128_101500.jpg", mimeType: "application/octet-stream", buffer: HEIC });
+  const photo = form.getByRole("img", { name: "Billede af retten" });
+  await expect(photo).toHaveAttribute("src", /^data:image\/jpeg;base64,/u, { timeout: 20_000 });
+  expect(await photo.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([640, 480]);
+});
+
+test("et billede, der ikke kan læses, giver en forståelig besked", async ({ page }) => {
+  await open(page);
+  await page.getByRole("button", { name: "Tilføj ret" }).click();
+  await page.getByRole("button", { name: /Skriv selv/u }).click();
+  const form = page.getByRole("dialog", { name: "Ny ret" });
+  const chooser = page.waitForEvent("filechooser");
+  await form.getByRole("button", { name: "Tilføj billede" }).click();
+  await (await chooser).setFiles({ name: "billede.jpg", mimeType: "image/jpeg", buffer: Buffer.from("ikke et billede") });
+  await expect(form.getByText(/Billedet kunne ikke læses/u)).toBeVisible();
 });

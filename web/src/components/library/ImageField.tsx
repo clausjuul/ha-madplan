@@ -3,7 +3,7 @@ import { ImagePlus, Link2, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import type { DishImageSuggestion } from "@madplan/domain";
 import { errorMessage } from "@/api/library-mutations";
 import { Field, inputClass } from "@/components/ui/Field";
-import { downscaleImage } from "@/lib/image-resize";
+import { downscaleImage, ImageReadError } from "@/lib/image-resize";
 
 type Props = {
   value: string;
@@ -67,8 +67,8 @@ export function ImageField({ value, onChange, fallback, onFind, canFind = true }
       onChange(await downscaleImage(file));
       setBroken(false);
       setByLink(false);
-    } catch {
-      setProblem("Billedet kunne ikke bruges. Prøv et andet (JPEG eller PNG).");
+    } catch (error) {
+      setProblem(error instanceof ImageReadError ? error.message : "Billedet kunne ikke bruges. Prøv et andet billede.");
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -80,7 +80,7 @@ export function ImageField({ value, onChange, fallback, onFind, canFind = true }
     <input
       ref={fileRef}
       type="file"
-      accept="image/*"
+      accept="image/*,.heic,.heif"
       className="sr-only"
       tabIndex={-1}
       aria-label="Vælg billede fra enhed"

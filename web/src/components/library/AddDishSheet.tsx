@@ -4,7 +4,7 @@ import type { Dish, DishPreview, DishReadInput } from "@madplan/domain";
 import { errorMessage, useDishActions } from "@/api/library-mutations";
 import { Field, inputClass } from "@/components/ui/Field";
 import { Sheet } from "@/components/ui/Sheet";
-import { dataUrlToBlob, downscaleImage, RECIPE_PHOTO } from "@/lib/image-resize";
+import { dataUrlToBlob, downscaleImage, ImageReadError, RECIPE_PHOTO } from "@/lib/image-resize";
 import { DishForm } from "./DishForm";
 
 type Props = {
@@ -89,8 +89,8 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
       const scaled = await Promise.all(picked.map((file) => downscaleImage(file, undefined, RECIPE_PHOTO)));
       setPhotos((current) => [...current, ...scaled].slice(0, MAX_PHOTOS));
       if (files.length > room) setPhotoError(`Højst ${MAX_PHOTOS} billeder pr. opskrift.`);
-    } catch {
-      setPhotoError("Et af billederne kunne ikke bruges. Prøv et andet (JPEG eller PNG).");
+    } catch (error) {
+      setPhotoError(error instanceof ImageReadError ? error.message : "Et af billederne kunne ikke bruges. Prøv et andet billede.");
     } finally {
       setScaling(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -150,7 +150,7 @@ export function AddDishSheet({ open, dishes, categories, aiAvailable, onClose }:
     <input
       ref={fileRef}
       type="file"
-      accept="image/*"
+      accept="image/*,.heic,.heif"
       multiple
       className="sr-only"
       aria-label="Vælg billeder af opskriften"

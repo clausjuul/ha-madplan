@@ -60,3 +60,5 @@ One version, kept equal by `server/test/version.test.ts`: `madplan/config.yaml`,
 MIT, see [LICENSE](LICENSE). Copyright (c) 2026 clausjuul.
 
 The bundled dish and inspiration photos are not covered by the MIT license: they keep their own licences, listed in [web/public/images/dishes/README.md](web/public/images/dishes/README.md) and [web/public/images/inspiration/README.md](web/public/images/inspiration/README.md).
+
+HEIC photos (as Samsung and iPhone cameras save them) are decoded in the browser with [heic-to](https://github.com/hoppergee/heic-to), which bundles [libheif](https://github.com/strukturag/libheif) and is licensed under the LGPL-3.0. It is used unmodified and kept as a separate file that the app only loads when a HEIC photo is picked (`web/src/lib/image-resize.ts`), so it can be replaced on its own.
