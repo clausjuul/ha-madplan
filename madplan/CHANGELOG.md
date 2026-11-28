@@ -1,5 +1,9 @@
 # Ændringer
 
+## 0.31.1
+
+- fix(photos): HEIC photos from Samsung phones can be used
+
 ## 0.31.0
 
 - feat(settings): archived dishes move to Indstillinger → Arkiv
